@@ -1,0 +1,226 @@
+// src/components/PostGenerator.jsx - AI投稿生成機能
+import React, { useState } from 'react';
+import { Send, Copy, RefreshCw, Twitter, CheckCircle } from 'lucide-react';
+import { generateAIPost } from '../utils/openai';
+import { postToTwitter } from '../utils/twitter';
+
+const PostGenerator = ({ settings }) => {
+  const [generatedPost, setGeneratedPost] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isPosting, setIsPosting] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [postSuccess, setPostSuccess] = useState(false);
+
+  // Entry版：3要素設定
+  const audienceOptions = [
+    '副業ブロガー', 'Webデザイナー', 'プログラマー・エンジニア', 'Webライター',
+    'アフィリエイター', '主婦・主夫', '学生・大学生', '会社員・サラリーマン'
+  ];
+
+  const styleOptions = [
+    '親しみやすい', '専門的', '面白い', '真面目', '励まし系', '質問系'
+  ];
+
+  const topicOptions = [
+    '副業と本業の時間管理', 'スキルアップの方法', 'ワークライフバランス',
+    'SEO対策の基本', 'SNS運用のコツ', '効率的な学習方法', '朝の習慣・ルーティン',
+    'モチベーション維持の工夫', 'ブログ記事のネタ切れ問題'
+  ];
+
+  // AI投稿文生成
+  const handleGenerate = async () => {
+    if (!settings.openaiKey) {
+      alert('設定でOpenAI APIキーを入力してください');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const prompt = `
+あなたは${settings.audience}向けのSNS投稿を作成するプロです。
+以下の条件で魅力的なTwitter投稿文を作成してください：
+
+対象読者: ${settings.audience}
+投稿スタイル: ${settings.style}
+投稿テーマ: ${settings.topic}
+
+条件:
+- 280文字以内
+- エンゲージメントを高める工夫
+- 読者の共感を呼ぶ内容
+- ハッシュタグ2-3個含む
+- 行動を促すCTA含む
+
+投稿文のみを出力してください：
+      `;
+
+      const result = await generateAIPost(prompt, settings.openaiKey);
+      setGeneratedPost(result);
+    } catch (error) {
+      console.error('投稿生成エラー:', error);
+      alert('投稿生成に失敗しました: ' + error.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // クリップボードコピー
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedPost);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (error) {
+      alert('コピーに失敗しました');
+    }
+  };
+
+  // Twitter投稿
+  const handlePost = async () => {
+    if (!settings.twitterTokens) {
+      alert('設定でTwitter連携を完了してください');
+      return;
+    }
+
+    setIsPosting(true);
+    try {
+      await postToTwitter(generatedPost, settings.twitterTokens);
+      setPostSuccess(true);
+      setTimeout(() => setPostSuccess(false), 3000);
+    } catch (error) {
+      console.error('投稿エラー:', error);
+      alert('投稿に失敗しました: ' + error.message);
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* 設定パネル（簡易版） */}
+      <div className="bg-white rounded-xl p-4 shadow-sm">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">投稿設定</h2>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              対象読者
+            </label>
+            <select
+              value={settings.audience}
+              onChange={(e) => settings.onUpdate?.({ ...settings, audience: e.target.value })}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              {audienceOptions.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              投稿スタイル
+            </label>
+            <select
+              value={settings.style}
+              onChange={(e) => settings.onUpdate?.({ ...settings, style: e.target.value })}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              {styleOptions.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              投稿テーマ
+            </label>
+            <select
+              value={settings.topic}
+              onChange={(e) => settings.onUpdate?.({ ...settings, topic: e.target.value })}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              {topicOptions.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* 投稿生成 */}
+      <div className="bg-white rounded-xl p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">AI投稿生成</h2>
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            {isGenerating ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+            <span>{isGenerating ? '生成中...' : '投稿生成'}</span>
+          </button>
+        </div>
+
+        {generatedPost && (
+          <div className="space-y-4">
+            <div className="bg-gray-50 p-4 rounded-lg border">
+              <p className="text-gray-900 whitespace-pre-wrap">{generatedPost}</p>
+              <div className="mt-2 text-xs text-gray-500">
+                文字数: {generatedPost.length}/280
+              </div>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={handleCopy}
+                className="flex-1 flex items-center justify-center space-x-2 bg-gray-100 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                {copySuccess ? (
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+                <span>{copySuccess ? 'コピー完了！' : 'コピー'}</span>
+              </button>
+
+              <button
+                onClick={handlePost}
+                disabled={isPosting || !settings.twitterTokens}
+                className="flex-1 flex items-center justify-center space-x-2 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {isPosting ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : postSuccess ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : (
+                  <Twitter className="h-4 w-4" />
+                )}
+                <span>
+                  {isPosting ? '投稿中...' : postSuccess ? '投稿完了！' : 'Twitter投稿'}
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ヒント */}
+      <div className="bg-blue-50 rounded-xl p-4">
+        <h3 className="text-sm font-medium text-blue-900 mb-2">💡 使い方のコツ</h3>
+        <ul className="text-sm text-blue-800 space-y-1">
+          <li>• 設定で対象読者を具体的に選ぶと効果的です</li>
+          <li>• 投稿スタイルでブランドの個性を表現できます</li>
+          <li>• テーマは読者の関心事に合わせて選択しましょう</li>
+        </ul>
+      </div>
+    </div>
+  );
+};
+
+export default PostGenerator;
