@@ -4,15 +4,15 @@
   "description": "AIが自動でSNS投稿文を生成する超便利ツール",
   "icons": [
     {
-      "src": "icon-192x192.png",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%232563eb'/><text x='96' y='120' font-family='Arial' font-size='60' fill='white' text-anchor='middle'>🚀</text></svg>",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "maskable any"
     },
     {
-      "src": "icon-512x512.png",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%232563eb'/><text x='256' y='320' font-family='Arial' font-size='160' fill='white' text-anchor='middle'>🚀</text></svg>",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "maskable any"
     }
   ],
@@ -27,44 +27,5 @@
     "productivity",
     "social",
     "utilities"
-  ],
-  "screenshots": [
-    {
-      "src": "screenshot-mobile.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow"
-    }
-  ],
-  "prefer_related_applications": false,
-  "related_applications": [],
-  "shortcuts": [
-    {
-      "name": "投稿生成",
-      "short_name": "生成",
-      "description": "AI投稿文をすぐに生成",
-      "url": "/?action=generate",
-      "icons": [
-        {
-          "src": "icon-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "設定",
-      "short_name": "設定",
-      "description": "API設定を開く",
-      "url": "/?action=settings",
-      "icons": [
-        {
-          "src": "icon-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
-    }
-  ],
-  "edge_side_panel": {
-    "preferred_width": 400
-  }
+  ]
 }

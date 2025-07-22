@@ -68,3 +68,23 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+
+
+
+
+# 📄 プロジェクト概要
+- 目的：SNS投稿をAIで生成し、自動投稿（Twitter）するReactアプリ
+- 主な技術：React, OpenAI API, Twitter API, TailwindCSS
+
+# 📁 ディレクトリ構成
+- /src/components/SettingsPanel.jsx → 設定画面、APIキー登録
+- /src/components/PostGenerator.jsx → 投稿文生成＆送信
+- /src/utils/openai.js → OpenAI API連携（GPT）
+- /src/utils/twitter.js → Twitter API連携（CORS経由）
+- /src/App.js → 認証判定とルーティング管理
+
+# 🧩 機能の流れ
+- 設定パネルでAPIキー登録（localStorage保存）
+- PostGeneratorでOpenAI APIへ投稿生成
+- 生成後：Twitter投稿、コピー、保存など選択可能

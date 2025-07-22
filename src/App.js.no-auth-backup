@@ -13,8 +13,9 @@ const LicenseAuth = ({ onAuthSuccess }) => {
   // 有効なライセンスキー（販売時に生成・配布）
   const validLicenseKeys = [
     'SNS-ENTRY-2024-DEMO01',
-    'SNS-ENTRY-2024-DEMO02',
+    'SNS-ENTRY-2024-DEMO02', 
     'SNS-ENTRY-2024-DEMO03',
+    // 実際の販売時はランダム生成したキーを追加
   ];
 
   const validateLicense = async () => {
@@ -31,16 +32,6 @@ const LicenseAuth = ({ onAuthSuccess }) => {
     if (validLicenseKeys.includes(licenseKey.trim())) {
       localStorage.setItem('sns_automation_license', licenseKey.trim());
       localStorage.setItem('sns_automation_license_time', Date.now().toString());
-
-      // 認証成功メッセージを期限別に表示
-      const demoKeys = ['SNS-ENTRY-2024-DEMO01', 'SNS-ENTRY-2024-DEMO02', 'SNS-ENTRY-2024-DEMO03'];
-      const isDemoKey = demoKeys.includes(licenseKey.trim());
-
-      const successMessage = isDemoKey
-        ? '✅ デモライセンス認証成功！24時間ご利用いただけます。'
-        : '✅ ライセンス認証成功！30日間ご利用いただけます。';
-
-      alert(successMessage);
       onAuthSuccess();
     } else {
       setError('無効なライセンスキーです。購入時に送付されたキーを確認してください。');
@@ -96,7 +87,7 @@ const LicenseAuth = ({ onAuthSuccess }) => {
             <p className="text-sm text-gray-600 mb-2">
               ライセンスキーをお持ちでない場合
             </p>
-            <a
+            
               href="https://brain-market.com/"
               target="_blank"
               rel="noopener noreferrer"
@@ -110,7 +101,7 @@ const LicenseAuth = ({ onAuthSuccess }) => {
             <h3 className="text-sm font-medium text-blue-900 mb-2">🔐 認証について</h3>
             <ul className="text-xs text-blue-800 space-y-1">
               <li>• 購入後にメールで送付されるライセンスキーを入力</li>
-              <li>• 正式版：認証後30日間利用可能</li>
+              <li>• 認証後30日間利用可能</li>
               <li>• 1ライセンス = 1デバイス</li>
             </ul>
           </div>
@@ -139,26 +130,6 @@ function App() {
     topic: '副業と本業の時間管理'
   });
 
-  // 残り時間計算
-  const getRemainingTime = () => {
-    const license = localStorage.getItem('sns_automation_license');
-    const licenseTime = localStorage.getItem('sns_automation_license_time');
-
-    if (license && licenseTime) {
-      const demoKeys = ['SNS-ENTRY-2024-DEMO01', 'SNS-ENTRY-2024-DEMO02', 'SNS-ENTRY-2024-DEMO03'];
-      const isDemoKey = demoKeys.includes(license);
-      const validHours = isDemoKey ? 24 : (24 * 30);
-
-      const hoursElapsed = (Date.now() - parseInt(licenseTime)) / (1000 * 60 * 60);
-      const remainingHours = Math.max(0, validHours - hoursElapsed);
-
-      return isDemoKey
-        ? `デモ残り: ${Math.floor(remainingHours)}時間`
-        : `残り: ${Math.floor(remainingHours / 24)}日`;
-    }
-    return '';
-  };
-
   useEffect(() => {
     const savedSettings = localStorage.getItem('sns_automation_settings');
     if (savedSettings) {
@@ -170,27 +141,14 @@ function App() {
     const checkAuth = () => {
       const license = localStorage.getItem('sns_automation_license');
       const licenseTime = localStorage.getItem('sns_automation_license_time');
-
+      
       if (license && licenseTime) {
         const hoursElapsed = (Date.now() - parseInt(licenseTime)) / (1000 * 60 * 60);
-
-        // デモキーと正式ライセンスで期限を分ける
-        const demoKeys = ['SNS-ENTRY-2024-DEMO01', 'SNS-ENTRY-2024-DEMO02', 'SNS-ENTRY-2024-DEMO03'];
-        const isDemoKey = demoKeys.includes(license);
-
-        const validHours = isDemoKey ? 24 : (24 * 30); // デモ：24時間、正式：30日
-
-        if (hoursElapsed < validHours) {
+        if (hoursElapsed < 24 * 30) { // 30日間有効
           setIsAuthenticated(true);
         } else {
           localStorage.removeItem('sns_automation_license');
           localStorage.removeItem('sns_automation_license_time');
-
-          // 期限切れアラート
-          const expiredMessage = isDemoKey
-            ? 'デモライセンスの24時間が経過しました。正式版をご購入ください。'
-            : 'ライセンスの30日間が経過しました。更新が必要です。';
-          alert(expiredMessage);
         }
       }
       setIsCheckingAuth(false);
@@ -230,12 +188,7 @@ function App() {
         <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Sparkles className="h-6 w-6 text-blue-600" />
-            <div>
-              <h1 className="text-lg font-bold text-gray-900">SNS自動化</h1>
-              {getRemainingTime() && (
-                <p className="text-xs text-blue-600">{getRemainingTime()}</p>
-              )}
-            </div>
+            <h1 className="text-lg font-bold text-gray-900">SNS自動化</h1>
           </div>
           <button
             onClick={() => setActiveTab(activeTab === 'settings' ? 'generate' : 'settings')}
@@ -258,20 +211,22 @@ function App() {
         <div className="max-w-md mx-auto flex">
           <button
             onClick={() => setActiveTab('generate')}
-            className={`flex-1 py-3 px-4 flex flex-col items-center space-y-1 transition-colors ${activeTab === 'generate'
-                ? 'text-blue-600 bg-blue-50'
+            className={`flex-1 py-3 px-4 flex flex-col items-center space-y-1 transition-colors ${
+              activeTab === 'generate' 
+                ? 'text-blue-600 bg-blue-50' 
                 : 'text-gray-600 hover:text-blue-600'
-              }`}
+            }`}
           >
             <Send className="h-5 w-5" />
             <span className="text-xs font-medium">投稿生成</span>
           </button>
           <button
             onClick={() => setActiveTab('settings')}
-            className={`flex-1 py-3 px-4 flex flex-col items-center space-y-1 transition-colors ${activeTab === 'settings'
-                ? 'text-blue-600 bg-blue-50'
+            className={`flex-1 py-3 px-4 flex flex-col items-center space-y-1 transition-colors ${
+              activeTab === 'settings' 
+                ? 'text-blue-600 bg-blue-50' 
                 : 'text-gray-600 hover:text-blue-600'
-              }`}
+            }`}
           >
             <Settings className="h-5 w-5" />
             <span className="text-xs font-medium">設定</span>
