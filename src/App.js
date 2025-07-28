@@ -1,228 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Send, Sparkles, Key, AlertCircle } from 'lucide-react';
+import { Settings, Send, Sparkles } from 'lucide-react';
 import PostGenerator from './components/PostGenerator';
 import SettingsPanel from './components/SettingsPanel';
 import './App.css';
 
-// ライセンス認証コンポーネント
-const LicenseAuth = ({ onAuthSuccess }) => {
-  const [licenseKey, setLicenseKey] = useState('');
-  const [isValidating, setIsValidating] = useState(false);
-  const [error, setError] = useState('');
-
-  // 有効なライセンスキー（販売時に生成・配布）
-  const validLicenseKeys = [
-    'SNS-ENTRY-2024-DEMO01',
-    'SNS-ENTRY-2024-DEMO02',
-    'SNS-ENTRY-2024-DEMO03',
-  ];
-
-  const validateLicense = async () => {
-    if (!licenseKey.trim()) {
-      setError('ライセンスキーを入力してください');
-      return;
-    }
-
-    setIsValidating(true);
-    setError('');
-
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    if (validLicenseKeys.includes(licenseKey.trim())) {
-      localStorage.setItem('sns_automation_license', licenseKey.trim());
-      localStorage.setItem('sns_automation_license_time', Date.now().toString());
-
-      // 認証成功メッセージを期限別に表示
-      const demoKeys = ['SNS-ENTRY-2024-DEMO01', 'SNS-ENTRY-2024-DEMO02', 'SNS-ENTRY-2024-DEMO03'];
-      const isDemoKey = demoKeys.includes(licenseKey.trim());
-
-      const successMessage = isDemoKey
-        ? '✅ デモライセンス認証成功！24時間ご利用いただけます。'
-        : '✅ ライセンス認証成功！30日間ご利用いただけます。';
-
-      alert(successMessage);
-      onAuthSuccess();
-    } else {
-      setError('無効なライセンスキーです。購入時に送付されたキーを確認してください。');
-    }
-
-    setIsValidating(false);
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-        <div className="text-center mb-6">
-          <Sparkles className="h-12 w-12 text-blue-600 mx-auto mb-3" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">SNS自動化システム Entry</h1>
-          <p className="text-gray-600">ライセンス認証が必要です</p>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              ライセンスキー
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={licenseKey}
-                onChange={(e) => setLicenseKey(e.target.value.toUpperCase())}
-                placeholder="SNS-ENTRY-2024-XXXXXX"
-                className="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            </div>
-          </div>
-
-          {error && (
-            <div className="flex items-center space-x-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <p className="text-red-800 text-sm">{error}</p>
-            </div>
-          )}
-
-          <button
-            onClick={validateLicense}
-            disabled={isValidating}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {isValidating ? '認証中...' : 'ライセンス認証'}
-          </button>
-        </div>
-
-        <div className="mt-6 space-y-4">
-          <div className="text-center">
-            <p className="text-sm text-gray-600 mb-2">
-              ライセンスキーをお持ちでない場合
-            </p>
-            <a
-              href="https://brain-market.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
-            >
-              今すぐ購入（¥1,480）
-            </a>
-          </div>
-
-          <div className="bg-blue-50 rounded-lg p-3">
-            <h3 className="text-sm font-medium text-blue-900 mb-2">🔐 認証について</h3>
-            <ul className="text-xs text-blue-800 space-y-1">
-              <li>• 購入後にメールで送付されるライセンスキーを入力</li>
-              <li>• 正式版：認証後30日間利用可能</li>
-              <li>• 1ライセンス = 1デバイス</li>
-            </ul>
-          </div>
-
-          <div className="bg-yellow-50 rounded-lg p-3">
-            <h3 className="text-sm font-medium text-yellow-900 mb-2">🎁 デモキー</h3>
-            <p className="text-xs text-yellow-800 mb-2">お試し用（24時間限定）:</p>
-            <code className="text-xs bg-yellow-100 px-2 py-1 rounded">SNS-ENTRY-2024-DEMO01</code>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// メインアプリ
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [activeTab, setActiveTab] = useState('generate');
-  const [settings, setSettings] = useState({
-    openaiKey: '',
-    twitterTokens: null,
-    audience: '副業ブロガー',
-    style: '親しみやすい',
-    topic: '副業と本業の時間管理'
-  });
+  const [currentPlan, setCurrentPlan] = useState('free'); // 'free' または 'premium'
+  const [usageStats, setUsageStats] = useState(null);
 
-  // 残り時間計算
-  const getRemainingTime = () => {
-    const license = localStorage.getItem('sns_automation_license');
-    const licenseTime = localStorage.getItem('sns_automation_license_time');
-
-    if (license && licenseTime) {
-      const demoKeys = ['SNS-ENTRY-2024-DEMO01', 'SNS-ENTRY-2024-DEMO02', 'SNS-ENTRY-2024-DEMO03'];
-      const isDemoKey = demoKeys.includes(license);
-      const validHours = isDemoKey ? 24 : (24 * 30);
-
-      const hoursElapsed = (Date.now() - parseInt(licenseTime)) / (1000 * 60 * 60);
-      const remainingHours = Math.max(0, validHours - hoursElapsed);
-
-      return isDemoKey
-        ? `デモ残り: ${Math.floor(remainingHours)}時間`
-        : `残り: ${Math.floor(remainingHours / 24)}日`;
-    }
-    return '';
-  };
-
+  // 初期化時にプラン情報を読み込み
   useEffect(() => {
-    const savedSettings = localStorage.getItem('sns_automation_settings');
-    if (savedSettings) {
-      setSettings(JSON.parse(savedSettings));
+    const savedPlan = localStorage.getItem('user_plan');
+    if (savedPlan) {
+      setCurrentPlan(savedPlan);
     }
   }, []);
 
-  useEffect(() => {
-    const checkAuth = () => {
-      const license = localStorage.getItem('sns_automation_license');
-      const licenseTime = localStorage.getItem('sns_automation_license_time');
-
-      if (license && licenseTime) {
-        const hoursElapsed = (Date.now() - parseInt(licenseTime)) / (1000 * 60 * 60);
-
-        // デモキーと正式ライセンスで期限を分ける
-        const demoKeys = ['SNS-ENTRY-2024-DEMO01', 'SNS-ENTRY-2024-DEMO02', 'SNS-ENTRY-2024-DEMO03'];
-        const isDemoKey = demoKeys.includes(license);
-
-        const validHours = isDemoKey ? 24 : (24 * 30); // デモ：24時間、正式：30日
-
-        if (hoursElapsed < validHours) {
-          setIsAuthenticated(true);
-        } else {
-          localStorage.removeItem('sns_automation_license');
-          localStorage.removeItem('sns_automation_license_time');
-
-          // 期限切れアラート
-          const expiredMessage = isDemoKey
-            ? 'デモライセンスの24時間が経過しました。正式版をご購入ください。'
-            : 'ライセンスの30日間が経過しました。更新が必要です。';
-          alert(expiredMessage);
-        }
-      }
-      setIsCheckingAuth(false);
-    };
-
-    checkAuth();
-  }, []);
-
-  const saveSettings = (newSettings) => {
-    setSettings(newSettings);
-    localStorage.setItem('sns_automation_settings', JSON.stringify(newSettings));
+  // プラン変更ハンドラー
+  const handlePlanChange = (newPlan) => {
+    setCurrentPlan(newPlan);
+    localStorage.setItem('user_plan', newPlan);
   };
 
-  const updateSettings = (newSettings) => {
-    setSettings(newSettings);
-    localStorage.setItem('sns_automation_settings', JSON.stringify(newSettings));
+  // 使用状況の更新
+  const updateUsageStats = (stats) => {
+    setUsageStats(stats);
   };
-
-  if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-          <p className="text-gray-600">認証確認中...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <LicenseAuth onAuthSuccess={() => setIsAuthenticated(true)} />;
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -232,9 +36,20 @@ function App() {
             <Sparkles className="h-6 w-6 text-blue-600" />
             <div>
               <h1 className="text-lg font-bold text-gray-900">SNS自動化</h1>
-              {getRemainingTime() && (
-                <p className="text-xs text-blue-600">{getRemainingTime()}</p>
-              )}
+              <div className="flex items-center space-x-2">
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  currentPlan === 'premium' 
+                    ? 'bg-yellow-100 text-yellow-800' 
+                    : 'bg-green-100 text-green-800'
+                }`}>
+                  {currentPlan === 'premium' ? '⭐ プレミアム' : '🆓 無料プラン'}
+                </span>
+                {currentPlan === 'free' && usageStats && (
+                  <span className="text-xs text-blue-600">
+                    残り {usageStats.remaining}/3回
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <button
@@ -248,9 +63,15 @@ function App() {
 
       <main className="max-w-md mx-auto p-4 pb-20">
         {activeTab === 'generate' ? (
-          <PostGenerator settings={settings} onUpdateSettings={updateSettings} />
+          <PostGenerator 
+            userPlan={currentPlan}
+            onUsageUpdate={updateUsageStats}
+          />
         ) : (
-          <SettingsPanel settings={settings} onSave={saveSettings} />
+          <SettingsPanel 
+            currentPlan={currentPlan}
+            onPlanChange={handlePlanChange}
+          />
         )}
       </main>
 
@@ -258,20 +79,22 @@ function App() {
         <div className="max-w-md mx-auto flex">
           <button
             onClick={() => setActiveTab('generate')}
-            className={`flex-1 py-3 px-4 flex flex-col items-center space-y-1 transition-colors ${activeTab === 'generate'
+            className={`flex-1 py-3 px-4 flex flex-col items-center space-y-1 transition-colors ${
+              activeTab === 'generate'
                 ? 'text-blue-600 bg-blue-50'
                 : 'text-gray-600 hover:text-blue-600'
-              }`}
+            }`}
           >
             <Send className="h-5 w-5" />
             <span className="text-xs font-medium">投稿生成</span>
           </button>
           <button
             onClick={() => setActiveTab('settings')}
-            className={`flex-1 py-3 px-4 flex flex-col items-center space-y-1 transition-colors ${activeTab === 'settings'
+            className={`flex-1 py-3 px-4 flex flex-col items-center space-y-1 transition-colors ${
+              activeTab === 'settings'
                 ? 'text-blue-600 bg-blue-50'
                 : 'text-gray-600 hover:text-blue-600'
-              }`}
+            }`}
           >
             <Settings className="h-5 w-5" />
             <span className="text-xs font-medium">設定</span>
