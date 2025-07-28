@@ -916,6 +916,63 @@ header button:hover {
   background: #f3f4f6 !important;
 }
 
+
+/*202507281734*/
+
+header .flex.items-center.space-x-2 {
+  align-items: center;
+  gap: 0.5rem;
+  line-height: 1;
+}
+
+.plan-label {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  background-color: #dcfce7;
+  color: #065f46;
+}
+
+/* ▼ ヘッダ内のタイトル＆プラン整列をきれいに */
+header h1 {
+  font-size: 1.125rem;
+  font-weight: bold;
+  color: #1f2937;
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* ▼ プラン表示ラベルの調整 */
+.plan-label {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  background-color: #dcfce7;
+  color: #065f46;
+  white-space: nowrap;
+}
+
+/* ▼ ボタン内のアイコン＋テキストを中央揃え */
+button svg {
+  display: block;
+}
+
+button span {
+  display: block;
+  line-height: 1.2;
+  font-size: 0.75rem;
+}
+
+
+
+
 /* Mobile viewport fix */
 @media (max-width: 768px) {
   .min-h-screen {
