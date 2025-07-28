@@ -1,5 +1,13 @@
 /* src/index.css */
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background: #f9fafb;
+    font-family: 'Helvetica Neue', sans-serif;
+    color: #1f2937;
+}

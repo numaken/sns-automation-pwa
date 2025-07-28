@@ -1,29 +1,71 @@
 /* src/components/SettingsPanel.css */
 
 .settings-panel {
-  padding: 16px;
-  background-color: #f9fafb;
-  border-radius: 8px;
+  background-color: #fff;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
 .settings-header {
-  font-size: 1.25rem;
-  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 1rem;
+}
+
+.plan-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
 }
 
 .plan-badge.free {
   background-color: #d1fae5;
   color: #065f46;
-  padding: 0.25rem 0.5rem;
-  border-radius: 9999px;
 }
 
 .plan-badge.premium {
   background-color: #fef3c7;
   color: #92400e;
-  padding: 0.25rem 0.5rem;
-  border-radius: 9999px;
 }
 
-/* 必要に応じてスタイル追加してください */
+.plan-section,
+.privacy-section,
+.other-settings,
+.app-info {
+  margin-top: 1.5rem;
+}
+
+.upgrade-button,
+.downgrade-button {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  background-color: #fbbf24;
+  color: white;
+  font-weight: bold;
+  border: none;
+}
+
+.api-key-input-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.api-key-input {
+  flex: 1;
+  padding: 0.5rem;
+}
+
+.message {
+  margin-top: 1rem;
+}
+
+.message.success {
+  color: #10b981;
+}
+
+.message.error {
+  color: #dc2626;
+}
