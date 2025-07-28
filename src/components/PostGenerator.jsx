@@ -9,10 +9,11 @@ const PostGenerator = ({ userPlan = 'free' }) => {
   const [quality, setQuality] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [usage, setUsage] = useState({ remaining: 3 });
+  const [usage, setUsage] = useState({ remaining: 5 });
+  const [betaMessage, setBetaMessage] = useState('');
 
-  // API endpoint (Vercel deployment URL)
-  const API_ENDPOINT = process.env.REACT_APP_API_URL || window.location.origin;
+  // API endpoint (本番環境では環境変数から取得)
+  const API_ENDPOINT = process.env.REACT_APP_API_URL || 'https://your-project.vercel.app';
 
   useEffect(() => {
     // 初回読み込み時に使用状況を取得
@@ -21,12 +22,12 @@ const PostGenerator = ({ userPlan = 'free' }) => {
 
   const fetchUsageStatus = async () => {
     if (userPlan !== 'free') return;
-    
+
     try {
       const response = await fetch(`${API_ENDPOINT}/api/usage-status`);
       if (response.ok) {
         const data = await response.json();
-        setUsage({ remaining: data.remaining });
+        setUsage(data);
       }
     } catch (error) {
       console.error('Usage status fetch error:', error);
@@ -61,7 +62,11 @@ const PostGenerator = ({ userPlan = 'free' }) => {
       const data = await response.json();
 
       if (!response.ok) {
-        if (response.status === 429) {
+        if (response.status === 403 && data.isWaitlist) {
+          // ベータテスト満員エラー
+          setError(data.message);
+          return;
+        } else if (response.status === 429) {
           setError(data.message || 'レート制限に達しました');
           setUsage({ remaining: 0 });
         } else {
@@ -72,9 +77,15 @@ const PostGenerator = ({ userPlan = 'free' }) => {
 
       setGeneratedPost(data.post);
       setQuality(data.quality);
-      
+
       if (data.usage) {
         setUsage(data.usage);
+      }
+
+      // ベータテストウェルカムメッセージ表示
+      if (data.betaMessage) {
+        setBetaMessage(data.betaMessage);
+        setTimeout(() => setBetaMessage(''), 8000); // 8秒後に消去
       }
 
     } catch (error) {
@@ -90,13 +101,11 @@ const PostGenerator = ({ userPlan = 'free' }) => {
       await navigator.clipboard.writeText(generatedPost);
       // 簡易フィードバック表示
       const button = document.querySelector('.copy-button');
-      if (button) {
-        const original = button.textContent;
-        button.textContent = 'コピー完了！';
-        setTimeout(() => {
-          button.textContent = original;
-        }, 2000);
-      }
+      const original = button.textContent;
+      button.textContent = 'コピー完了！';
+      setTimeout(() => {
+        button.textContent = original;
+      }, 2000);
     } catch (error) {
       console.error('Copy failed:', error);
     }
@@ -110,7 +119,7 @@ const PostGenerator = ({ userPlan = 'free' }) => {
   const getQualityColor = (grade) => {
     const colors = {
       'A': '#4CAF50',
-      'B': '#2196F3', 
+      'B': '#2196F3',
       'C': '#FF9800',
       'D': '#F44336'
     };
@@ -126,7 +135,7 @@ const PostGenerator = ({ userPlan = 'free' }) => {
         {userPlan === 'free' && (
           <div className="usage-display">
             <span className={`usage-count ${usage.remaining === 0 ? 'depleted' : ''}`}>
-              残り {usage.remaining}/3回
+              残り {usage.remaining}/5回 🧪 ベータ
             </span>
             {usage.remaining === 0 && (
               <span className="upgrade-hint">
@@ -153,9 +162,9 @@ const PostGenerator = ({ userPlan = 'free' }) => {
         <div className="options-grid">
           <div className="input-group">
             <label htmlFor="tone">トーン</label>
-            <select 
-              id="tone" 
-              value={tone} 
+            <select
+              id="tone"
+              value={tone}
               onChange={(e) => setTone(e.target.value)}
               disabled={isLoading}
             >
@@ -169,9 +178,9 @@ const PostGenerator = ({ userPlan = 'free' }) => {
 
           <div className="input-group">
             <label htmlFor="platform">プラットフォーム</label>
-            <select 
-              id="platform" 
-              value={platform} 
+            <select
+              id="platform"
+              value={platform}
               onChange={(e) => setPlatform(e.target.value)}
               disabled={isLoading}
             >
@@ -183,7 +192,7 @@ const PostGenerator = ({ userPlan = 'free' }) => {
           </div>
         </div>
 
-        <button 
+        <button
           className={`generate-button ${!canGenerate ? 'disabled' : ''}`}
           onClick={generatePost}
           disabled={isLoading || !canGenerate}
@@ -215,6 +224,13 @@ const PostGenerator = ({ userPlan = 'free' }) => {
         </div>
       )}
 
+      {betaMessage && (
+        <div className="beta-message">
+          <span className="beta-icon">🧪</span>
+          {betaMessage}
+        </div>
+      )}
+
       {generatedPost && (
         <div className="result-section">
           <div className="result-header">
@@ -238,26 +254,26 @@ const PostGenerator = ({ userPlan = 'free' }) => {
           )}
 
           <div className="action-buttons">
-            <button 
+            <button
               className="copy-button secondary-button"
               onClick={copyToClipboard}
             >
               📋 コピー
             </button>
-            
+
             {platform === 'Twitter' && (
-              <button 
+              <button
                 className="share-button secondary-button"
                 onClick={shareToTwitter}
               >
                 🐦 Twitterで投稿
               </button>
             )}
-            
+
             {userPlan === 'premium' && (
-              <button 
+              <button
                 className="direct-post-button primary-button"
-                onClick={() => {/* TODO: 直接投稿機能実装 */}}
+                onClick={() => {/* TODO: 直接投稿機能実装 */ }}
               >
                 📤 直接投稿
               </button>

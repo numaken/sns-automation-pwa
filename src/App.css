@@ -970,7 +970,65 @@ button span {
   font-size: 0.75rem;
 }
 
+/* Beta Test Message */
+.beta-message {
+  padding: 1rem;
+  background: linear-gradient(135deg, #e0f2fe, #b3e5fc);
+  border: 1px solid #29b6f6;
+  border-radius: 0.5rem;
+  color: #01579b;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  animation: slideIn 0.5s ease-out;
+}
 
+.beta-icon {
+  font-size: 1.125rem;
+  flex-shrink: 0;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Beta version usage count styling */
+.usage-count {
+  position: relative;
+}
+
+.usage-count::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #29b6f6, #0277bd);
+  border-radius: 1px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+}
 
 
 /* Mobile viewport fix */
