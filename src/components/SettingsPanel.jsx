@@ -1,346 +1,319 @@
 // src/components/SettingsPanel.jsx - 設定管理パネル（修正版）
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, Key, Twitter, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
+import './SettingsPanel.css';
 
-const SettingsPanel = ({ settings, onSave }) => {
-  const [localSettings, setLocalSettings] = useState(settings);
+const SettingsPanel = ({ currentPlan = 'free', onPlanChange }) => {
+  const [apiKey, setApiKey] = useState('');
+  const [savedApiKey, setSavedApiKey] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [usageStats, setUsageStats] = useState(null);
   const [showApiKey, setShowApiKey] = useState(false);
-  const [showTwitterTokens, setShowTwitterTokens] = useState(false);
-  const [validationStatus, setValidationStatus] = useState({
-    openai: null,
-    twitter: null
-  });
-  const [isValidating, setIsValidating] = useState(false);
+
+  // API endpoint
+  const API_ENDPOINT = process.env.REACT_APP_API_URL || window.location.origin;
 
   useEffect(() => {
-    setLocalSettings(settings);
-  }, [settings]);
-
-  // 設定の保存
-  const handleSave = () => {
-    onSave(localSettings);
-    alert('設定を保存しました！');
-  };
-
-  // OpenAI API キーの検証
-  const validateOpenAIKey = async () => {
-    if (!localSettings.openaiKey) {
-      setValidationStatus(prev => ({ ...prev, openai: { valid: false, error: 'APIキーが入力されていません' }}));
-      return;
+    // 保存されたAPIキーを読み込み（プレミアムプランのみ）
+    if (currentPlan === 'premium') {
+      const stored = localStorage.getItem('openai_api_key');
+      if (stored) {
+        setSavedApiKey(stored);
+        setApiKey('●'.repeat(20)); // マスクして表示
+      }
     }
+    
+    // 使用統計を取得
+    fetchUsageStats();
+  }, [currentPlan]);
 
-    setIsValidating(true);
+  const fetchUsageStats = async () => {
     try {
-      if (localSettings.openaiKey.startsWith('sk-') && localSettings.openaiKey.length > 45) {
-        setValidationStatus(prev => ({ ...prev, openai: { valid: true }}));
-      } else {
-        setValidationStatus(prev => ({ ...prev, openai: { valid: false, error: 'APIキーの形式が正しくありません' }}));
+      const response = await fetch(`${API_ENDPOINT}/api/usage-status`);
+      if (response.ok) {
+        const data = await response.json();
+        setUsageStats(data);
       }
     } catch (error) {
-      setValidationStatus(prev => ({ ...prev, openai: { valid: false, error: error.message }}));
-    } finally {
-      setIsValidating(false);
+      console.error('Usage stats fetch error:', error);
     }
   };
 
-  // Twitter認証の検証
-  const validateTwitterAuth = async () => {
-    const tokens = localSettings.twitterTokens;
-    if (!tokens?.consumerKey || !tokens?.consumerSecret || !tokens?.accessToken || !tokens?.accessTokenSecret) {
-      setValidationStatus(prev => ({ ...prev, twitter: { valid: false, error: 'すべてのTwitter API認証情報を入力してください' }}));
+  const saveApiKey = async () => {
+    if (!apiKey || apiKey === '●'.repeat(20)) {
+      setMessage('APIキーを入力してください');
       return;
     }
 
-    setIsValidating(true);
+    setIsLoading(true);
+    setMessage('');
+
     try {
-      setValidationStatus(prev => ({ ...prev, twitter: { 
-        valid: true, 
-        user: { username: 'verification_success' }
-      }}));
+      // APIキーの検証
+      const testResponse = await fetch('https://api.openai.com/v1/models', {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+        },
+      });
+
+      if (!testResponse.ok) {
+        throw new Error('無効なAPIキーです');
+      }
+
+      // 保存
+      localStorage.setItem('openai_api_key', apiKey);
+      setSavedApiKey(apiKey);
+      setApiKey('●'.repeat(20));
+      setMessage('✅ APIキーが正常に保存されました');
     } catch (error) {
-      setValidationStatus(prev => ({ ...prev, twitter: { valid: false, error: error.message }}));
+      setMessage(`❌ エラー: ${error.message}`);
     } finally {
-      setIsValidating(false);
+      setIsLoading(false);
     }
   };
 
-  // Twitter認証の開始
-  const handleTwitterAuth = () => {
-    window.open('https://developer.twitter.com/en/portal/dashboard', '_blank');
+  const removeApiKey = () => {
+    localStorage.removeItem('openai_api_key');
+    setSavedApiKey('');
+    setApiKey('');
+    setMessage('APIキーを削除しました');
+  };
+
+  const toggleShowApiKey = () => {
+    if (showApiKey) {
+      setApiKey('●'.repeat(20));
+    } else {
+      setApiKey(savedApiKey);
+    }
+    setShowApiKey(!showApiKey);
+  };
+
+  const upgradeToPremium = () => {
+    // TODO: 実際の決済処理実装
+    if (onPlanChange) {
+      onPlanChange('premium');
+    }
+    setMessage('🎉 プレミアムプランにアップグレードしました！');
+  };
+
+  const downgradToFree = () => {
+    if (onPlanChange) {
+      onPlanChange('free');
+    }
+    removeApiKey();
+    setMessage('無料プランに変更しました');
   };
 
   return (
-    <div className="space-y-6">
-      {/* OpenAI設定 */}
-      <div className="bg-white rounded-xl p-4 shadow-sm">
-        <div className="flex items-center space-x-2 mb-4">
-          <Key className="h-5 w-5 text-green-600" />
-          <h2 className="text-lg font-semibold text-gray-900">OpenAI API設定</h2>
+    <div className="settings-panel">
+      <div className="settings-header">
+        <h2>⚙️ 設定</h2>
+        <div className={`plan-badge ${currentPlan}`}>
+          {currentPlan === 'free' ? '🆓 無料プラン' : '⭐ プレミアム'}
         </div>
+      </div>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              APIキー
-            </label>
-            <div className="relative">
-              <input
-                type={showApiKey ? 'text' : 'password'}
-                value={localSettings.openaiKey || ''}
-                onChange={(e) => setLocalSettings(prev => ({ ...prev, openaiKey: e.target.value }))}
-                placeholder="sk-proj-..."
-                className="w-full p-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="button"
-                onClick={() => setShowApiKey(!showApiKey)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+      {/* プラン情報セクション */}
+      <div className="plan-section">
+        <h3>📊 プラン詳細</h3>
+        
+        {currentPlan === 'free' ? (
+          <div className="free-plan-info">
+            <div className="plan-features">
+              <h4>現在のプラン: 無料プラン</h4>
+              <ul>
+                <li>✅ 1日3回まで投稿生成</li>
+                <li>✅ 真のAI生成（GPT-3.5-turbo）</li>
+                <li>✅ APIキー設定不要</li>
+                <li>✅ 品質評価機能</li>
+                <li>❌ 無制限生成</li>
+                <li>❌ 直接SNS投稿</li>
+                <li>❌ 広告なし</li>
+              </ul>
+            </div>
+            
+            {usageStats && (
+              <div className="usage-display">
+                <h4>今日の使用状況</h4>
+                <div className="usage-bar">
+                  <div 
+                    className="usage-fill"
+                    style={{ width: `${((3 - usageStats.remaining) / 3) * 100}%` }}
+                  ></div>
+                </div>
+                <span>{3 - usageStats.remaining}/3回 使用済み</span>
+              </div>
+            )}
+
+            <div className="upgrade-promotion">
+              <h4>🚀 プレミアムにアップグレード</h4>
+              <div className="premium-features">
+                <ul>
+                  <li>🔥 無制限の投稿生成</li>
+                  <li>🎯 独自APIキー使用可能</li>
+                  <li>📤 直接SNS投稿機能</li>
+                  <li>🎨 広告なしクリーンUI</li>
+                  <li>⚡ 優先サポート</li>
+                </ul>
+              </div>
+              <div className="pricing">
+                <span className="price">¥980</span>
+                <span className="period">/月</span>
+              </div>
+              <button 
+                className="upgrade-button primary-button"
+                onClick={upgradeToPremium}
               >
-                {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                今すぐアップグレード
               </button>
             </div>
           </div>
-
-          <div className="flex space-x-3">
-            <button
-              onClick={validateOpenAIKey}
-              disabled={isValidating}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-            >
-              {isValidating ? '検証中...' : '検証'}
-            </button>
-            
-            <a
-              href="https://platform.openai.com/api-keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center space-x-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-            >
-              <span>APIキー取得</span>
-              <ExternalLink className="h-4 w-4" />
-            </a>
-          </div>
-
-          {validationStatus.openai && (
-            <div className={`flex items-center space-x-2 p-3 rounded-lg ${
-              validationStatus.openai.valid 
-                ? 'bg-green-50 text-green-800' 
-                : 'bg-red-50 text-red-800'
-            }`}>
-              {validationStatus.openai.valid ? (
-                <CheckCircle className="h-4 w-4" />
-              ) : (
-                <AlertCircle className="h-4 w-4" />
-              )}
-              <span className="text-sm">
-                {validationStatus.openai.valid 
-                  ? 'APIキーは有効です' 
-                  : validationStatus.openai.error
-                }
-              </span>
+        ) : (
+          <div className="premium-plan-info">
+            <div className="plan-features">
+              <h4>現在のプラン: プレミアム ⭐</h4>
+              <ul>
+                <li>✅ 無制限の投稿生成</li>
+                <li>✅ 独自APIキー使用</li>
+                <li>✅ 直接SNS投稿機能</li>
+                <li>✅ 広告なしUI</li>
+                <li>✅ 優先サポート</li>
+              </ul>
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Twitter設定 */}
-      <div className="bg-white rounded-xl p-4 shadow-sm">
-        <div className="flex items-center space-x-2 mb-4">
-          <Twitter className="h-5 w-5 text-blue-500" />
-          <h2 className="text-lg font-semibold text-gray-900">Twitter API設定</h2>
-        </div>
+            <div className="api-key-section">
+              <h4>🔑 OpenAI APIキー設定</h4>
+              <p className="api-key-description">
+                プレミアムプランでは独自のAPIキーを使用できます。
+                より高いレート制限とコスト効率を実現できます。
+              </p>
+              
+              <div className="api-key-input-group">
+                <input
+                  type={showApiKey ? "text" : "password"}
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="sk-..."
+                  className="api-key-input"
+                  disabled={isLoading}
+                />
+                <button 
+                  className="toggle-visibility-button"
+                  onClick={toggleShowApiKey}
+                  disabled={!savedApiKey}
+                >
+                  {showApiKey ? '🙈' : '👁️'}
+                </button>
+              </div>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Consumer Key
-            </label>
-            <div className="relative">
-              <input
-                type={showTwitterTokens ? 'text' : 'password'}
-                value={localSettings.twitterTokens?.consumerKey || ''}
-                onChange={(e) => setLocalSettings(prev => ({ 
-                  ...prev, 
-                  twitterTokens: { 
-                    ...prev.twitterTokens, 
-                    consumerKey: e.target.value 
-                  }
-                }))}
-                placeholder="5bvF8ceotsXziyHDr1TJ2aOZ5..."
-                className="w-full p-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                type="button"
-                onClick={() => setShowTwitterTokens(!showTwitterTokens)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              <div className="api-key-actions">
+                <button 
+                  className="save-button secondary-button"
+                  onClick={saveApiKey}
+                  disabled={isLoading}
+                >
+                  {isLoading ? '検証中...' : '💾 保存'}
+                </button>
+                
+                {savedApiKey && (
+                  <button 
+                    className="remove-button danger-button"
+                    onClick={removeApiKey}
+                  >
+                    🗑️ 削除
+                  </button>
+                )}
+              </div>
+
+              <div className="api-key-help">
+                <p>
+                  <strong>APIキーの取得方法:</strong>
+                </p>
+                <ol>
+                  <li><a href="https://platform.openai.com" target="_blank" rel="noopener noreferrer">OpenAI Platform</a>にアクセス</li>
+                  <li>「API Keys」セクションを開く</li>
+                  <li>「Create new secret key」をクリック</li>
+                  <li>生成されたキーをコピーして上記に貼り付け</li>
+                </ol>
+              </div>
+            </div>
+
+            <div className="downgrade-section">
+              <button 
+                className="downgrade-button"
+                onClick={downgradToFree}
               >
-                {showTwitterTokens ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                無料プランに戻る
               </button>
             </div>
           </div>
+        )}
+      </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Consumer Secret
-            </label>
-            <input
-              type={showTwitterTokens ? 'text' : 'password'}
-              value={localSettings.twitterTokens?.consumerSecret || ''}
-              onChange={(e) => setLocalSettings(prev => ({ 
-                ...prev, 
-                twitterTokens: { 
-                  ...prev.twitterTokens, 
-                  consumerSecret: e.target.value 
-                }
-              }))}
-              placeholder="nVetElpeGdIMIvBLpkIUv4R776mTST5m..."
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Access Token
-            </label>
-            <input
-              type={showTwitterTokens ? 'text' : 'password'}
-              value={localSettings.twitterTokens?.accessToken || ''}
-              onChange={(e) => setLocalSettings(prev => ({ 
-                ...prev, 
-                twitterTokens: { 
-                  ...prev.twitterTokens, 
-                  accessToken: e.target.value 
-                }
-              }))}
-              placeholder="258383434-CGNxJVy91VNyGIQTw2RxtaaawpAxAc..."
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Access Token Secret
-            </label>
-            <input
-              type={showTwitterTokens ? 'text' : 'password'}
-              value={localSettings.twitterTokens?.accessTokenSecret || ''}
-              onChange={(e) => setLocalSettings(prev => ({ 
-                ...prev, 
-                twitterTokens: { 
-                  ...prev.twitterTokens, 
-                  accessTokenSecret: e.target.value 
-                }
-              }))}
-              placeholder="SpanvNrvbXWNrGgg328ACpO4gQXO94033Eeo..."
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="flex space-x-3">
-            <button
-              onClick={validateTwitterAuth}
-              disabled={isValidating}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
-              {isValidating ? '検証中...' : '検証'}
-            </button>
-            
-            <button
-              onClick={handleTwitterAuth}
-              className="flex items-center space-x-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-            >
-              <span>認証設定</span>
-              <ExternalLink className="h-4 w-4" />
-            </button>
-          </div>
-
-          {validationStatus.twitter && (
-            <div className={`flex items-center space-x-2 p-3 rounded-lg ${
-              validationStatus.twitter.valid 
-                ? 'bg-green-50 text-green-800' 
-                : 'bg-red-50 text-red-800'
-            }`}>
-              {validationStatus.twitter.valid ? (
-                <CheckCircle className="h-4 w-4" />
-              ) : (
-                <AlertCircle className="h-4 w-4" />
-              )}
-              <span className="text-sm">
-                {validationStatus.twitter.valid 
-                  ? `認証成功: @${validationStatus.twitter.user?.username}` 
-                  : validationStatus.twitter.error
-                }
-              </span>
-            </div>
-          )}
+      {/* データ・プライバシーセクション */}
+      <div className="privacy-section">
+        <h3>🔒 データ・プライバシー</h3>
+        <div className="privacy-info">
+          <ul>
+            <li>🛡️ APIキーはブラウザのローカルストレージに保存</li>
+            <li>🔐 通信は全てHTTPS暗号化</li>
+            <li>📝 生成された投稿はサーバーに保存されません</li>
+            <li>👁️ 個人情報の収集は最小限</li>
+            <li>🗑️ データ削除はいつでも可能</li>
+          </ul>
         </div>
       </div>
 
-      {/* 設定手順ガイド */}
-      <div className="bg-blue-50 rounded-xl p-4">
-        <h3 className="text-sm font-medium text-blue-900 mb-3">🚀 初期設定ガイド</h3>
-        <div className="space-y-3 text-sm text-blue-800">
-          <div>
-            <div className="font-medium">1. OpenAI APIキー取得</div>
-            <div className="text-xs text-blue-600 mt-1">
-              • platform.openai.com でアカウント作成<br/>
-              • Billing設定で課金設定（最低$5〜）<br/>
-              • API Keys でシークレットキー生成
-            </div>
-          </div>
-          
-          <div>
-            <div className="font-medium">2. Twitter API設定</div>
-            <div className="text-xs text-blue-600 mt-1">
-              • developer.twitter.com でアプリ作成<br/>
-              • Keys and Tokens で以下4つを取得:<br/>
-              　- Consumer Key<br/>
-              　- Consumer Secret<br/>
-              　- Access Token<br/>
-              　- Access Token Secret<br/>
-              • App permissions を Read and write に設定
-            </div>
-          </div>
+      {/* その他の設定 */}
+      <div className="other-settings">
+        <h3>🔧 その他の設定</h3>
+        
+        <div className="setting-item">
+          <label>
+            <input type="checkbox" defaultChecked />
+            生成履歴をブラウザに保存
+          </label>
+        </div>
+
+        <div className="setting-item">
+          <label>
+            <input type="checkbox" defaultChecked />
+            品質評価を表示
+          </label>
+        </div>
+
+        <div className="setting-item">
+          <label>
+            <input type="checkbox" />
+            アップデート通知を受け取る
+          </label>
         </div>
       </div>
 
-      {/* 保存ボタン */}
-      <div className="sticky bottom-6">
-        <button
-          onClick={handleSave}
-          className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-        >
-          設定を保存
-        </button>
-      </div>
+      {message && (
+        <div className={`message ${message.includes('❌') ? 'error' : 'success'}`}>
+          {message}
+        </div>
+      )}
 
-      {/* リセット・その他 */}
-      <div className="bg-gray-50 rounded-xl p-4">
-        <h3 className="text-sm font-medium text-gray-900 mb-3">その他の設定</h3>
-        <div className="space-y-3">
-          <button
-            onClick={() => {
-              if (window.confirm('全ての設定をリセットしますか？')) {
-                localStorage.clear();
-                window.location.reload();
-              }
-            }}
-            className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
-          >
-            全設定をリセット
-          </button>
-          
-          <button
-            onClick={() => {
-              if (window.confirm('投稿履歴を削除しますか？')) {
-                localStorage.removeItem('twitter_post_history');
-                alert('投稿履歴を削除しました');
-              }
-            }}
-            className="w-full text-left px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-          >
-            投稿履歴を削除
-          </button>
+      {/* アプリ情報 */}
+      <div className="app-info">
+        <h3>ℹ️ アプリ情報</h3>
+        <div className="info-grid">
+          <div className="info-item">
+            <span className="label">バージョン:</span>
+            <span className="value">v2.0.0 - フリーミアム対応</span>
+          </div>
+          <div className="info-item">
+            <span className="label">最終更新:</span>
+            <span className="value">2024年7月29日</span>
+          </div>
+          <div className="info-item">
+            <span className="label">サポート:</span>
+            <span className="value">
+              <a href="mailto:support@example.com">support@example.com</a>
+            </span>
+          </div>
         </div>
       </div>
     </div>
