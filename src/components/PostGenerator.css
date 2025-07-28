@@ -1,0 +1,22 @@
+/* src/components/PostGenerator.css */
+
+.post-generator {
+  padding: 16px;
+  background-color: #fff;
+  border-radius: 8px;
+}
+
+.usage-display {
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.copy-button {
+  margin-top: 8px;
+}
+
+.result-section {
+  margin-top: 16px;
+}
+
+/* 必要に応じて追加 */
