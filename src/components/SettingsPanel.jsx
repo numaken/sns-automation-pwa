@@ -311,7 +311,7 @@ const SettingsPanel = ({ currentPlan = 'free', onPlanChange }) => {
           <div className="info-item">
             <span className="label">サポート:</span>
             <span className="value">
-              <a href="mailto:support@example.com">support@example.com</a>
+              <a href="mailto:numaken@gmail.com">numaken@gmail.com</a>
             </span>
           </div>
         </div>
