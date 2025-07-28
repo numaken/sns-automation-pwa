@@ -88,3 +88,4 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/t
 - 設定パネルでAPIキー登録（localStorage保存）
 - PostGeneratorでOpenAI APIへ投稿生成
 - 生成後：Twitter投稿、コピー、保存など選択可能
+Vercel sync trigger: #午後
