@@ -1,319 +1,285 @@
-// src/components/PostGenerator.jsx - AI機能実装版（完全動作版）
 import React, { useState, useEffect } from 'react';
-import { Send, Copy, RefreshCw, Twitter, CheckCircle, AlertCircle, Star } from 'lucide-react';
-import { generateAIPost, createPromptTemplate, calculatePostQuality } from '../utils/openai';
+import './PostGenerator.css';
 
-const PostGenerator = ({ settings }) => {
+const PostGenerator = ({ userPlan = 'free' }) => {
+  const [prompt, setPrompt] = useState('');
+  const [tone, setTone] = useState('casual');
+  const [platform, setPlatform] = useState('Twitter');
   const [generatedPost, setGeneratedPost] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isPosting, setIsPosting] = useState(false);
-  const [copySuccess, setCopySuccess] = useState(false);
-  const [postSuccess, setPostSuccess] = useState(false);
+  const [quality, setQuality] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [qualityScore, setQualityScore] = useState(null);
+  const [usage, setUsage] = useState({ remaining: 3 });
 
-  // ローカル設定状態
-  const [localSettings, setLocalSettings] = useState({
-    audience: '副業ブロガー',
-    style: '親しみやすい',
-    topic: '副業と本業の時間管理'
-  });
+  // API endpoint (Vercel deployment URL)
+  const API_ENDPOINT = process.env.REACT_APP_API_URL || window.location.origin;
 
   useEffect(() => {
-    if (settings) {
-      setLocalSettings({
-        audience: settings.audience || '副業ブロガー',
-        style: settings.style || '親しみやすい',
-        topic: settings.topic || '副業と本業の時間管理'
-      });
-    }
-  }, [settings]);
+    // 初回読み込み時に使用状況を取得
+    fetchUsageStatus();
+  }, []);
 
-  const updateLocalSettings = (key, value) => {
-    const newSettings = { ...localSettings, [key]: value };
-    setLocalSettings(newSettings);
-
+  const fetchUsageStatus = async () => {
+    if (userPlan !== 'free') return;
+    
     try {
-      const fullSettings = { ...settings, [key]: value };
-      localStorage.setItem('sns_automation_settings', JSON.stringify(fullSettings));
+      const response = await fetch(`${API_ENDPOINT}/api/usage-status`);
+      if (response.ok) {
+        const data = await response.json();
+        setUsage({ remaining: data.remaining });
+      }
     } catch (error) {
-      console.log('設定保存エラー:', error);
+      console.error('Usage status fetch error:', error);
     }
   };
 
-  // Entry版：3要素設定
-  const audienceOptions = [
-    '副業ブロガー', 'Webデザイナー', 'プログラマー・エンジニア', 'Webライター',
-    'アフィリエイター', '主婦・主夫', '学生・大学生', '会社員・サラリーマン'
-  ];
-
-  const styleOptions = [
-    '親しみやすい', '専門的', '面白い', '真面目', '励まし系', '質問系'
-  ];
-
-  const topicOptions = [
-    '副業と本業の時間管理', 'スキルアップの方法', 'ワークライフバランス',
-    'SEO対策の基本', 'SNS運用のコツ', '効率的な学習方法', '朝の習慣・ルーティン',
-    'モチベーション維持の工夫', 'ブログ記事のネタ切れ問題'
-  ];
-
-  // 🔥 実際のAI投稿文生成（デモではなく本物）
-  const handleGenerate = async () => {
-    if (!settings?.openaiKey?.trim()) {
-      setError('設定でOpenAI APIキーを入力してください');
+  const generatePost = async () => {
+    if (!prompt.trim()) {
+      setError('投稿のテーマを入力してください');
       return;
     }
 
-    setIsGenerating(true);
+    setIsLoading(true);
     setError('');
-    setQualityScore(null);
+    setGeneratedPost('');
+    setQuality(null);
 
     try {
-      // プロンプトテンプレート生成
-      const prompt = createPromptTemplate(
-        localSettings.audience,
-        localSettings.style,
-        localSettings.topic
-      );
+      const response = await fetch(`${API_ENDPOINT}/api/generate-post`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: prompt.trim(),
+          tone,
+          platform,
+          userType: userPlan
+        }),
+      });
 
-      // 実際のAI生成
-      const aiPost = await generateAIPost(prompt, settings.openaiKey);
+      const data = await response.json();
 
-      setGeneratedPost(aiPost);
+      if (!response.ok) {
+        if (response.status === 429) {
+          setError(data.message || 'レート制限に達しました');
+          setUsage({ remaining: 0 });
+        } else {
+          setError(data.message || '投稿生成に失敗しました');
+        }
+        return;
+      }
 
-      // 品質スコア算出
-      const quality = calculatePostQuality(aiPost);
-      setQualityScore(quality);
+      setGeneratedPost(data.post);
+      setQuality(data.quality);
+      
+      if (data.usage) {
+        setUsage(data.usage);
+      }
 
     } catch (error) {
-      console.error('投稿生成エラー:', error);
-      setError(error.message || '投稿生成に失敗しました');
+      console.error('Generate post error:', error);
+      setError('ネットワークエラーが発生しました。しばらく待ってから再試行してください。');
     } finally {
-      setIsGenerating(false);
+      setIsLoading(false);
     }
   };
 
-  // クリップボードコピー
-  const handleCopy = async () => {
+  const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(generatedPost);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
+      // 簡易フィードバック表示
+      const button = document.querySelector('.copy-button');
+      if (button) {
+        const original = button.textContent;
+        button.textContent = 'コピー完了！';
+        setTimeout(() => {
+          button.textContent = original;
+        }, 2000);
+      }
     } catch (error) {
-      // フォールバック（古いブラウザ対応）
-      const textArea = document.createElement('textarea');
-      textArea.value = generatedPost;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
+      console.error('Copy failed:', error);
     }
   };
 
-  // Twitter投稿（将来実装予定）
-  const handlePost = async () => {
-    if (!settings?.twitterTokens?.consumerKey) {
-      alert('Twitter投稿機能は次回アップデートで対応予定です。\n現在は生成された投稿文をコピーして手動投稿してください。');
-      return;
-    }
-
-    setIsPosting(true);
-    try {
-      // 将来的にTwitter API連携
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setPostSuccess(true);
-      setTimeout(() => setPostSuccess(false), 3000);
-    } catch (error) {
-      alert('投稿に失敗しました');
-    } finally {
-      setIsPosting(false);
-    }
+  const shareToTwitter = () => {
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(generatedPost)}`;
+    window.open(url, '_blank');
   };
 
-  // 品質グレードの表示色
-  const getGradeColor = (grade) => {
-    switch (grade) {
-      case 'A': return 'text-green-600 bg-green-100';
-      case 'B': return 'text-blue-600 bg-blue-100';
-      case 'C': return 'text-yellow-600 bg-yellow-100';
-      case 'D': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
-    }
+  const getQualityColor = (grade) => {
+    const colors = {
+      'A': '#4CAF50',
+      'B': '#2196F3', 
+      'C': '#FF9800',
+      'D': '#F44336'
+    };
+    return colors[grade] || '#757575';
   };
+
+  const canGenerate = userPlan === 'premium' || usage.remaining > 0;
 
   return (
-    <div className="space-y-6">
-      {/* 設定パネル */}
-      <div className="bg-white rounded-xl p-4 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">投稿設定</h2>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              対象読者
-            </label>
-            <select
-              value={localSettings.audience}
-              onChange={(e) => updateLocalSettings('audience', e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              {audienceOptions.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              投稿スタイル
-            </label>
-            <select
-              value={localSettings.style}
-              onChange={(e) => updateLocalSettings('style', e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              {styleOptions.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              投稿テーマ
-            </label>
-            <select
-              value={localSettings.topic}
-              onChange={(e) => updateLocalSettings('topic', e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              {topicOptions.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* AI投稿生成 */}
-      <div className="bg-white rounded-xl p-4 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">🤖 AI投稿生成</h2>
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating || !settings?.openaiKey}
-            className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {isGenerating ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
+    <div className="post-generator">
+      <div className="generator-header">
+        <h2>✨ AI投稿生成</h2>
+        {userPlan === 'free' && (
+          <div className="usage-display">
+            <span className={`usage-count ${usage.remaining === 0 ? 'depleted' : ''}`}>
+              残り {usage.remaining}/3回
+            </span>
+            {usage.remaining === 0 && (
+              <span className="upgrade-hint">
+                <a href="#premium" className="upgrade-link">プレミアムで無制限生成 →</a>
+              </span>
             )}
-            <span>{isGenerating ? 'AI生成中...' : 'AI投稿生成'}</span>
-          </button>
-        </div>
-
-        {/* エラー表示 */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <p className="text-red-800 text-sm">{error}</p>
-          </div>
-        )}
-
-        {/* 生成結果 */}
-        {generatedPost && (
-          <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg border">
-              <p className="text-gray-900 whitespace-pre-wrap">{generatedPost}</p>
-              <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                <span>文字数: {generatedPost.length}/280</span>
-
-                {/* 品質スコア表示 */}
-                {qualityScore && (
-                  <div className="flex items-center space-x-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getGradeColor(qualityScore.grade)}`}>
-                      {qualityScore.grade}評価
-                    </span>
-                    <div className="flex items-center space-x-1">
-                      <Star className="h-3 w-3 text-yellow-500" />
-                      <span>{qualityScore.score}/100</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 品質詳細 */}
-            {qualityScore && (
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <h4 className="text-sm font-medium text-blue-900 mb-2">📊 品質分析</h4>
-                <div className="grid grid-cols-1 gap-1">
-                  {qualityScore.checks.map((check, index) => (
-                    <p key={index} className="text-xs text-blue-800">{check}</p>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* アクションボタン */}
-            <div className="flex space-x-3">
-              <button
-                onClick={handleCopy}
-                className="flex-1 flex items-center justify-center space-x-2 bg-gray-100 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                {copySuccess ? (
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-                <span>{copySuccess ? 'コピー完了！' : 'コピー'}</span>
-              </button>
-
-              <button
-                onClick={handlePost}
-                disabled={isPosting}
-                className="flex-1 flex items-center justify-center space-x-2 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                {isPosting ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : postSuccess ? (
-                  <CheckCircle className="h-4 w-4" />
-                ) : (
-                  <Twitter className="h-4 w-4" />
-                )}
-                <span>
-                  {isPosting ? '投稿中...' : postSuccess ? '投稿完了！' : 'Twitter投稿'}
-                </span>
-              </button>
-            </div>
           </div>
         )}
       </div>
 
-      {/* 使い方ガイド */}
-      <div className="bg-green-50 rounded-xl p-4">
-        <h3 className="text-sm font-medium text-green-900 mb-2">🚀 実装完了機能</h3>
-        <ul className="text-sm text-green-800 space-y-1">
-          <li>• ✅ <strong>本物のAI生成</strong>：OpenAI GPT-3.5 による高品質投稿文</li>
-          <li>• ✅ <strong>品質スコア</strong>：A~D評価で投稿の質を数値化</li>
-          <li>• ✅ <strong>リアルタイム分析</strong>：文字数・ハッシュタグ・エンゲージメント</li>
-          <li>• ✅ <strong>高度なプロンプト</strong>：読者に刺さる内容を自動生成</li>
-        </ul>
+      <div className="input-section">
+        <div className="input-group">
+          <label htmlFor="prompt">投稿のテーマ・内容</label>
+          <textarea
+            id="prompt"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="例: 新しいカフェを見つけた感想、読書の習慣について、週末の過ごし方..."
+            rows="3"
+            disabled={isLoading}
+          />
+        </div>
+
+        <div className="options-grid">
+          <div className="input-group">
+            <label htmlFor="tone">トーン</label>
+            <select 
+              id="tone" 
+              value={tone} 
+              onChange={(e) => setTone(e.target.value)}
+              disabled={isLoading}
+            >
+              <option value="casual">カジュアル</option>
+              <option value="professional">プロフェッショナル</option>
+              <option value="friendly">フレンドリー</option>
+              <option value="enthusiastic">熱意的</option>
+              <option value="thoughtful">思慮深い</option>
+            </select>
+          </div>
+
+          <div className="input-group">
+            <label htmlFor="platform">プラットフォーム</label>
+            <select 
+              id="platform" 
+              value={platform} 
+              onChange={(e) => setPlatform(e.target.value)}
+              disabled={isLoading}
+            >
+              <option value="Twitter">Twitter</option>
+              <option value="Instagram">Instagram</option>
+              <option value="Facebook">Facebook</option>
+              <option value="LinkedIn">LinkedIn</option>
+            </select>
+          </div>
+        </div>
+
+        <button 
+          className={`generate-button ${!canGenerate ? 'disabled' : ''}`}
+          onClick={generatePost}
+          disabled={isLoading || !canGenerate}
+        >
+          {isLoading ? (
+            <>
+              <span className="loading-spinner"></span>
+              生成中...
+            </>
+          ) : canGenerate ? (
+            '🚀 投稿を生成'
+          ) : (
+            '本日の無料生成を使い切りました'
+          )}
+        </button>
       </div>
 
-      {/* APIキー未設定の警告 */}
-      {!settings?.openaiKey && (
-        <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
-          <div className="flex items-center space-x-2">
-            <AlertCircle className="h-4 w-4 text-yellow-600" />
-            <h3 className="text-sm font-medium text-yellow-900">OpenAI APIキーが必要です</h3>
+      {error && (
+        <div className="error-message">
+          <span className="error-icon">⚠️</span>
+          {error}
+          {error.includes('レート制限') && userPlan === 'free' && (
+            <div className="error-action">
+              <a href="#premium" className="upgrade-link">
+                プレミアムプランで無制限生成 →
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+
+      {generatedPost && (
+        <div className="result-section">
+          <div className="result-header">
+            <h3>生成された投稿</h3>
+            {quality && (
+              <div className="quality-badge" style={{ backgroundColor: getQualityColor(quality.grade) }}>
+                <span className="quality-grade">{quality.grade}</span>
+                <span className="quality-score">{quality.score}/100</span>
+              </div>
+            )}
           </div>
-          <p className="text-sm text-yellow-800 mt-1">
-            設定画面でAPIキーを入力すると、実際のAI生成機能が利用できます。
-          </p>
+
+          <div className="generated-post">
+            {generatedPost}
+          </div>
+
+          {quality && (
+            <div className="quality-feedback">
+              <strong>品質評価:</strong> {quality.feedback}
+            </div>
+          )}
+
+          <div className="action-buttons">
+            <button 
+              className="copy-button secondary-button"
+              onClick={copyToClipboard}
+            >
+              📋 コピー
+            </button>
+            
+            {platform === 'Twitter' && (
+              <button 
+                className="share-button secondary-button"
+                onClick={shareToTwitter}
+              >
+                🐦 Twitterで投稿
+              </button>
+            )}
+            
+            {userPlan === 'premium' && (
+              <button 
+                className="direct-post-button primary-button"
+                onClick={() => {/* TODO: 直接投稿機能実装 */}}
+              >
+                📤 直接投稿
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {userPlan === 'free' && !error && (
+        <div className="upgrade-promotion">
+          <div className="promo-content">
+            <h4>🎯 プレミアムプランでできること</h4>
+            <ul>
+              <li>✅ 無制限の投稿生成</li>
+              <li>✅ 直接SNS投稿機能</li>
+              <li>✅ より高品質なAI生成</li>
+              <li>✅ 広告なしのクリーンUI</li>
+            </ul>
+            <button className="upgrade-button">
+              月額¥980でアップグレード →
+            </button>
+          </div>
         </div>
       )}
     </div>
