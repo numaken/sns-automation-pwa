@@ -1,5 +1,3 @@
-import { checkBetaUserLimit, updateUserActivity } from './lib/user-limit.js';
-
 // Upstash Redis connection using environment variables
 const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -80,31 +78,16 @@ export default async function handler(req, res) {
 
   try {
     const { prompt, tone, platform, userType = 'free' } = req.body;
-    const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-
-    // ベータユーザー制限チェック（新規追加）
-    const betaCheck = await checkBetaUserLimit(clientIP);
-    if (!betaCheck.allowed) {
-      return res.status(403).json({
-        error: 'Beta test full',
-        message: `🎯 現在はベータテスト中です（${betaCheck.currentUsers}/${betaCheck.limit}人満員）\n\n正式リリース時に優先案内をご希望の方は、numaken@gmail.comまでご連絡ください！`,
-        isWaitlist: true,
-        stats: {
-          currentUsers: betaCheck.currentUsers,
-          limit: betaCheck.limit
-        }
-      });
-    }
 
     // フリープランのレート制限チェック
     if (userType === 'free') {
-      //const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+      const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
       const rateLimitCheck = await checkRateLimit(clientIP);
       
       if (!rateLimitCheck.allowed) {
         return res.status(429).json({
           error: 'Daily limit exceeded',
-          message: 'ベータテスト期間中は1日5回まで生成可能です。明日0時にリセットされます！',
+          message: '無料プランは1日3回まで生成可能です。プレミアムプランで無制限生成を！',
           remainingUses: 0,
           resetTime: getNextResetTime()
         });
@@ -154,8 +137,8 @@ export default async function handler(req, res) {
     // レート制限更新（フリープランのみ）
     let updatedUsage = null;
     if (userType === 'free') {
+      const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
       updatedUsage = await updateRateLimit(clientIP);
-      await updateUserActivity(clientIP);  // この行を追加
     }
 
     // レスポンス返却
@@ -163,14 +146,9 @@ export default async function handler(req, res) {
       post: generatedPost,
       quality: quality,
       usage: userType === 'free' ? {
-        remaining: updatedUsage ? updatedUsage.remaining : 'unlimited',
-        limit: DAILY_LIMIT,  // この行を追加
-        used: DAILY_LIMIT - (updatedUsage ? updatedUsage.remaining : DAILY_LIMIT)  // この行を追加
+        remaining: updatedUsage ? updatedUsage.remaining : 'unlimited'
       } : { remaining: 'unlimited' },
-      timestamp: new Date().toISOString(),
-      // ベータテスト関連メッセージ（この部分を追加）
-      betaMessage: betaCheck.welcomeMessage ?
-        '🎉 ベータテスター登録完了！1日5回まで無料でお試しいただけます。貴重なフィードバックをお待ちしています！' : null
+      timestamp: new Date().toISOString()
     };
 
     res.status(200).json(result);
