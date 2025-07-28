@@ -1,40 +1,105 @@
 /* src/App.css */
 
+/* グローバルスタイル */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
   margin: 0;
   padding: 0;
   background-color: #f0f4f8;
-  color: #333;
+  color: #1f2937;
 }
 
-button {
-  cursor: pointer;
-  font-family: inherit;
+/* ヘッダーエリア */
+header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-textarea,
-select,
-input {
-  font-family: inherit;
-  font-size: 1rem;
-  padding: 0.5rem;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  width: 100%;
+header .max-w-md {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
 }
 
-header,
-main,
+/* プランバッジ */
+span.bg-green-100,
+span.bg-yellow-100 {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+/* タブボタン */
 nav {
-  box-sizing: border-box;
+  border-top: 1px solid #e5e7eb;
+  background-color: #ffffff;
 }
 
-a {
-  text-decoration: none;
+nav button {
+  all: unset;
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+  width: 100%;
+  text-align: center;
+  transition: all 0.2s ease-in-out;
+}
+
+nav button:hover {
+  background-color: #f3f4f6;
+}
+
+nav button.active {
+  background-color: #eff6ff;
   color: #2563eb;
 }
 
-a:hover {
-  text-decoration: underline;
+/* ボトムナビのアイコンとテキスト */
+nav button svg {
+  display: block;
+  margin: 0 auto 0.25rem;
+}
+
+nav button span {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* カード型 main コンテンツ */
+main {
+  padding: 1rem;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* 汎用ボタンスタイル */
+button {
+  font-family: inherit;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+/* クラス補強用 */
+.text-blue-600 {
+  color: #2563eb;
+}
+
+.bg-blue-50 {
+  background-color: #eff6ff;
+}
+
+.text-gray-600 {
+  color: #4b5563;
+}
+
+.bg-gray-100 {
+  background-color: #f3f4f6;
 }
