@@ -88,10 +88,14 @@ body {
 /* Input Section */
 .input-section {
   margin-bottom: 1.5rem;
+  width: 100%;
+  /* フォーム全体の幅を画面に合わせる */
 }
 
 .input-group {
   margin-bottom: 1rem;
+  width: 100%;
+  /* 各フォーム要素の幅を100%に */
 }
 
 .input-group label {
@@ -106,10 +110,13 @@ body {
 .input-group select,
 .input-group input {
   width: 100%;
+  /* フォーム要素を全幅に */
   padding: 0.75rem;
   border: 1px solid #d1d5db;
   border-radius: 0.5rem;
   font-size: 0.875rem;
+  box-sizing: border-box;
+  /* パディングを幅に含める */
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -118,12 +125,26 @@ body {
 .input-group input:focus {
   outline: none;
   border-color: #2563eb;
+  /* フォーカス時に青色に変更 */
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  /* フォーカスの際に青い影を追加 */
 }
 
+/* プルダウンのスタイル */
+.input-group select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: url('https://example.com/custom-arrow.svg') no-repeat right 1rem center;
+  /* カスタム矢印アイコン */
+  background-size: 16px 16px;
+}
+
+/* 横並びのフォーム要素 */
 .options-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  /* 2列のグリッドに設定 */
   gap: 1rem;
 }
 
@@ -625,8 +646,9 @@ body {
 /* Responsive Design */
 @media (max-width: 640px) {
   .options-grid {
-    grid-template-columns: 1fr;
-  }
+      grid-template-columns: 1fr;
+      /* モバイルでは1列に */
+    }
 
   .action-buttons {
     flex-direction: column;
@@ -1156,6 +1178,19 @@ header h1::after {
 
 /* Responsive improvements for beta UI */
 @media (max-width: 768px) {
+
+  .input-group textarea,
+    .input-group select,
+    .input-group input {
+      font-size: 0.75rem;
+      /* フォントサイズを小さくしてフォームを圧縮 */
+    }
+  
+    .input-section {
+      padding: 0.5rem;
+      /* フォーム周りのパディング調整 */
+    }
+
   .post-generator .beta-message {
     padding: 0.75rem !important;
     font-size: 0.9rem !important;
