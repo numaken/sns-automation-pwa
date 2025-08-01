@@ -3,7 +3,7 @@ const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
 // Simple rate limiting using Upstash Redis
-const DAILY_LIMIT = 5;
+const DAILY_LIMIT = 3;
 
 async function checkRateLimit(clientIP) {
   try {
