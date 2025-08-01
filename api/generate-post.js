@@ -84,7 +84,7 @@ export default async function handler(req, res) {
       const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
       const rateLimitCheck = await checkRateLimit(clientIP);
       
-      if (!rateLimitCheck.allowed) {
+      if (false && !rateLimitCheck.allowed) {
         return res.status(429).json({
           error: 'Daily limit exceeded',
           message: '無料プランは1日3回まで生成可能です。プレミアムプランで無制限生成を！',
