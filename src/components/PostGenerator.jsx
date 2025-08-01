@@ -140,11 +140,6 @@ const PostGenerator = ({ userPlan = 'premium' }) => {
             <span className={`usage-count ${usage.remaining === 0 ? 'depleted' : ''}`}>
               残り {usage.remaining}/5回
             </span>
-            {usage.remaining === 0 && (
-              <span className="upgrade-hint">
-                <a href="#premium" className="upgrade-link">プレミアムで無制限生成 →</a>
-              </span>
-            )}
           </div>
         )}
       </div>
