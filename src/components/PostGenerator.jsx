@@ -6,7 +6,6 @@ import './SnsPostButtons.css';
 const PostGenerator = ({ userPlan = 'premium' }) => {
   const [prompt, setPrompt] = useState('');
   const [tone, setTone] = useState('casual');
-  const [platform, setPlatform] = useState('Twitter');
   const [generatedPost, setGeneratedPost] = useState('');
   const [quality, setQuality] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,7 +56,6 @@ const PostGenerator = ({ userPlan = 'premium' }) => {
         body: JSON.stringify({
           prompt: prompt.trim(),
           tone,
-          platform,
           userType: userPlan
         }),
       });
@@ -112,7 +110,6 @@ const PostGenerator = ({ userPlan = 'premium' }) => {
   };
 
   // SNS投稿結果のハンドリング
-  const handlePostResult = (platform, result) => {
     setPostResults(prev => ({
       ...prev,
       [platform]: result
@@ -179,23 +176,6 @@ const PostGenerator = ({ userPlan = 'premium' }) => {
             </select>
           </div>
 
-          <div className="input-group">
-            <label htmlFor="platform">プラットフォーム</label>
-            <select
-              id="platform"
-              value={platform}
-              onChange={(e) => setPlatform(e.target.value)}
-              disabled={isLoading}
-            >
-              <option value="Twitter">Twitter</option>
-              <option value="Instagram">Instagram</option>
-              <option value="Facebook">Facebook</option>
-              <option value="LinkedIn">LinkedIn</option>
-              <option value="Threads">Threads</option>
-            </select>
-          </div>
-        </div>
-
         <button
           className={`generate-button ${!canGenerate ? 'disabled' : ''}`}
           onClick={generatePost}
@@ -258,21 +238,12 @@ const PostGenerator = ({ userPlan = 'premium' }) => {
               📋 コピー
             </button>
 
-            {platform === 'Twitter' && (
-              <button
-                className="share-button secondary-button"
-                onClick={shareToTwitter}
-              >
-                🐦 Twitterで投稿
-              </button>
-            )}
           </div>
 
           {/* SNS投稿機能統合 */}
           <SnsPostButtons
             generatedPost={generatedPost}
             userPlan={userPlan}
-            platform={platform}
             onPostResult={handlePostResult}
             className="integrated-sns-buttons"
           />
