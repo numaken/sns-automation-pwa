@@ -3,7 +3,7 @@ import SnsPostButtons from './SnsPostButtons';
 import './PostGenerator.css';
 import './SnsPostButtons.css';
 
-const PostGenerator = ({ userPlan = 'premium' }) => {
+const PostGenerator = ({ userPlan = 'premium' }) => { // テスト用
   const [prompt, setPrompt] = useState('');
   const [tone, setTone] = useState('casual');
   const [platform, setPlatform] = useState('Twitter');

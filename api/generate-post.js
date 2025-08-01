@@ -18,7 +18,7 @@ async function checkRateLimit(clientIP) {
     
     return {
       allowed: currentUsage < DAILY_LIMIT,
-      remaining: Math.max(0, DAILY_LIMIT - currentUsage),
+      remaining: 999, // Math.max(0, DAILY_LIMIT - currentUsage), テスト用に一時無効化
       currentUsage: currentUsage
     };
   } catch (error) {
@@ -84,7 +84,7 @@ export default async function handler(req, res) {
       const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
       const rateLimitCheck = await checkRateLimit(clientIP);
       
-      if (false && !rateLimitCheck.allowed) {
+      if (false && !rateLimitCheck.allowed) { // 一時的にfalseを追加してスキップ
         return res.status(429).json({
           error: 'Daily limit exceeded',
           message: '無料プランは1日3回まで生成可能です。プレミアムプランで無制限生成を！',
@@ -96,6 +96,7 @@ export default async function handler(req, res) {
 
     // OpenAI API呼び出し
     const systemPrompt = `あなたは${platform}向けの優秀なSNS投稿生成AIです。
+    重要：必ず日本語で投稿を生成してください。英語は使用しないでください。
 
 以下の条件で投稿を生成してください：
 - トーン: ${tone}
