@@ -1,0 +1,335 @@
+/* SNS投稿ボタンコンポーネントのスタイル */
+.sns-post-buttons {
+  margin-top: 16px;
+}
+
+/* 機能制限の通知 */
+.feature-notice {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.notice-text {
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* 投稿ボタングリッド */
+.post-buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+/* 投稿ボタンの基本スタイル */
+.post-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  min-height: 44px;
+}
+
+.post-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.post-button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.post-button:not(:disabled):active {
+  transform: translateY(0);
+}
+
+/* セカンダリボタン（Twitter、Threads個別） */
+.post-button.secondary-button {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 2px solid #e2e8f0;
+  color: #475569;
+}
+
+.post-button.secondary-button:not(:disabled):hover {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-color: #cbd5e1;
+}
+
+/* プライマリボタン（同時投稿） */
+.post-button.primary-button {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border: 2px solid transparent;
+}
+
+.post-button.primary-button:not(:disabled):hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+}
+
+/* 投稿中の状態 */
+.post-button.posting {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  border-color: transparent;
+}
+
+/* 成功状態 */
+.post-button.success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border-color: transparent;
+}
+
+/* エラー状態 */
+.post-button.error {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border-color: transparent;
+}
+
+/* ボタンアイコン */
+.button-icon {
+  flex-shrink: 0;
+}
+
+.button-icon.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 投稿結果表示 */
+.post-results {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.post-results h4 {
+  margin: 0 0 16px 0;
+  color: #1e293b;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.post-results h4:before {
+  content: "📊";
+  font-size: 18px;
+}
+
+/* 結果アイテム */
+.result-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.result-item:last-child {
+  margin-bottom: 0;
+}
+
+.result-item.success {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border: 1px solid #a7f3d0;
+}
+
+.result-item.error {
+  background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+  border: 1px solid #fca5a5;
+}
+
+/* プラットフォーム表示 */
+.result-platform {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.platform-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.result-item.success .platform-name {
+  color: #065f46;
+}
+
+.result-item.error .platform-name {
+  color: #991b1b;
+}
+
+/* 結果コンテンツ */
+.result-content {
+  flex: 1;
+}
+
+.success-message {
+  color: #065f46;
+  font-size: 14px;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.error-message {
+  color: #991b1b;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* 投稿リンク */
+.post-link {
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  transition: color 0.2s ease;
+}
+
+.post-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+/* 複数投稿結果 */
+.multiple-results {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #a7f3d0;
+}
+
+.platform-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.platform-result:last-child {
+  margin-bottom: 0;
+}
+
+.platform-result span {
+  color: #065f46;
+  font-weight: 600;
+  min-width: 70px;
+}
+
+/* プラン機能説明 */
+.plan-features {
+  margin-top: 20px;
+  padding: 16px;
+  background: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%);
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+}
+
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.plan-name {
+  font-weight: 700;
+  color: #92400e;
+  background: #fbbf24;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.feature-desc {
+  color: #78716c;
+  font-weight: 500;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 640px) {
+  .post-buttons-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .post-button {
+    padding: 14px 20px;
+    font-size: 15px;
+  }
+
+  .result-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .result-platform {
+    min-width: auto;
+  }
+
+  .feature-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+/* アクセシビリティ対応 */
+@media (prefers-reduced-motion: reduce) {
+  .post-button {
+    transition: none;
+  }
+
+  .post-button:not(:disabled):hover {
+    transform: none;
+  }
+
+  .button-icon.spinning {
+    animation: none;
+  }
+}

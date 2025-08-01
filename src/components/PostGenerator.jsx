@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import SnsPostButtons from './SnsPostButtons';
 import './PostGenerator.css';
+import './SnsPostButtons.css';
 
 const PostGenerator = ({ userPlan = 'free' }) => {
   const [prompt, setPrompt] = useState('');
@@ -10,6 +12,7 @@ const PostGenerator = ({ userPlan = 'free' }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [usage, setUsage] = useState({ remaining: 5 });
+  const [postResults, setPostResults] = useState({}); // SNS投稿結果管理
 
   // API endpoint (Vercel deployment URL)
   const API_ENDPOINT = process.env.REACT_APP_API_URL || window.location.origin;
@@ -21,7 +24,7 @@ const PostGenerator = ({ userPlan = 'free' }) => {
 
   const fetchUsageStatus = async () => {
     if (userPlan !== 'free') return;
-    
+
     try {
       const response = await fetch(`${API_ENDPOINT}/api/usage-status`);
       if (response.ok) {
@@ -43,6 +46,7 @@ const PostGenerator = ({ userPlan = 'free' }) => {
     setError('');
     setGeneratedPost('');
     setQuality(null);
+    setPostResults({}); // 投稿結果をリセット
 
     try {
       const response = await fetch(`${API_ENDPOINT}/api/generate-post`, {
@@ -72,7 +76,7 @@ const PostGenerator = ({ userPlan = 'free' }) => {
 
       setGeneratedPost(data.post);
       setQuality(data.quality);
-      
+
       if (data.usage) {
         setUsage(data.usage);
       }
@@ -107,10 +111,18 @@ const PostGenerator = ({ userPlan = 'free' }) => {
     window.open(url, '_blank');
   };
 
+  // SNS投稿結果のハンドリング
+  const handlePostResult = (platform, result) => {
+    setPostResults(prev => ({
+      ...prev,
+      [platform]: result
+    }));
+  };
+
   const getQualityColor = (grade) => {
     const colors = {
       'A': '#4CAF50',
-      'B': '#2196F3', 
+      'B': '#2196F3',
       'C': '#FF9800',
       'D': '#F44336'
     };
@@ -153,9 +165,9 @@ const PostGenerator = ({ userPlan = 'free' }) => {
         <div className="options-grid">
           <div className="input-group">
             <label htmlFor="tone">トーン</label>
-            <select 
-              id="tone" 
-              value={tone} 
+            <select
+              id="tone"
+              value={tone}
               onChange={(e) => setTone(e.target.value)}
               disabled={isLoading}
             >
@@ -169,9 +181,9 @@ const PostGenerator = ({ userPlan = 'free' }) => {
 
           <div className="input-group">
             <label htmlFor="platform">プラットフォーム</label>
-            <select 
-              id="platform" 
-              value={platform} 
+            <select
+              id="platform"
+              value={platform}
               onChange={(e) => setPlatform(e.target.value)}
               disabled={isLoading}
             >
@@ -179,11 +191,12 @@ const PostGenerator = ({ userPlan = 'free' }) => {
               <option value="Instagram">Instagram</option>
               <option value="Facebook">Facebook</option>
               <option value="LinkedIn">LinkedIn</option>
+              <option value="Threads">Threads</option>
             </select>
           </div>
         </div>
 
-        <button 
+        <button
           className={`generate-button ${!canGenerate ? 'disabled' : ''}`}
           onClick={generatePost}
           disabled={isLoading || !canGenerate}
@@ -238,31 +251,31 @@ const PostGenerator = ({ userPlan = 'free' }) => {
           )}
 
           <div className="action-buttons">
-            <button 
+            <button
               className="copy-button secondary-button"
               onClick={copyToClipboard}
             >
               📋 コピー
             </button>
-            
+
             {platform === 'Twitter' && (
-              <button 
+              <button
                 className="share-button secondary-button"
                 onClick={shareToTwitter}
               >
                 🐦 Twitterで投稿
               </button>
             )}
-            
-            {userPlan === 'premium' && (
-              <button 
-                className="direct-post-button primary-button"
-                onClick={() => {/* TODO: 直接投稿機能実装 */}}
-              >
-                📤 直接投稿
-              </button>
-            )}
           </div>
+
+          {/* SNS投稿機能統合 */}
+          <SnsPostButtons
+            generatedPost={generatedPost}
+            userPlan={userPlan}
+            platform={platform}
+            onPostResult={handlePostResult}
+            className="integrated-sns-buttons"
+          />
         </div>
       )}
 
@@ -273,6 +286,7 @@ const PostGenerator = ({ userPlan = 'free' }) => {
             <ul>
               <li>✅ 無制限の投稿生成</li>
               <li>✅ 直接SNS投稿機能</li>
+              <li>✅ Twitter・Threads同時投稿</li>
               <li>✅ より高品質なAI生成</li>
               <li>✅ 広告なしのクリーンUI</li>
             </ul>
