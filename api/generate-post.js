@@ -18,7 +18,7 @@ async function checkRateLimit(clientIP) {
     
     return {
       allowed: currentUsage < DAILY_LIMIT,
-      remaining: 999, // Math.max(0, DAILY_LIMIT - currentUsage), テスト用に一時無効化
+      remaining: Math.max(0, DAILY_LIMIT - currentUsage),
       currentUsage: currentUsage
     };
   } catch (error) {
@@ -84,7 +84,7 @@ export default async function handler(req, res) {
       const clientIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
       const rateLimitCheck = await checkRateLimit(clientIP);
       
-      if (false && !rateLimitCheck.allowed) { // 一時的にfalseを追加してスキップ
+      if (!rateLimitCheck.allowed) {
         return res.status(429).json({
           error: 'Daily limit exceeded',
           message: '無料プランは1日3回まで生成可能です。プレミアムプランで無制限生成を！',

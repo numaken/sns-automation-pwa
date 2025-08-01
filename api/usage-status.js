@@ -16,7 +16,7 @@ async function getRateLimitStatus(clientIP) {
     
     return {
       usage: currentUsage,
-      remaining: 999, // Math.max(0, DAILY_LIMIT - currentUsage), テスト用に一時無効化
+      remaining: Math.max(0, DAILY_LIMIT - currentUsage),
       limit: DAILY_LIMIT,
       resetTime: getNextResetTime()
     };
