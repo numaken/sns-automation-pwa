@@ -138,7 +138,7 @@ const PostGenerator = ({ userPlan = 'premium' }) => {
         {userPlan === 'free' && (
           <div className="usage-display">
             <span className={`usage-count ${usage.remaining === 0 ? 'depleted' : ''}`}>
-              残り {usage.remaining}/5回
+              残り {usage.remaining}/3回
             </span>
           </div>
         )}
