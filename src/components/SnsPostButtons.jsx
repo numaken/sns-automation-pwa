@@ -18,6 +18,12 @@ const SnsPostButtons = ({
   const canUseDirectPost = userPlan === 'premium' || userPlan === 'standard';
   const canUseMultiPost = userPlan === 'premium';
 
+  // デバッグログ追加
+  console.log('🐛 SnsPostButtons Debug:');
+  console.log('🐛 userPlan:', userPlan);
+  console.log('🐛 canUseDirectPost:', canUseDirectPost);
+  console.log('🐛 canUseMultiPost:', canUseMultiPost);
+
   // 投稿状態の更新
   const updatePostingState = (platform, state) => {
     setPostingStates(prev => ({ ...prev, [platform]: state }));
