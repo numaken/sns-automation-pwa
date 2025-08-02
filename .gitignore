@@ -23,3 +23,5 @@ yarn-debug.log*
 yarn-error.log*
 具体的な提供方法（3つの選択肢）/
 具体的な提供方法（3つの選択肢）/
+.vercel
+.env*.local
