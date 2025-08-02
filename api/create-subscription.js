@@ -34,7 +34,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       subscriptionId: subscription.id,
-      clientSecret: subscription.latest_invoice.payment_intent.client_secret,
+      clientSecret: subscription.latest_invoice?.payment_intent?.client_secret,
       customerId: customer.id,
     });
 
