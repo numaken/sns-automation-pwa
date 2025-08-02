@@ -4,8 +4,6 @@ import { loadStripe } from '@stripe/stripe-js';
 
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
-const data = await response.json();
-console.log('Stripe response:', data);
 const { clientSecret, subscriptionId, customerId } = data;
 
 
@@ -33,7 +31,10 @@ const UpgradeButton = ({ onUpgradeSuccess }) => {
         body: JSON.stringify({ email })
       });
 
-      const { clientSecret, subscriptionId, customerId } = await response.json();
+      const data = await response.json();
+      console.log('Stripe response:', data); // ✅ ← ここでログ出力
+
+      const { clientSecret, subscriptionId, customerId } = data;
 
       if (!response.ok) {
         throw new Error('サブスクリプション作成に失敗しました');
@@ -41,6 +42,14 @@ const UpgradeButton = ({ onUpgradeSuccess }) => {
 
       // Stripe決済画面にリダイレクト
       const stripe = await stripePromise;
+
+      if (!clientSecret) {
+        console.error('clientSecret is missing!', data);
+        setError('clientSecret が取得できませんでした（バックエンドエラー）');
+        return;
+      }
+
+
       const { error: stripeError } = await stripe.confirmCardPayment(clientSecret);
 
       if (stripeError) {
