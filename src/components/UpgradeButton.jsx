@@ -2,6 +2,9 @@
 import React, { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 
+//20250802 add
+import UpgradeButton from './UpgradeButton';
+
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
 const UpgradeButton = ({ onUpgradeSuccess }) => {

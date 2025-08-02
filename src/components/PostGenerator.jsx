@@ -353,7 +353,9 @@ const PostGenerator = ({ userPlan: initialUserPlan = 'free' }) => {
               <li>✅ 広告なしのクリーンUI</li>
             </ul>
 
-            <UpgradeButton onUpgradeSuccess={handleUpgradeSuccess} />
+            {/* 20250802 comment out
+             <UpgradeButton onUpgradeSuccess={handleUpgradeSuccess} />*/}
+
           </div>
         </div>
       )}
