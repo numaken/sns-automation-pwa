@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     const subscription = await stripe.subscriptions.create({
       customer: customer.id,
       items: [{
-        price: 'price_1Rrb7XQK8lTckdl04glYpr2C' // StripeダッシュボードのPrice ID
+        price: 'price_1Rrb7YKQ8lTkcdl04glYpr2C' // StripeダッシュボードのPrice ID
       }],
       payment_behavior: 'default_incomplete',
       expand: ['latest_invoice.payment_intent'],
