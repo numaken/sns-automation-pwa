@@ -3,15 +3,94 @@ import SnsPostButtons from './SnsPostButtons';
 import './PostGenerator.css';
 import './SnsPostButtons.css';
 
-const PostGenerator = ({ userPlan = 'premium' }) => {
+// UpgradeButton コンポーネント（Stripe統合）
+const UpgradeButton = ({ onUpgradeSuccess }) => {
+  const [email, setEmail] = useState(localStorage.getItem('userEmail') || '');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleUpgrade = async () => {
+    if (!email) {
+      setError('メールアドレスを入力してください');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // サブスクリプション作成
+      const response = await fetch('/api/create-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'サブスクリプション作成に失敗しました');
+      }
+
+      // Stripe Checkout にリダイレクト（簡易版）
+      // 実際の実装では stripe.js を使用
+      localStorage.setItem('userEmail', email);
+      localStorage.setItem('pendingSubscription', JSON.stringify(data));
+
+      // 成功メッセージ（実際はStripe決済完了後に実行）
+      alert(`決済ページに移動します。\nSubscription ID: ${data.subscriptionId}`);
+      onUpgradeSuccess('premium');
+
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="upgrade-section">
+      <div className="email-input mb-3">
+        <input
+          type="email"
+          placeholder="メールアドレスを入力"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full p-3 border rounded-lg"
+        />
+      </div>
+
+      {error && (
+        <div className="error-message text-red-600 mb-3 p-2 bg-red-50 rounded">
+          {error}
+        </div>
+      )}
+
+      <button
+        onClick={handleUpgrade}
+        disabled={isLoading}
+        className="upgrade-button w-full py-3 px-6 bg-orange-500 text-white font-medium rounded-lg 
+                   hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+      >
+        {isLoading ? '処理中...' : '月額¥980でアップグレード →'}
+      </button>
+    </div>
+  );
+};
+
+const PostGenerator = ({ userPlan: initialUserPlan = 'free' }) => {
   const [prompt, setPrompt] = useState('');
   const [tone, setTone] = useState('casual');
   const [generatedPost, setGeneratedPost] = useState('');
   const [quality, setQuality] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [usage, setUsage] = useState({ remaining: 5 });
+  const [usage, setUsage] = useState({ remaining: 3 });
   const [postResults, setPostResults] = useState({}); // SNS投稿結果管理
+  const [userPlan, setUserPlan] = useState(initialUserPlan);
+  const [userEmail, setUserEmail] = useState(localStorage.getItem('userEmail'));
 
   // API endpoint (Vercel deployment URL)
   const API_ENDPOINT = process.env.REACT_APP_API_URL || window.location.origin;
@@ -19,6 +98,11 @@ const PostGenerator = ({ userPlan = 'premium' }) => {
   useEffect(() => {
     // 初回読み込み時に使用状況を取得
     fetchUsageStatus();
+
+    // メールが保存されている場合、プラン状態を確認
+    if (userEmail) {
+      checkUserPlan();
+    }
   }, []);
 
   const fetchUsageStatus = async () => {
@@ -33,6 +117,29 @@ const PostGenerator = ({ userPlan = 'premium' }) => {
     } catch (error) {
       console.error('Usage status fetch error:', error);
     }
+  };
+
+  const checkUserPlan = async () => {
+    if (!userEmail) return;
+
+    try {
+      const response = await fetch(`${API_ENDPOINT}/api/check-subscription?email=${userEmail}`);
+      if (response.ok) {
+        const data = await response.json();
+        setUserPlan(data.plan);
+        console.log('User plan checked:', data.plan);
+      }
+    } catch (error) {
+      console.error('Plan check error:', error);
+    }
+  };
+
+  const handleUpgradeSuccess = (newPlan) => {
+    setUserPlan(newPlan);
+    // 使用量リセット
+    setUsage({ remaining: 999 });
+    // エラークリア
+    setError('');
   };
 
   const generatePost = async () => {
@@ -103,7 +210,6 @@ const PostGenerator = ({ userPlan = 'premium' }) => {
       console.error('Copy failed:', error);
     }
   };
-
 
   // SNS投稿結果のハンドリング
   const handlePostResult = (platform, result) => {
@@ -191,13 +297,6 @@ const PostGenerator = ({ userPlan = 'premium' }) => {
         <div className="error-message">
           <span className="error-icon">⚠️</span>
           {error}
-          {error.includes('レート制限') && userPlan === 'free' && (
-            <div className="error-action">
-              <a href="#premium" className="upgrade-link">
-                プレミアムプランで無制限生成 →
-              </a>
-            </div>
-          )}
         </div>
       )}
 
@@ -230,7 +329,6 @@ const PostGenerator = ({ userPlan = 'premium' }) => {
             >
               📋 コピー
             </button>
-
           </div>
 
           {/* SNS投稿機能統合 */}
@@ -254,9 +352,8 @@ const PostGenerator = ({ userPlan = 'premium' }) => {
               <li>✅ より高品質なAI生成</li>
               <li>✅ 広告なしのクリーンUI</li>
             </ul>
-            <button className="upgrade-button">
-              月額¥980でアップグレード →
-            </button>
+
+            <UpgradeButton onUpgradeSuccess={handleUpgradeSuccess} />
           </div>
         </div>
       )}
