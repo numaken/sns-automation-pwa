@@ -41,6 +41,9 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('🔥 Stripe subscription creation error:', {
       message: error.message,
+      type: error.type,
+      code: error.code,
+      param: error.param,
       raw: error.raw,
       stack: error.stack,
     });
@@ -48,7 +51,7 @@ export default async function handler(req, res) {
     return res.status(500).json({
       error: 'サブスクリプション作成に失敗しました',
       message: error.message,
-      raw: error.raw,
+      details: error.raw?.message || 'unknown error',
     });
   }
 }
