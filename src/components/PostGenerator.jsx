@@ -341,7 +341,8 @@ const PostGenerator = ({ userPlan: initialUserPlan = 'free' }) => {
         </div>
       )}
 
-      {userPlan === 'free' && !error && (
+      {/*userPlan === 'free' && !error && ( */}
+      { userPlan === 'free' && (
         <div className="upgrade-promotion">
           <div className="promo-content">
             <h4>🎯 プレミアムプランでできること</h4>
@@ -353,8 +354,7 @@ const PostGenerator = ({ userPlan: initialUserPlan = 'free' }) => {
               <li>✅ 広告なしのクリーンUI</li>
             </ul>
 
-            {/* 20250802 comment out
-             <UpgradeButton onUpgradeSuccess={handleUpgradeSuccess} />*/}
+             <UpgradeButton onUpgradeSuccess={handleUpgradeSuccess} />
 
           </div>
         </div>
