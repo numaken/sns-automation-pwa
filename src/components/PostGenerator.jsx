@@ -4,7 +4,7 @@ import './PostGenerator.css';
 import './SnsPostButtons.css';
 
 // UpgradeButton コンポーネント（Stripe統合）
-const UpgradeButton = ({ onUpgradeSuccess }) => {
+const UpgradeButton = ({ onUpgradeSuccess, setUserPlan, setUsage }) => {
   const [email, setEmail] = useState(localStorage.getItem('userEmail') || '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -12,6 +12,9 @@ const UpgradeButton = ({ onUpgradeSuccess }) => {
   const handleUpgrade = async () => {
     const email = prompt('メールアドレスを入力してください:');
     if (!email) return;
+
+    setIsLoading(true);
+    setError('');
 
     try {
       // Stripe サブスクリプション作成API呼び出し
@@ -30,34 +33,36 @@ const UpgradeButton = ({ onUpgradeSuccess }) => {
 
         // 1. ローカルストレージにプラン情報を保存
         localStorage.setItem('userPlan', 'premium');
+        localStorage.setItem('userEmail', email);
         localStorage.setItem('subscriptionId', data.subscriptionId);
         localStorage.setItem('customerId', data.customerId);
 
         // 2. React状態を更新
-        setPlan('premium');
+        setUserPlan('premium');
 
         // 3. 使用回数制限をリセット（プレミアムなので無制限）
-        if (setUsageCount) {
-          setUsageCount(0);
-        }
+        setUsage({ remaining: 999 });
 
         // 4. 成功メッセージとUIの更新
         alert('プレミアムプランにアップグレードしました！\n無制限で投稿生成とSNS投稿が利用できます。');
 
-        // 5. 必要に応じてページをリフレッシュして確実に状態を反映
-        // window.location.reload();
+        // 5. 成功コールバック実行
+        if (onUpgradeSuccess) {
+          onUpgradeSuccess('premium');
+        }
 
       } else {
         // エラーハンドリング
         console.error('Subscription creation failed:', data);
-        alert('アップグレードに失敗しました。もう一度お試しください。');
+        setError('アップグレードに失敗しました。もう一度お試しください。');
       }
     } catch (error) {
       console.error('Error creating subscription:', error);
-      alert('ネットワークエラーが発生しました。もう一度お試しください。');
+      setError('ネットワークエラーが発生しました。もう一度お試しください。');
+    } finally {
+      setIsLoading(false);
     }
   };
-
 
   return (
     <div className="upgrade-section">
@@ -108,12 +113,22 @@ const PostGenerator = ({ userPlan: initialUserPlan = 'free' }) => {
   useEffect(() => {
     // ページロード時にローカルストレージからプラン状態を復元
     const savedPlan = localStorage.getItem('userPlan') || 'free';
+    const savedEmail = localStorage.getItem('userEmail');
     const savedSubscriptionId = localStorage.getItem('subscriptionId');
 
     console.log('Restored plan from localStorage:', savedPlan);
+    console.log('User email:', savedEmail);
     console.log('Subscription ID:', savedSubscriptionId);
 
-    setPlan(savedPlan);
+    setUserPlan(savedPlan);
+    if (savedEmail) {
+      setUserEmail(savedEmail);
+    }
+
+    // プレミアムプランの場合は無制限に設定
+    if (savedPlan === 'premium') {
+      setUsage({ remaining: 999 });
+    }
   }, []);
 
   const fetchUsageStatus = async () => {
@@ -253,6 +268,11 @@ const PostGenerator = ({ userPlan: initialUserPlan = 'free' }) => {
             </span>
           </div>
         )}
+        {userPlan === 'premium' && (
+          <div className="usage-display">
+            <span className="premium-badge">プレミアムプラン - 無制限</span>
+          </div>
+        )}
       </div>
 
       <div className="input-section">
@@ -352,8 +372,7 @@ const PostGenerator = ({ userPlan: initialUserPlan = 'free' }) => {
         </div>
       )}
 
-      {/*userPlan === 'free' && !error && ( */}
-      { userPlan === 'free' && (
+      {userPlan === 'free' && (
         <div className="upgrade-promotion">
           <div className="promo-content">
             <h4>🎯 プレミアムプランでできること</h4>
@@ -365,8 +384,11 @@ const PostGenerator = ({ userPlan: initialUserPlan = 'free' }) => {
               <li>✅ 広告なしのクリーンUI</li>
             </ul>
 
-             <UpgradeButton onUpgradeSuccess={handleUpgradeSuccess} />
-
+            <UpgradeButton
+              onUpgradeSuccess={handleUpgradeSuccess}
+              setUserPlan={setUserPlan}
+              setUsage={setUsage}
+            />
           </div>
         </div>
       )}
