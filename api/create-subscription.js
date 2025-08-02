@@ -15,21 +15,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 既存顧客確認
     const customers = await stripe.customers.list({ email, limit: 1 });
     const customer =
       customers.data.length > 0
         ? customers.data[0]
         : await stripe.customers.create({ email });
 
-    // サブスクリプション作成
     const subscription = await stripe.subscriptions.create({
       customer: customer.id,
-      items: [
-        {
-          price: 'price_1RrbbQKTfKgNarB3MgNy4S1V', // ✅ あなたのテスト用Price ID
-        },
-      ],
+      items: [{ price: 'price_1RrbbQKTfKgNarB3MgNy4S1V' }],
       payment_behavior: 'default_incomplete',
       expand: ['latest_invoice.payment_intent'],
       metadata: {
@@ -38,16 +32,23 @@ export default async function handler(req, res) {
       },
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       subscriptionId: subscription.id,
       clientSecret: subscription.latest_invoice.payment_intent.client_secret,
       customerId: customer.id,
     });
+
   } catch (error) {
-    console.error('Stripe subscription creation error:', error);
-    res.status(500).json({
+    console.error('🔥 Stripe subscription creation error:', {
+      message: error.message,
+      raw: error.raw,
+      stack: error.stack,
+    });
+
+    return res.status(500).json({
       error: 'サブスクリプション作成に失敗しました',
-      details: error.message,
+      message: error.message,
+      raw: error.raw,
     });
   }
 }
