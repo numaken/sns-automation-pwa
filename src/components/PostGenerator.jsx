@@ -3,7 +3,7 @@ import SnsPostButtons from './SnsPostButtons';
 import './PostGenerator.css';
 import './SnsPostButtons.css';
 
-// UpgradeButton コンポーネント（Stripe統合）
+// PostGenerator.jsx の UpgradeButton コンポーネント修正版
 const UpgradeButton = ({ onUpgradeSuccess, setUserPlan, setUsage }) => {
   const [email, setEmail] = useState(localStorage.getItem('userEmail') || '');
   const [isLoading, setIsLoading] = useState(false);
@@ -31,7 +31,7 @@ const UpgradeButton = ({ onUpgradeSuccess, setUserPlan, setUsage }) => {
       if (response.ok) {
         // 🔧 修正: API成功後の状態更新処理を追加
 
-        // 1. ローカルストレージにプラン情報を保存
+        // 1. ローカルストレージにプラン情報を保存（統一されたキー名）
         localStorage.setItem('userPlan', 'premium');
         localStorage.setItem('userEmail', email);
         localStorage.setItem('subscriptionId', data.subscriptionId);
@@ -39,17 +39,26 @@ const UpgradeButton = ({ onUpgradeSuccess, setUserPlan, setUsage }) => {
 
         // 2. React状態を更新
         setUserPlan('premium');
-
-        // 3. 使用回数制限をリセット（プレミアムなので無制限）
         setUsage({ remaining: 999 });
 
-        // 4. 成功メッセージとUIの更新
-        alert('プレミアムプランにアップグレードしました！\n無制限で投稿生成とSNS投稿が利用できます。');
+        // 3. App.jsにプラン変更を即座に通知（カスタムイベント）
+        window.dispatchEvent(new CustomEvent('planUpdate', {
+          detail: { plan: 'premium' }
+        }));
 
-        // 5. 成功コールバック実行
+        // 4. 成功コールバック実行
         if (onUpgradeSuccess) {
           onUpgradeSuccess('premium');
         }
+
+        // 5. 成功メッセージとUIの更新
+        alert('プレミアムプランにアップグレードしました！\n無制限で投稿生成とSNS投稿が利用できます。');
+
+        console.log('Plan upgraded successfully:', {
+          plan: 'premium',
+          subscriptionId: data.subscriptionId,
+          customerId: data.customerId
+        });
 
       } else {
         // エラーハンドリング
