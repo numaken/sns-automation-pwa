@@ -2,10 +2,12 @@
 import React, { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 
-//20250802 add
-import UpgradeButton from './UpgradeButton';
-
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
+
+const data = await response.json();
+console.log('Stripe response:', data);
+const { clientSecret, subscriptionId, customerId } = data;
+
 
 const UpgradeButton = ({ onUpgradeSuccess }) => {
   const [email, setEmail] = useState('');
