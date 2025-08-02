@@ -10,45 +10,54 @@ const UpgradeButton = ({ onUpgradeSuccess }) => {
   const [error, setError] = useState('');
 
   const handleUpgrade = async () => {
-    if (!email) {
-      setError('メールアドレスを入力してください');
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
+    const email = prompt('メールアドレスを入力してください:');
+    if (!email) return;
 
     try {
-      // サブスクリプション作成
+      // Stripe サブスクリプション作成API呼び出し
       const response = await fetch('/api/create-subscription', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email }),
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'サブスクリプション作成に失敗しました');
+      if (response.ok) {
+        // 🔧 修正: API成功後の状態更新処理を追加
+
+        // 1. ローカルストレージにプラン情報を保存
+        localStorage.setItem('userPlan', 'premium');
+        localStorage.setItem('subscriptionId', data.subscriptionId);
+        localStorage.setItem('customerId', data.customerId);
+
+        // 2. React状態を更新
+        setPlan('premium');
+
+        // 3. 使用回数制限をリセット（プレミアムなので無制限）
+        if (setUsageCount) {
+          setUsageCount(0);
+        }
+
+        // 4. 成功メッセージとUIの更新
+        alert('プレミアムプランにアップグレードしました！\n無制限で投稿生成とSNS投稿が利用できます。');
+
+        // 5. 必要に応じてページをリフレッシュして確実に状態を反映
+        // window.location.reload();
+
+      } else {
+        // エラーハンドリング
+        console.error('Subscription creation failed:', data);
+        alert('アップグレードに失敗しました。もう一度お試しください。');
       }
-
-      // Stripe Checkout にリダイレクト（簡易版）
-      // 実際の実装では stripe.js を使用
-      localStorage.setItem('userEmail', email);
-      localStorage.setItem('pendingSubscription', JSON.stringify(data));
-
-      // 成功メッセージ（実際はStripe決済完了後に実行）
-      alert(`決済ページに移動します。\nSubscription ID: ${data.subscriptionId}`);
-      onUpgradeSuccess('premium');
-
     } catch (error) {
-      setError(error.message);
-    } finally {
-      setIsLoading(false);
+      console.error('Error creating subscription:', error);
+      alert('ネットワークエラーが発生しました。もう一度お試しください。');
     }
   };
+
 
   return (
     <div className="upgrade-section">
@@ -95,14 +104,16 @@ const PostGenerator = ({ userPlan: initialUserPlan = 'free' }) => {
   // API endpoint (Vercel deployment URL)
   const API_ENDPOINT = process.env.REACT_APP_API_URL || window.location.origin;
 
+  // 🔧 修正: 初期化時にプラン状態を確認する処理も追加
   useEffect(() => {
-    // 初回読み込み時に使用状況を取得
-    fetchUsageStatus();
+    // ページロード時にローカルストレージからプラン状態を復元
+    const savedPlan = localStorage.getItem('userPlan') || 'free';
+    const savedSubscriptionId = localStorage.getItem('subscriptionId');
 
-    // メールが保存されている場合、プラン状態を確認
-    if (userEmail) {
-      checkUserPlan();
-    }
+    console.log('Restored plan from localStorage:', savedPlan);
+    console.log('Subscription ID:', savedSubscriptionId);
+
+    setPlan(savedPlan);
   }, []);
 
   const fetchUsageStatus = async () => {
