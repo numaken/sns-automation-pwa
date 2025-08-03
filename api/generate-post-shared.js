@@ -1,9 +1,9 @@
-// 開発者APIキー使用版の投稿生成API
+// 修正版 api/generate-post-shared.js - 環境変数名を正しく修正
 import { Redis } from '@upstash/redis';
 
 const redis = new Redis({
   url: process.env.REDIS_URL,
-  token: process.env.REDIS_TOKEN,
+  token: process.env.KV_REST_API_TOKEN, // 修正: REDIS_TOKEN → KV_REST_API_TOKEN
 });
 
 const DAILY_LIMIT = 3;
@@ -72,7 +72,7 @@ export default async function handler(req, res) {
     }
     await trackCost(data.usage);
 
-    // 品質評価（既存関数）
+    // 品質評価
     const quality = evaluatePostQuality(generatedPost);
 
     return res.status(200).json({
@@ -139,23 +139,17 @@ async function trackCost(usage) {
   await redis.expire(key, 86400);
 }
 
-
+// 品質評価関数
 function evaluatePostQuality(post) {
-  let score = 75; // 基本スコア
-  let grade = 'B';
+  const length = post.length;
+  const hasHashtags = post.includes('#');
+  const hasEmojis = /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/u.test(post);
 
-  if (post.length > 50 && post.length < 280) score += 10;
-  if (post.includes('？') || post.includes('！')) score += 10;
-  if (post.includes('#')) score += 5;
+  let score = 50; // ベーススコア
 
-  if (score >= 90) grade = 'A';
-  else if (score >= 75) grade = 'B';
-  else if (score >= 60) grade = 'C';
-  else grade = 'D';
+  if (length > 50 && length < 200) score += 20;
+  if (hasHashtags) score += 15;
+  if (hasEmojis) score += 15;
 
-  return {
-    grade,
-    score,
-    feedback: `品質スコア: ${score}点`
-  };
+  return Math.min(100, score);
 }

@@ -1,4 +1,4 @@
-// 管理者用コスト監視API
+// 修正版 api/admin/cost-monitor.js
 export default async function handler(req, res) {
   const adminKey = req.headers['x-admin-key'];
 
@@ -7,14 +7,42 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Redis接続チェック
+    if (!process.env.REDIS_URL || !process.env.KV_REST_API_TOKEN) {
+      return res.status(500).json({
+        error: 'Redis configuration missing',
+        debug: {
+          redis_url: !!process.env.REDIS_URL,
+          redis_token: !!process.env.KV_REST_API_TOKEN
+        }
+      });
+    }
+
+    // 動的インポートでRedisクライアント作成
+    const { Redis } = await import('@upstash/redis');
+    const redis = new Redis({
+      url: process.env.REDIS_URL,
+      token: process.env.KV_REST_API_TOKEN,
+    });
+
     const today = new Date().toISOString().split('T')[0];
 
-    // 当日のコスト取得
-    const dailyCost = await redis.get(`daily_cost:${today}`) || 0;
+    // Redis操作をtry-catchで包む
+    let dailyCost = 0;
+    let totalUsers = 0;
+    let totalGenerations = 0;
 
-    // 使用量統計
-    const totalUsers = await redis.get(`daily_users:${today}`) || 0;
-    const totalGenerations = await redis.get(`daily_generations:${today}`) || 0;
+    try {
+      dailyCost = await redis.get(`daily_cost:${today}`) || 0;
+      totalUsers = await redis.get(`daily_users:${today}`) || 0;
+      totalGenerations = await redis.get(`daily_generations:${today}`) || 0;
+    } catch (redisError) {
+      console.error('Redis operation error:', redisError);
+      return res.status(500).json({
+        error: 'Redis operation failed',
+        redis_error: redisError.message
+      });
+    }
 
     // アラート判定
     const costLimit = parseFloat(process.env.DAILY_COST_LIMIT) || 10;
@@ -40,6 +68,10 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Cost monitor error:', error);
-    return res.status(500).json({ error: 'Monitor error' });
+    return res.status(500).json({
+      error: 'Monitor error',
+      debug: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 }
