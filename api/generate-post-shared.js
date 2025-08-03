@@ -1,4 +1,4 @@
-// REST API版 api/generate-post-shared.js（@upstash/redis不要）
+// 修正版 api/generate-post-shared.js - 正しいKV REST API形式
 const DAILY_LIMIT = 3;
 const COST_LIMIT = parseFloat(process.env.DAILY_COST_LIMIT) || 10;
 
@@ -90,17 +90,19 @@ export default async function handler(req, res) {
   }
 }
 
-// KV REST API ヘルパー関数群
+// 修正された KV REST API ヘルパー関数群
 async function getKVValue(key) {
   try {
-    const response = await fetch(`${process.env.KV_REST_API_URL}/get/${key}`, {
+    const response = await fetch(`${process.env.KV_REST_API_URL}`, {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify(['GET', key]),
     });
 
     if (!response.ok) {
-      if (response.status === 404) return null;
       throw new Error(`KV API error: ${response.status}`);
     }
 
@@ -114,15 +116,17 @@ async function getKVValue(key) {
 
 async function setKVValue(key, value, ttl = null) {
   try {
-    const body = ttl ? { key, value, ttl } : { key, value };
+    const command = ttl
+      ? ['SETEX', key, ttl, value.toString()]
+      : ['SET', key, value.toString()];
 
-    const response = await fetch(`${process.env.KV_REST_API_URL}/set`, {
+    const response = await fetch(`${process.env.KV_REST_API_URL}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(command),
     });
 
     if (!response.ok) {
@@ -138,28 +142,33 @@ async function setKVValue(key, value, ttl = null) {
 
 async function incrKVValue(key, ttl = null) {
   try {
-    const response = await fetch(`${process.env.KV_REST_API_URL}/incr/${key}`, {
+    // まずINCRを実行
+    const incrResponse = await fetch(`${process.env.KV_REST_API_URL}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify(['INCR', key]),
     });
 
-    if (!response.ok) {
-      throw new Error(`KV incr error: ${response.status}`);
+    if (!incrResponse.ok) {
+      throw new Error(`KV incr error: ${incrResponse.status}`);
     }
 
-    // TTL設定（別途実行）
+    // TTL設定（必要に応じて）
     if (ttl) {
-      await fetch(`${process.env.KV_REST_API_URL}/expire/${key}/${ttl}`, {
+      await fetch(`${process.env.KV_REST_API_URL}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify(['EXPIRE', key, ttl]),
       });
     }
 
-    return await response.json();
+    return await incrResponse.json();
   } catch (error) {
     console.error('KV incr error:', error);
     throw error;
