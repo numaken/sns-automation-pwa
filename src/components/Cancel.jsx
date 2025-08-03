@@ -1,95 +1,111 @@
-// src/components/Cancel.jsx - 決済キャンセルページ
+// Cancel.jsx - 無料版専用安全版（プレミアム要素完全削除）
+
 import React from 'react';
-import { XCircle, ArrowLeft, RefreshCw } from 'lucide-react';
 
 const Cancel = () => {
-    const goToApp = () => {
-        window.location.href = '/';
-    };
+  // プレミアム機能は一時的に完全無効化
+  const PREMIUM_FEATURES_ENABLED = false;
 
-    const retryPayment = () => {
-        // アプリに戻ってアップグレードを再試行
-        window.location.href = '/?retry=payment';
-    };
+  const handleReturnToApp = () => {
+    // アプリのメイン画面に戻る
+    window.location.href = '/';
+  };
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center">
-            <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full mx-4">
-                <div className="text-center">
-                    {/* キャンセルアイコン */}
-                    <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <XCircle className="w-8 h-8 text-orange-600" />
-                    </div>
-
-                    {/* メインメッセージ */}
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                        決済がキャンセルされました
-                    </h1>
-                    <p className="text-gray-600 mb-6">
-                        プレミアムプランへのアップグレードは完了していません
-                    </p>
-
-                    {/* キャンセル理由・説明 */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                        <p className="text-sm text-blue-800 mb-2">
-                            <strong>💡 プレミアムプランでできること</strong>
-                        </p>
-                        <ul className="text-sm text-blue-700 text-left space-y-1">
-                            <li>✅ 無制限の投稿生成</li>
-                            <li>✅ 直接SNS投稿機能</li>
-                            <li>✅ より高品質なAI生成</li>
-                            <li>✅ 広告なしのクリーンUI</li>
-                            <li>✅ 優先サポート</li>
-                        </ul>
-                    </div>
-
-                    {/* 現在の制限情報 */}
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                        <p className="text-sm text-yellow-800">
-                            <strong>現在の無料プラン制限</strong>
-                        </p>
-                        <ul className="text-sm text-yellow-700 text-left space-y-1 mt-2">
-                            <li>• 1日3回まで投稿生成</li>
-                            <li>• SNS投稿機能なし</li>
-                            <li>• 基本品質AI生成</li>
-                        </ul>
-                    </div>
-
-                    {/* アクションボタン */}
-                    <div className="space-y-3">
-                        <button
-                            onClick={retryPayment}
-                            className="w-full py-3 px-6 bg-orange-500 text-white font-medium rounded-lg hover:bg-orange-600 transition-colors flex items-center justify-center space-x-2"
-                        >
-                            <RefreshCw className="w-4 h-4" />
-                            <span>もう一度アップグレードする</span>
-                        </button>
-
-                        <button
-                            onClick={goToApp}
-                            className="w-full py-3 px-6 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-colors flex items-center justify-center space-x-2"
-                        >
-                            <ArrowLeft className="w-4 h-4" />
-                            <span>無料プランで続ける</span>
-                        </button>
-                    </div>
-
-                    {/* 追加情報 */}
-                    <div className="mt-6 text-xs text-gray-500">
-                        <p>カード情報は保存されておらず、安全です</p>
-                        <p>いつでもアップグレードできます</p>
-                    </div>
-
-                    {/* お得情報 */}
-                    <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-3">
-                        <p className="text-sm text-green-800">
-                            <strong>🎯 特別オファー:</strong> 月額¥980で全機能が無制限！
-                        </p>
-                    </div>
-                </div>
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
+        <div className="text-center">
+          {/* ヘッダー */}
+          <div className="mb-6">
+            <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
+              <span className="text-2xl">⏸️</span>
             </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              操作をキャンセルしました
+            </h1>
+            <p className="text-gray-600">
+              何も変更されませんでした
+            </p>
+          </div>
+
+          {/* 現在の状態説明 */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h2 className="font-semibold text-blue-800 mb-2">
+              現在のプラン: 無料プラン
+            </h2>
+            <div className="text-sm text-blue-700 space-y-1">
+              <div className="flex items-center justify-center">
+                <span className="text-green-600">✅</span>
+                <span className="ml-2">1日3回のAI投稿生成</span>
+              </div>
+              <div className="flex items-center justify-center">
+                <span className="text-green-600">✅</span>
+                <span className="ml-2">高品質AI生成機能</span>
+              </div>
+              <div className="flex items-center justify-center">
+                <span className="text-green-600">✅</span>
+                <span className="ml-2">APIキー設定不要</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 無料版継続利用の案内 */}
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <h3 className="font-semibold text-green-800 mb-2">
+              📱 無料版を活用しましょう
+            </h3>
+            <p className="text-sm text-green-700">
+              無料版でも十分に高品質なAI投稿生成をお楽しみいただけます。<br />
+              設定不要で今すぐご利用できます。
+            </p>
+          </div>
+
+          {/* 今後の機能開発について */}
+          {!PREMIUM_FEATURES_ENABLED && (
+            <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <div className="flex items-center justify-center mb-2">
+                <span className="text-gray-600">🚧</span>
+                <span className="ml-2 text-sm text-gray-700 font-medium">
+                  追加機能開発中
+                </span>
+              </div>
+              <p className="text-xs text-gray-600">
+                より便利な機能を開発中です。<br />
+                リリースまでしばらくお待ちください。
+              </p>
+            </div>
+          )}
+
+          {/* アクションボタン */}
+          <div className="space-y-3">
+            <button
+              onClick={handleReturnToApp}
+              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            >
+              アプリに戻って投稿生成する
+            </button>
+            
+            <div className="text-center">
+              <p className="text-xs text-gray-500">
+                無料版で1日3回まで高品質なAI投稿が生成できます
+              </p>
+            </div>
+          </div>
+
+          {/* サポート情報 */}
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <p className="text-xs text-gray-500">
+              ご質問がございましたら<br />
+              <a href="mailto:numaken@gmail.com" className="text-blue-600 hover:underline">
+                numaken@gmail.com
+              </a>
+              までお気軽にお問い合わせください
+            </p>
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
 export default Cancel;
