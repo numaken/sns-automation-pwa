@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import SnsPostButtons from './SnsPostButtons';
+import UpgradePrompt from './UpgradePrompt';
 import './PostGenerator.css';
 import './SnsPostButtons.css';
 
@@ -130,6 +131,7 @@ const PostGenerator = ({ userPlan: initialUserPlan = 'free' }) => {
   const [postResults, setPostResults] = useState({}); // SNS投稿結果管理
   const [userPlan, setUserPlan] = useState(initialUserPlan);
   const [userEmail, setUserEmail] = useState(localStorage.getItem('userEmail'));
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false); // 追加
 
   // API endpoint (Vercel deployment URL)
   const API_ENDPOINT = process.env.REACT_APP_API_URL || window.location.origin;
@@ -155,6 +157,79 @@ const PostGenerator = ({ userPlan: initialUserPlan = 'free' }) => {
       setUsage({ remaining: 999 });
     }
   }, []);
+
+  // 開発者APIキー使用版の投稿生成関数
+  const generatePostWithSharedAPI = async () => {
+    if (!prompt.trim()) {
+      setError('投稿のテーマを入力してください');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+    setGeneratedPost('');
+    setQuality(null);
+    setPostResults({}); // 投稿結果をリセット
+
+    try {
+      // 開発者APIキー使用版を呼び出し
+      const response = await fetch(`${API_ENDPOINT}/api/generate-post-shared`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: prompt.trim(),
+          tone,
+          userType: userPlan
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          setError('1日の無料生成回数を超えました。プレミアムプランで無制限生成！');
+          setUsage({ remaining: 0 });
+          setShowUpgradePrompt(true);
+        } else if (response.status === 503) {
+          setError('システム負荷により一時的に利用できません。しばらく後にお試しください。');
+        } else {
+          throw new Error(data.error || '投稿生成に失敗しました');
+        }
+        return;
+      }
+
+      setGeneratedPost(data.post);
+      setQuality(data.quality);
+
+      if (data.usage) {
+        setUsage(data.usage);
+      }
+
+      // 使用量表示の更新
+      if (userPlan === 'free' && data.usage.remaining <= 1) {
+        setShowUpgradePrompt(true);
+      }
+
+    } catch (error) {
+      console.error('Generate post error:', error);
+      setError('ネットワークエラーが発生しました。しばらく待ってから再試行してください。');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 生成ボタンのクリックハンドラー修正
+  const handleGenerateClick = () => {
+    if (userPlan === 'free') {
+      // 無料プランは開発者APIキー使用
+      generatePostWithSharedAPI();
+    } else {
+      // プレミアムプランは既存の個人APIキー使用
+      generatePost();
+    }
+  };
 
   const fetchUsageStatus = async () => {
     if (userPlan !== 'free') return;
@@ -191,6 +266,8 @@ const PostGenerator = ({ userPlan: initialUserPlan = 'free' }) => {
     setUsage({ remaining: 999 });
     // エラークリア
     setError('');
+    // アップグレードプロンプトを閉じる
+    setShowUpgradePrompt(false);
   };
 
   const generatePost = async () => {
@@ -333,7 +410,7 @@ const PostGenerator = ({ userPlan: initialUserPlan = 'free' }) => {
 
         <button
           className={`generate-button ${!canGenerate ? 'disabled' : ''}`}
-          onClick={generatePost}
+          onClick={handleGenerateClick}
           disabled={isLoading || !canGenerate}
         >
           {isLoading ? (
@@ -417,6 +494,21 @@ const PostGenerator = ({ userPlan: initialUserPlan = 'free' }) => {
           </div>
         </div>
       )}
+
+      {/* アップグレードプロンプト */}
+      <UpgradePrompt
+        isVisible={showUpgradePrompt}
+        onClose={() => setShowUpgradePrompt(false)}
+        onUpgrade={() => {
+          setShowUpgradePrompt(false);
+          // 既存のUpgradeButtonと同じ処理を実行
+          const upgradeButton = document.querySelector('.upgrade-button');
+          if (upgradeButton) {
+            upgradeButton.click();
+          }
+        }}
+        remainingUses={usage.remaining}
+      />
     </div>
   );
 };
