@@ -2,14 +2,46 @@ import React, { useState, useEffect } from 'react';
 import { Settings, Send, Sparkles } from 'lucide-react';
 import PostGenerator from './components/PostGenerator';
 import SettingsPanel from './components/SettingsPanel';
+import Success from './components/Success';
+import Cancel from './components/Cancel';
 import './App.css';
 
 function App() {
   const [activeTab, setActiveTab] = useState('generate');
-  const [currentPlan, setCurrentPlan] = useState('free'); // 'free' または 'premium'
+  const [currentPlan, setCurrentPlan] = useState('free');
   const [usageStats, setUsageStats] = useState(null);
+  const [currentPage, setCurrentPage] = useState('app'); // 'app', 'success', 'cancel'
 
-  // 初期化時にプラン情報を読み込み + 変更監視
+  // URL解析とページ決定
+  useEffect(() => {
+    const path = window.location.pathname;
+    const search = window.location.search;
+
+    console.log('🔍 Current URL:', { path, search });
+
+    // URLに基づいてページを決定
+    if (path === '/success' || search.includes('session_id')) {
+      setCurrentPage('success');
+    } else if (path === '/cancel') {
+      setCurrentPage('cancel');
+    } else {
+      setCurrentPage('app');
+
+      // retry=paymentパラメータがある場合はアップグレードプロモーションを表示
+      if (search.includes('retry=payment')) {
+        setActiveTab('generate');
+        // スクロールしてアップグレードセクションを表示
+        setTimeout(() => {
+          const upgradeElement = document.querySelector('.upgrade-promotion');
+          if (upgradeElement) {
+            upgradeElement.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 500);
+      }
+    }
+  }, []);
+
+  // プラン状態の初期化と監視
   useEffect(() => {
     // 初期読み込み（統一されたキー名を使用）
     const savedPlan = localStorage.getItem('userPlan') || 'free';
@@ -63,6 +95,16 @@ function App() {
     setUsageStats(stats);
   };
 
+  // ページ別レンダリング
+  if (currentPage === 'success') {
+    return <Success />;
+  }
+
+  if (currentPage === 'cancel') {
+    return <Cancel />;
+  }
+
+  // メインアプリのレンダリング
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <header className="bg-white shadow-sm border-b">
