@@ -27,17 +27,15 @@ function App() {
     } else {
       setCurrentPage('app');
 
-      // DISABLED: retry=payment upgrade promotion (unsafe for free release)
-      if (search.includes('retry=payment')) {
-        setActiveTab('generate');
-        // DISABLED: upgrade section scroll (unsafe for free release)
-        setTimeout(() => {
-          // DISABLED: upgrade promotion element (unsafe for free release)
-          if (upgradeElement) {
-            upgradeElement.scrollIntoView({ behavior: 'smooth' });
-          }
-        }, 500);
+      // DISABLED: All upgrade promotion functionality for safe free release
+      if (search.includes("retry=payment")) {
+        setActiveTab("generate");
+        // DISABLED: Entire upgrade promotion section removed for safety
+        console.log("Payment retry detected but upgrade promotion disabled for free release");
       }
+      // DISABLED_FOR_SAFETY:           }
+      // DISABLED_FOR_SAFETY:         }, 500);
+      // DISABLED_FOR_SAFETY:       }
     }
   }, []);
 
