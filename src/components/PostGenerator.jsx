@@ -3,6 +3,11 @@ import SnsPostButtons from './SnsPostButtons';
 import './PostGenerator.css';
 import './SnsPostButtons.css';
 
+import { loadStripe } from '@stripe/stripe-js';
+
+// Stripe公開キーでストライプを初期化（環境変数から読み込み）
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || 'pk_test_51RdRz8QK8lTckdl0Q8ZGxhCzBq3Hcy65ONNMJR8aFG9bN2bVnhW0EwB6nJ2ELyxJhG8oPm0e4cKOQGfcgNJdDYb800O7WG5dSI');
+
 // PostGenerator.jsx の UpgradeButton コンポーネント修正版
 const UpgradeButton = ({ onUpgradeSuccess, setUserPlan, setUsage }) => {
   const [email, setEmail] = useState(localStorage.getItem('userEmail') || '');
@@ -10,64 +15,57 @@ const UpgradeButton = ({ onUpgradeSuccess, setUserPlan, setUsage }) => {
   const [error, setError] = useState('');
 
   const handleUpgrade = async () => {
-    const email = prompt('メールアドレスを入力してください:');
-    if (!email) return;
+    const userEmail = email || prompt('メールアドレスを入力してください:');
+    if (!userEmail) return;
 
     setIsLoading(true);
     setError('');
 
     try {
-      // Stripe サブスクリプション作成API呼び出し
-      const response = await fetch('/api/create-subscription', {
+      // 1. Checkout Session作成
+      const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: userEmail }),
       });
 
       const data = await response.json();
 
-      if (response.ok) {
-        // 🔧 修正: API成功後の状態更新処理を追加
-
-        // 1. ローカルストレージにプラン情報を保存（統一されたキー名）
-        localStorage.setItem('userPlan', 'premium');
-        localStorage.setItem('userEmail', email);
-        localStorage.setItem('subscriptionId', data.subscriptionId);
-        localStorage.setItem('customerId', data.customerId);
-
-        // 2. React状態を更新
-        setUserPlan('premium');
-        setUsage({ remaining: 999 });
-
-        // 3. App.jsにプラン変更を即座に通知（カスタムイベント）
-        window.dispatchEvent(new CustomEvent('planUpdate', {
-          detail: { plan: 'premium' }
-        }));
-
-        // 4. 成功コールバック実行
-        if (onUpgradeSuccess) {
-          onUpgradeSuccess('premium');
-        }
-
-        // 5. 成功メッセージとUIの更新
-        alert('プレミアムプランにアップグレードしました！\n無制限で投稿生成とSNS投稿が利用できます。');
-
-        console.log('Plan upgraded successfully:', {
-          plan: 'premium',
-          subscriptionId: data.subscriptionId,
-          customerId: data.customerId
-        });
-
-      } else {
-        // エラーハンドリング
-        console.error('Subscription creation failed:', data);
-        setError('アップグレードに失敗しました。もう一度お試しください。');
+      if (!response.ok) {
+        throw new Error(data.message || 'Checkout session作成に失敗しました');
       }
+
+      // 2. Stripeオブジェクト取得
+      const stripe = await stripePromise;
+      if (!stripe) {
+        throw new Error('Stripeの初期化に失敗しました');
+      }
+
+      // 3. メールアドレスを保存（決済完了後に使用）
+      localStorage.setItem('userEmail', userEmail);
+      localStorage.setItem('pendingCheckoutSession', data.sessionId);
+
+      console.log('🚀 Redirecting to Stripe Checkout:', {
+        sessionId: data.sessionId,
+        email: userEmail
+      });
+
+      // 4. Stripe Checkoutページにリダイレクト
+      const { error: stripeError } = await stripe.redirectToCheckout({
+        sessionId: data.sessionId,
+      });
+
+      if (stripeError) {
+        throw new Error(stripeError.message);
+      }
+
+      // ここに到達することは通常ない（リダイレクトするため）
+
     } catch (error) {
-      console.error('Error creating subscription:', error);
-      setError('ネットワークエラーが発生しました。もう一度お試しください。');
+      console.error('🔥 Checkout error:', error);
+      setError(error.message || '決済処理中にエラーが発生しました');
     } finally {
       setIsLoading(false);
     }
@@ -82,23 +80,41 @@ const UpgradeButton = ({ onUpgradeSuccess, setUserPlan, setUsage }) => {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full p-3 border rounded-lg"
+          disabled={isLoading}
         />
       </div>
 
       {error && (
         <div className="error-message text-red-600 mb-3 p-2 bg-red-50 rounded">
-          {error}
+          ⚠️ {error}
         </div>
       )}
 
       <button
         onClick={handleUpgrade}
-        disabled={isLoading}
+        disabled={isLoading || !email.trim()}
         className="upgrade-button w-full py-3 px-6 bg-orange-500 text-white font-medium rounded-lg 
-                   hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                   hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors
+                   flex items-center justify-center space-x-2"
       >
-        {isLoading ? '処理中...' : '月額¥980でアップグレード →'}
+        {isLoading ? (
+          <>
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+            <span>決済ページに移動中...</span>
+          </>
+        ) : (
+          <>
+            <span>🔒</span>
+            <span>月額¥980で安全に決済 →</span>
+          </>
+        )}
       </button>
+
+      {/* 安全性の説明 */}
+      <div className="text-xs text-gray-600 mt-2 text-center">
+        <p>🔒 Stripe決済で安全・安心</p>
+        <p>カード情報は当サイトに保存されません</p>
+      </div>
     </div>
   );
 };
