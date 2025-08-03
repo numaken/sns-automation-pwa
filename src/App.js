@@ -27,12 +27,12 @@ function App() {
     } else {
       setCurrentPage('app');
 
-      // retry=paymentパラメータがある場合はアップグレードプロモーションを表示
+      // DISABLED: retry=payment upgrade promotion (unsafe for free release)
       if (search.includes('retry=payment')) {
         setActiveTab('generate');
-        // スクロールしてアップグレードセクションを表示
+        // DISABLED: upgrade section scroll (unsafe for free release)
         setTimeout(() => {
-          const upgradeElement = document.querySelector('.upgrade-promotion');
+          // DISABLED: upgrade promotion element (unsafe for free release)
           if (upgradeElement) {
             upgradeElement.scrollIntoView({ behavior: 'smooth' });
           }
