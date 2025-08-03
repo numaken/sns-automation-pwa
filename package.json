@@ -4,10 +4,11 @@
   "private": true,
   "dependencies": {
     "@stripe/stripe-js": "^2.4.0",
+    "lucide-react": "^0.263.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
-    "lucide-react": "^0.263.1"
+    "stripe": "^18.4.0"
   },
   "scripts": {
     "start": "react-scripts start",
