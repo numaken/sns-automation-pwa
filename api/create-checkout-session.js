@@ -33,7 +33,7 @@ export default async function handler(req, res) {
             payment_method_types: ['card'],
             line_items: [
                 {
-                    price: 'price_1RrjyUQK8lTckdl0JfCAfrJm', // プレミアムプラン Price ID
+                    price: 'price_1RrjyUQK8lTckdl0JfCAfrJm',
                     quantity: 1,
                 },
             ],
@@ -59,11 +59,7 @@ export default async function handler(req, res) {
                     source: 'web_app'
                 }
             },
-            // 日本語対応
             locale: 'ja',
-            // 支払い方法の設定
-            payment_method_configuration: undefined, // デフォルト設定使用
-            // カスタマイズ
             custom_text: {
                 submit: {
                     message: 'SNS自動化プレミアムプランへのアップグレード'
