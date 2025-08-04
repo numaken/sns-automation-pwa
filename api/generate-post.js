@@ -243,7 +243,7 @@ async function generateWithOptimization(prompt, tone, platform, config, isPremiu
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY_SHARED_SHARED}`,
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY_SHARED_SHARED_SHARED}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
