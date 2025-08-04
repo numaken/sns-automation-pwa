@@ -1,8 +1,8 @@
-// api/generate-post.js - Phase 2完全版（高速化・プレミアム統合）
+// api/generate-post.js - Phase 2完全版（高速化・プレミアム統合・KV修正版）
 
-// Upstash Redis REST API connection
-const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+// 環境変数（generate-post-shared.jsと統一）
+const KV_REST_API_URL = process.env.KV_REST_API_URL;
+const KV_REST_API_TOKEN = process.env.KV_REST_API_TOKEN;
 
 // プレミアム用高速設定
 const PREMIUM_CONFIG = {
@@ -24,13 +24,25 @@ const FREE_CONFIG = {
 
 const DAILY_LIMIT = 3;
 
-// KVクライアント関数群
+// KVクライアント関数群（generate-post-shared.jsの動作確認済み実装）
 async function getKVValue(key) {
   try {
-    const response = await fetch(`${REDIS_URL}/get/${key}`, {
-      headers: { 'Authorization': `Bearer ${REDIS_TOKEN}` }
+    const response = await fetch(`${KV_REST_API_URL}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${KV_REST_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(['GET', key]),
     });
-    return response.ok ? (await response.json()).result : null;
+
+    if (!response.ok) {
+      console.error('KV GET error:', response.status, response.statusText);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.result;
   } catch (error) {
     console.error('KV GET error:', error);
     return null;
@@ -39,15 +51,19 @@ async function getKVValue(key) {
 
 async function setKVValue(key, value, ttl = null) {
   try {
-    const url = ttl ? `${REDIS_URL}/setex/${key}/${ttl}` : `${REDIS_URL}/set/${key}`;
-    const response = await fetch(url, {
+    const command = ttl
+      ? ['SETEX', key, ttl, value.toString()]
+      : ['SET', key, value.toString()];
+
+    const response = await fetch(`${KV_REST_API_URL}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${REDIS_TOKEN}`,
-        'Content-Type': 'application/json'
+        'Authorization': `Bearer ${KV_REST_API_TOKEN}`,
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ value: value.toString() })
+      body: JSON.stringify(command),
     });
+
     return response.ok;
   } catch (error) {
     console.error('KV SET error:', error);
@@ -57,11 +73,22 @@ async function setKVValue(key, value, ttl = null) {
 
 async function incrKVValue(key) {
   try {
-    const response = await fetch(`${REDIS_URL}/incr/${key}`, {
+    const response = await fetch(`${KV_REST_API_URL}`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${REDIS_TOKEN}` }
+      headers: {
+        'Authorization': `Bearer ${KV_REST_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(['INCR', key]),
     });
-    return response.ok ? (await response.json()).result : null;
+
+    if (!response.ok) {
+      console.error('KV INCR error:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.result;
   } catch (error) {
     console.error('KV INCR error:', error);
     return null;
@@ -70,15 +97,22 @@ async function incrKVValue(key) {
 
 async function incrByFloatKVValue(key, increment) {
   try {
-    const response = await fetch(`${REDIS_URL}/incrbyfloat/${key}`, {
+    const response = await fetch(`${KV_REST_API_URL}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${REDIS_TOKEN}`,
-        'Content-Type': 'application/json'
+        'Authorization': `Bearer ${KV_REST_API_TOKEN}`,
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ increment })
+      body: JSON.stringify(['INCRBYFLOAT', key, increment]),
     });
-    return response.ok ? parseFloat((await response.json()).result) : null;
+
+    if (!response.ok) {
+      console.error('KV INCRBYFLOAT error:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    return parseFloat(data.result);
   } catch (error) {
     console.error('KV INCRBYFLOAT error:', error);
     return null;
@@ -92,6 +126,7 @@ async function checkRateLimit(clientIP) {
     const key = `rate_limit:${clientIP}:${today}`;
 
     const currentUsage = parseInt(await getKVValue(key)) || 0;
+    console.log('Rate limit check:', { key, currentUsage, limit: DAILY_LIMIT });
 
     return {
       allowed: currentUsage < DAILY_LIMIT,
@@ -111,17 +146,12 @@ async function updateRateLimit(clientIP) {
     const key = `rate_limit:${clientIP}:${today}`;
 
     const newUsage = await incrKVValue(key);
+    console.log('Rate limit updated:', { key, newUsage });
 
     if (newUsage === 1) {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
-      const ttlSeconds = Math.floor((tomorrow.getTime() - Date.now()) / 1000);
-
-      await fetch(`${REDIS_URL}/expire/${key}/${ttlSeconds}`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${REDIS_TOKEN}` }
-      });
+      // 24時間TTL設定
+      const ttlSeconds = 86400;
+      await setKVValue(key, newUsage, ttlSeconds);
     }
 
     return { usage: newUsage, remaining: Math.max(0, DAILY_LIMIT - newUsage) };
@@ -134,31 +164,51 @@ async function updateRateLimit(clientIP) {
 // ユーザーID取得（認証から）
 function getUserId(req) {
   const authHeader = req.headers.authorization;
-  if (!authHeader) return null;
+  if (!authHeader) {
+    console.log('No authorization header');
+    return null;
+  }
 
   try {
     const token = authHeader.split(' ')[1];
+    console.log('Auth token:', token?.substring(0, 10) + '...');
+
     // 簡易実装：実際はJWT decode
+    if (token === 'test-token') return 'test-user';
     return 'user_' + Math.random().toString(36).substr(2, 9);
-  } catch {
+  } catch (error) {
+    console.error('getUserId error:', error);
     return null;
   }
 }
 
 // ユーザープラン取得
 async function getUserPlan(userId) {
-  if (!userId) return 'free';
+  if (!userId) {
+    console.log('No userId provided');
+    return 'free';
+  }
 
   try {
     const plan = await getKVValue(`user_plan:${userId}`);
+    console.log('User plan:', { userId, plan });
     return plan || 'free';
-  } catch {
+  } catch (error) {
+    console.error('getUserPlan error:', error);
     return 'free';
   }
 }
 
 // 最適化された生成関数
 async function generateWithOptimization(prompt, tone, platform, config, isPremium) {
+  console.log('generateWithOptimization called:', {
+    promptLength: prompt.length,
+    tone,
+    platform,
+    isPremium,
+    timeout: config.timeout
+  });
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), config.timeout);
 
@@ -188,6 +238,8 @@ async function generateWithOptimization(prompt, tone, platform, config, isPremiu
 
     for (let attempt = 0; attempt < config.retry_attempts; attempt++) {
       try {
+        console.log(`OpenAI API call attempt ${attempt + 1}/${config.retry_attempts}`);
+
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -211,7 +263,12 @@ async function generateWithOptimization(prompt, tone, platform, config, isPremiu
           signal: controller.signal
         });
 
+        console.log('OpenAI API response status:', response.status);
+
         if (!response.ok) {
+          const errorData = await response.text();
+          console.error('OpenAI API error:', response.status, errorData);
+
           if (attempt < config.retry_attempts - 1) {
             await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
             continue;
@@ -220,6 +277,7 @@ async function generateWithOptimization(prompt, tone, platform, config, isPremiu
         }
 
         const data = await response.json();
+        console.log('OpenAI API response received, choices length:', data.choices?.length);
 
         if (!data.choices || !data.choices[0]) {
           throw new Error('Invalid OpenAI API response');
@@ -228,6 +286,8 @@ async function generateWithOptimization(prompt, tone, platform, config, isPremiu
         return data.choices[0].message.content.trim();
 
       } catch (error) {
+        console.error(`Attempt ${attempt + 1} failed:`, error.message);
+
         if (error.name === 'AbortError') {
           throw new Error('TimeoutError');
         }
@@ -267,6 +327,7 @@ async function recordPremiumUsage(userId, generationTime, quality) {
     };
 
     await setKVValue(usageKey, JSON.stringify(updatedUsage), 86400);
+    console.log('Premium usage recorded:', updatedUsage);
     return updatedUsage;
   } catch (error) {
     console.error('Premium usage recording error:', error);
@@ -329,6 +390,8 @@ function getNextResetTime() {
 }
 
 export default async function handler(req, res) {
+  console.log('Premium API handler called:', req.method, req.url);
+
   // CORS対応
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -347,6 +410,15 @@ export default async function handler(req, res) {
     const userId = getUserId(req);
     const startTime = Date.now();
 
+    console.log('Request params:', {
+      promptLength: prompt?.length,
+      tone,
+      platform,
+      userType,
+      priority,
+      userId
+    });
+
     if (!prompt || !prompt.trim()) {
       return res.status(400).json({ error: 'プロンプトが必要です' });
     }
@@ -355,15 +427,19 @@ export default async function handler(req, res) {
     const userPlan = await getUserPlan(userId);
     const isPremium = userPlan === 'premium' || userType === 'premium';
 
+    console.log('Plan check:', { userPlan, userType, isPremium });
+
     // フリープランのレート制限チェック
     if (!isPremium) {
       const clientIP = req.headers['x-forwarded-for']?.split(',')[0] ||
         req.headers['x-real-ip'] ||
         req.connection.remoteAddress;
 
+      console.log('Free plan rate limit check for IP:', clientIP);
       const rateLimitCheck = await checkRateLimit(clientIP);
 
       if (!rateLimitCheck.allowed) {
+        console.log('Rate limit exceeded:', rateLimitCheck);
         return res.status(429).json({
           error: 'Daily limit exceeded',
           message: '無料プランは1日3回まで生成可能です。プレミアムプランで無制限生成を！',
@@ -376,15 +452,18 @@ export default async function handler(req, res) {
 
     // 設定選択
     const config = isPremium ? PREMIUM_CONFIG : FREE_CONFIG;
+    console.log('Using config:', { isPremium, timeout: config.timeout, maxTokens: config.max_tokens });
 
     // OpenAI API呼び出し（最適化版）
     const generatedPost = await generateWithOptimization(prompt, tone, platform, config, isPremium);
 
     const endTime = Date.now();
     const generationTime = endTime - startTime;
+    console.log('Generation completed in:', generationTime + 'ms');
 
     // 品質評価
     const quality = evaluatePostQuality(generatedPost, platform);
+    console.log('Quality evaluation:', quality);
 
     // 使用量更新・統計記録
     let updatedUsage = null;
@@ -392,7 +471,7 @@ export default async function handler(req, res) {
 
     if (isPremium && userId) {
       premiumStats = await recordPremiumUsage(userId, generationTime, quality.score);
-    } else {
+    } else if (!isPremium) {
       const clientIP = req.headers['x-forwarded-for']?.split(',')[0] ||
         req.headers['x-real-ip'] ||
         req.connection.remoteAddress;
@@ -421,6 +500,13 @@ export default async function handler(req, res) {
       })
     };
 
+    console.log('Returning result:', {
+      postLength: result.post.length,
+      quality: result.quality,
+      plan: result.plan,
+      generationTime: result.generation_time
+    });
+
     res.status(200).json(result);
 
   } catch (error) {
@@ -446,7 +532,8 @@ export default async function handler(req, res) {
     res.status(500).json({
       error: 'Internal server error',
       message: '投稿生成中にエラーが発生しました。しばらく待ってから再試行してください。',
-      fallback_message: isPremium ? 'プレミアムサポートにお問い合わせください' : '個人APIキーの設定をお試しください'
+      fallback_message: 'プレミアムサポートにお問い合わせください',
+      debug_info: error.message
     });
   }
 }
