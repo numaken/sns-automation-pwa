@@ -11,7 +11,7 @@ export const useUserPlan = () => {
   const checkUserSubscription = async () => {
     try {
       // 既存のStripe連携を使用
-      const response = await fetch('/api/check-subscription', {
+      const response = await fetch('/api/check-user-plan', {
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`,
         },
