@@ -1,8 +1,22 @@
-// PostGenerator.jsx - 完全美化版（PostCSS不使用、インラインスタイルのみ）
-
+// PostGenerator.jsx - Phase 2完全版（プレミアムデザイン統合）
 import React, { useState, useEffect } from 'react';
+import { loadStripe } from '@stripe/stripe-js';
+import SnsPostButtons from './SnsPostButtons';
+import UpgradePrompt from './UpgradePrompt';
+import { useUserPlan } from '../hooks/useUserPlan';
+import './PostGenerator.css';
+import './SnsPostButtons.css';
+
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || 'pk_test_51RdRz8QK8lTckdl0Q8ZGxhCzBq3Hcy65ONNMJR8aFG9bN2bVnhW0EwB6nJ2ELyxJhG8oPm0e4cKOQGfcgNJdDYb800O7WG5dSI');
 
 const PostGenerator = () => {
+  const { userPlan: hookUserPlan, isLoading: hookLoading } = useUserPlan();
+
+  // State管理
+  const [userPlan, setUserPlan] = useState('free');
+  const [email, setEmail] = useState(localStorage.getItem('userEmail') || '');
+  const [subscriptionId, setSubscriptionId] = useState(localStorage.getItem('subscriptionId') || '');
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [tone, setTone] = useState('カジュアル');
   const [generatedPost, setGeneratedPost] = useState('');
@@ -10,332 +24,109 @@ const PostGenerator = () => {
   const [error, setError] = useState('');
   const [usage, setUsage] = useState({ remaining: 3 });
   const [quality, setQuality] = useState(null);
+  const [qualityGrade, setQualityGrade] = useState(null);
+  const [qualityFeedback, setQualityFeedback] = useState('');
+  const [generationCount, setGenerationCount] = useState(0);
+  const [generationTime, setGenerationTime] = useState(0);
 
-  const userPlan = 'free';
-  const PREMIUM_FEATURES_ENABLED = false;
+  const isPremium = userPlan === 'premium';
 
   const API_ENDPOINT = process.env.NODE_ENV === 'production'
     ? 'https://sns-automation-pwa.vercel.app'
     : '';
 
-  // 美しいカラーパレット & スタイルシステム
-  const colors = {
-    primary: '#3b82f6',
-    primaryHover: '#2563eb',
-    primaryLight: '#dbeafe',
-    primaryDark: '#1e40af',
-    success: '#10b981',
-    successLight: '#d1fae5',
-    successDark: '#047857',
-    warning: '#f59e0b',
-    warningLight: '#fef3c7',
-    error: '#ef4444',
-    errorLight: '#fee2e2',
-    gray: {
-      50: '#f9fafb',
-      100: '#f3f4f6',
-      200: '#e5e7eb',
-      300: '#d1d5db',
-      400: '#9ca3af',
-      500: '#6b7280',
-      600: '#4b5563',
-      700: '#374151',
-      800: '#1f2937',
-      900: '#111827'
+  // 初期化とプラン同期
+  useEffect(() => {
+    const checkUpgradeStatus = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('upgrade') === 'success') {
+        setUserPlan('premium');
+        localStorage.setItem('plan', 'premium');
+        setUsage({ remaining: 'unlimited' });
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    };
+
+    const storedPlan = localStorage.getItem('plan') || 'free';
+    const storedEmail = localStorage.getItem('userEmail') || '';
+    const storedSubId = localStorage.getItem('subscriptionId') || '';
+
+    console.log('Restored plan from localStorage:', storedPlan);
+    console.log('User email:', storedEmail);
+    console.log('Subscription ID:', storedSubId);
+
+    setUserPlan(storedPlan);
+    setEmail(storedEmail);
+    setSubscriptionId(storedSubId);
+
+    checkUpgradeStatus();
+  }, []);
+
+  useEffect(() => {
+    if (!hookLoading && hookUserPlan && hookUserPlan !== userPlan) {
+      console.log('Syncing with useUserPlan hook:', hookUserPlan);
+      setUserPlan(hookUserPlan);
+      localStorage.setItem('plan', hookUserPlan);
+    }
+  }, [hookUserPlan, hookLoading, userPlan]);
+
+  // プレミアム用生成関数（高速化）
+  const generatePost = async () => {
+    if (!prompt.trim()) {
+      setError('投稿のテーマを入力してください');
+      return;
+    }
+
+    setIsGenerating(true);
+    setError('');
+    setGeneratedPost('');
+    setQuality(null);
+    setQualityGrade(null);
+    setQualityFeedback('');
+
+    try {
+      const response = await fetch(`${API_ENDPOINT}/api/generate-post`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        body: JSON.stringify({
+          prompt: prompt.trim(),
+          tone,
+          platform: 'Twitter',
+          userType: 'premium',
+          priority: 'high'
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '投稿生成に失敗しました');
+      }
+
+      setGeneratedPost(data.post);
+      setQuality(data.quality);
+      setQualityGrade(data.qualityGrade);
+      setQualityFeedback(data.qualityFeedback);
+      setGenerationTime(data.generation_time);
+      setGenerationCount(prev => prev + 1);
+
+      // プレミアム統計表示
+      if (data.stats) {
+        console.log('Premium stats:', data.stats);
+      }
+
+    } catch (error) {
+      console.error('Premium generate error:', error);
+      setError('生成に失敗しました。プレミアムサポートにお問い合わせください。');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
-  // モダンスタイルシステム
-  const styles = {
-    container: {
-      maxWidth: '48rem',
-      margin: '0 auto',
-      padding: '2rem 1.5rem',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-      lineHeight: '1.6',
-      color: colors.gray[800]
-    },
-
-    // ヘッダーセクション
-    header: {
-      textAlign: 'center',
-      marginBottom: '3rem'
-    },
-    title: {
-      fontSize: '2.5rem',
-      fontWeight: '700',
-      color: colors.gray[900],
-      marginBottom: '0.5rem',
-      background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.primaryDark} 100%)`,
-      WebkitBackgroundClip: 'text',
-      WebkitTextFillColor: 'transparent',
-      backgroundClip: 'text'
-    },
-    subtitle: {
-      fontSize: '1.125rem',
-      color: colors.gray[600],
-      fontWeight: '400'
-    },
-
-    // プランバッジ
-    planBadge: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      padding: '0.75rem 1.5rem',
-      backgroundColor: colors.primaryLight,
-      border: `2px solid ${colors.primary}`,
-      borderRadius: '50px',
-      marginBottom: '2rem',
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-      transition: 'all 0.3s ease'
-    },
-    planIcon: {
-      fontSize: '1.25rem',
-      marginRight: '0.5rem'
-    },
-    planText: {
-      fontWeight: '600',
-      color: colors.primaryDark,
-      fontSize: '1rem'
-    },
-    usageContainer: {
-      marginTop: '1rem',
-      padding: '1rem',
-      backgroundColor: 'white',
-      borderRadius: '12px',
-      border: `1px solid ${colors.gray[200]}`,
-      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-    },
-    usageText: {
-      fontSize: '0.875rem',
-      color: colors.gray[600],
-      textAlign: 'center'
-    },
-    preparingBadge: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      padding: '0.5rem 1rem',
-      backgroundColor: colors.warningLight,
-      color: colors.warning,
-      borderRadius: '20px',
-      fontSize: '0.75rem',
-      fontWeight: '500',
-      marginTop: '0.5rem'
-    },
-
-    // フォームスタイル
-    formCard: {
-      backgroundColor: 'white',
-      borderRadius: '16px',
-      padding: '2rem',
-      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-      border: `1px solid ${colors.gray[200]}`,
-      marginBottom: '2rem'
-    },
-    formGroup: {
-      marginBottom: '1.5rem'
-    },
-    label: {
-      display: 'block',
-      fontSize: '0.875rem',
-      fontWeight: '600',
-      color: colors.gray[700],
-      marginBottom: '0.5rem'
-    },
-    textarea: {
-      width: '100%',
-      padding: '1rem',
-      border: `2px solid ${colors.gray[200]}`,
-      borderRadius: '12px',
-      fontSize: '1rem',
-      lineHeight: '1.5',
-      resize: 'vertical',
-      outline: 'none',
-      transition: 'all 0.3s ease',
-      fontFamily: 'inherit',
-      backgroundColor: colors.gray[50]
-    },
-    textareaFocus: {
-      borderColor: colors.primary,
-      backgroundColor: 'white',
-      boxShadow: `0 0 0 3px ${colors.primaryLight}`
-    },
-    select: {
-      width: '100%',
-      padding: '1rem',
-      border: `2px solid ${colors.gray[200]}`,
-      borderRadius: '12px',
-      fontSize: '1rem',
-      backgroundColor: 'white',
-      outline: 'none',
-      transition: 'all 0.3s ease',
-      cursor: 'pointer'
-    },
-
-    // ボタンスタイル
-    button: {
-      width: '100%',
-      background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.primaryHover} 100%)`,
-      color: 'white',
-      padding: '1rem 2rem',
-      borderRadius: '12px',
-      fontWeight: '600',
-      fontSize: '1.125rem',
-      border: 'none',
-      cursor: 'pointer',
-      transition: 'all 0.3s ease',
-      boxShadow: '0 4px 15px 0 rgba(59, 130, 246, 0.3)',
-      transform: 'translateY(0)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '0.5rem'
-    },
-    buttonHover: {
-      transform: 'translateY(-2px)',
-      boxShadow: '0 8px 25px 0 rgba(59, 130, 246, 0.4)'
-    },
-    buttonDisabled: {
-      background: colors.gray[400],
-      cursor: 'not-allowed',
-      transform: 'none',
-      boxShadow: 'none'
-    },
-
-    // メッセージカード
-    errorCard: {
-      marginTop: '1.5rem',
-      padding: '1rem 1.5rem',
-      backgroundColor: colors.errorLight,
-      border: `1px solid ${colors.error}`,
-      borderRadius: '12px',
-      color: colors.error,
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: '0.75rem'
-    },
-    successCard: {
-      marginTop: '2rem',
-      padding: '1.5rem',
-      backgroundColor: colors.successLight,
-      border: `1px solid ${colors.success}`,
-      borderRadius: '16px',
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-    },
-    successHeader: {
-      fontWeight: '600',
-      color: colors.successDark,
-      marginBottom: '1rem',
-      fontSize: '1.125rem',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem'
-    },
-    successContent: {
-      color: colors.gray[800],
-      whiteSpace: 'pre-wrap',
-      lineHeight: '1.7',
-      fontSize: '1rem',
-      padding: '1rem',
-      backgroundColor: 'white',
-      borderRadius: '8px',
-      border: `1px solid ${colors.gray[200]}`
-    },
-    qualityBadge: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '0.5rem',
-      marginTop: '1rem',
-      padding: '0.5rem 1rem',
-      backgroundColor: colors.primaryLight,
-      color: colors.primaryDark,
-      borderRadius: '20px',
-      fontSize: '0.875rem',
-      fontWeight: '500'
-    },
-    copyButton: {
-      marginTop: '1rem',
-      padding: '0.75rem 1.5rem',
-      backgroundColor: colors.success,
-      color: 'white',
-      fontSize: '0.875rem',
-      fontWeight: '500',
-      borderRadius: '8px',
-      border: 'none',
-      cursor: 'pointer',
-      transition: 'all 0.2s ease',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem'
-    },
-
-    // ガイドセクション
-    guideCard: {
-      marginTop: '2rem',
-      padding: '1.5rem',
-      backgroundColor: 'white',
-      borderRadius: '16px',
-      border: `1px solid ${colors.gray[200]}`,
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-    },
-    guideHeader: {
-      fontWeight: '600',
-      color: colors.gray[800],
-      marginBottom: '1rem',
-      fontSize: '1.125rem',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem'
-    },
-    guideList: {
-      listStyle: 'none',
-      padding: '0',
-      margin: '0'
-    },
-    guideItem: {
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: '0.75rem',
-      marginBottom: '0.75rem',
-      padding: '0.75rem',
-      backgroundColor: colors.gray[50],
-      borderRadius: '8px'
-    },
-    guideNumber: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      width: '1.5rem',
-      height: '1.5rem',
-      backgroundColor: colors.primary,
-      color: 'white',
-      borderRadius: '50%',
-      fontSize: '0.75rem',
-      fontWeight: '600',
-      flexShrink: 0
-    },
-    guideText: {
-      fontSize: '0.875rem',
-      color: colors.gray[700],
-      lineHeight: '1.5'
-    },
-
-    // 制限メッセージ
-    limitCard: {
-      textAlign: 'center',
-      padding: '1.5rem',
-      backgroundColor: colors.warningLight,
-      borderRadius: '12px',
-      marginTop: '1rem',
-      border: `1px solid ${colors.warning}`
-    },
-    limitText: {
-      color: colors.warning,
-      fontWeight: '500',
-      fontSize: '0.875rem'
-    }
-  };
-
+  // 無料版生成関数
   const generatePostWithSharedAPI = async () => {
     if (!prompt.trim()) {
       setError('投稿のテーマを入力してください');
@@ -345,6 +136,9 @@ const PostGenerator = () => {
     setIsGenerating(true);
     setError('');
     setGeneratedPost('');
+    setQuality(null);
+    setQualityGrade(null);
+    setQualityFeedback('');
 
     try {
       const response = await fetch(`${API_ENDPOINT}/api/generate-post-shared`, {
@@ -355,6 +149,7 @@ const PostGenerator = () => {
         body: JSON.stringify({
           prompt: prompt.trim(),
           tone,
+          platform: 'Twitter',
           userType: 'free'
         }),
       });
@@ -363,8 +158,9 @@ const PostGenerator = () => {
 
       if (!response.ok) {
         if (response.status === 429) {
-          setError('1日の無料生成回数（3回）を超えました。明日またお試しください！');
+          setError('1日の無料生成回数（3回）を超えました。プレミアムプランで無制限生成！');
           setUsage({ remaining: 0 });
+          setShowUpgradePrompt(true);
         } else if (response.status === 503) {
           setError('システム負荷により一時的に利用できません。しばらく後にお試しください。');
         } else {
@@ -375,9 +171,15 @@ const PostGenerator = () => {
 
       setGeneratedPost(data.post);
       setQuality(data.quality);
+      setQualityGrade(data.qualityGrade);
+      setQualityFeedback(data.qualityFeedback);
 
       if (data.usage) {
         setUsage(data.usage);
+
+        if (data.usage.remaining <= 1) {
+          setShowUpgradePrompt(true);
+        }
       }
 
     } catch (error) {
@@ -388,59 +190,179 @@ const PostGenerator = () => {
     }
   };
 
-  return (
-    <div style={styles.container}>
-      {/* ヘッダー */}
-      <div style={styles.header}>
-        <h1 style={styles.title}>🚀 SNS自動化</h1>
-        <p style={styles.subtitle}>設定不要でAI投稿生成</p>
+  const handleGenerateClick = () => {
+    if (isPremium) {
+      generatePost(); // プレミアム：無制限・高速
+    } else {
+      generatePostWithSharedAPI(); // 無料：制限あり
+    }
+  };
 
-        {/* プランバッジ */}
-        <div style={styles.planBadge}>
-          <span style={styles.planIcon}>📱</span>
-          <span style={styles.planText}>無料プラン</span>
-        </div>
+  // アップグレードボタンコンポーネント
+  const UpgradeButton = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [upgradeError, setUpgradeError] = useState('');
 
-        {!PREMIUM_FEATURES_ENABLED && (
-          <div style={styles.preparingBadge}>
-            🚧 プレミアムプラン（無制限生成）準備中
+    const handleUpgrade = async () => {
+      const userEmail = email || prompt('メールアドレスを入力してください:');
+      if (!userEmail) return;
+
+      setIsLoading(true);
+      setUpgradeError('');
+
+      try {
+        const response = await fetch('/api/create-checkout-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: userEmail,
+            successUrl: `${window.location.origin}?upgrade=success`,
+            cancelUrl: `${window.location.origin}?upgrade=cancel`,
+          }),
+        });
+
+        const { sessionId } = await response.json();
+        const stripe = await stripePromise;
+        const { error } = await stripe.redirectToCheckout({ sessionId });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+      } catch (error) {
+        console.error('Upgrade error:', error);
+        setUpgradeError('アップグレードに失敗しました: ' + error.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    return (
+      <div className="upgrade-section">
+        <h3>🚀 プレミアムプランでできること</h3>
+        <ul>
+          <li>✅ 無制限の投稿生成</li>
+          <li>✅ ⚡ 高速生成（8秒以内）</li>
+          <li>✅ 直接SNS投稿機能</li>
+          <li>✅ Twitter・Threads同時投稿</li>
+          <li>✅ より高品質なAI生成</li>
+          <li>✅ 広告なしのクリーンUI</li>
+          <li>✅ 詳細統計・分析機能</li>
+        </ul>
+
+        <div style={{ textAlign: 'center' }}>
+          <div className="email-badge">
+            {email || 'numaken@gmail.com'}
           </div>
-        )}
-      </div>
 
-      {/* 使用量表示 */}
-      <div style={styles.usageContainer}>
-        <div style={styles.usageText}>
-          本日の残り生成回数: <strong>{usage.remaining}/3回</strong>
+          <button
+            onClick={handleUpgrade}
+            disabled={isLoading}
+            className="upgrade-btn"
+          >
+            {isLoading ? '処理中...' : '月額¥980で今すぐ決済 →'}
+          </button>
+
+          <p className="payment-info">
+            🔒 Stripe決済で安全・安心<br />
+            カード情報は当サイトに保存されません
+          </p>
+
+          {upgradeError && (
+            <div className="error-message">
+              {upgradeError}
+            </div>
+          )}
         </div>
       </div>
+    );
+  };
 
-      {/* 投稿生成フォーム */}
-      <div style={styles.formCard}>
-        <div style={styles.formGroup}>
-          <label style={styles.label}>
-            💭 投稿のテーマ
-          </label>
+  // プレミアム用のコンテナクラス
+  const containerClass = isPremium
+    ? "post-generator premium-container"
+    : "post-generator";
+
+  return (
+    <div className={containerClass}>
+      {/* プレミアムヘッダー */}
+      {isPremium && (
+        <div className="premium-header">
+          <div className="flex justify-between items-center">
+            <div>
+              <div className="premium-badge">
+                <span className="premium-crown">👑</span>
+                Premium Member
+              </div>
+              <h2 className="text-xl font-bold mt-2">無制限AI投稿生成</h2>
+            </div>
+            <div className="unlimited-badge">
+              無制限
+            </div>
+          </div>
+          {generationCount > 0 && (
+            <div className="premium-stats">
+              <div className="premium-stat-item">
+                <span>今日の生成数</span>
+                <span className="premium-stat-value">{generationCount}回</span>
+              </div>
+              {generationTime > 0 && (
+                <div className="premium-stat-item">
+                  <span>平均生成時間</span>
+                  <span className="premium-stat-value">{(generationTime / 1000).toFixed(1)}秒</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 通常ヘッダー */}
+      {!isPremium && (
+        <div className="header-section">
+          <h1 className="header-title">🚀 SNS自動化</h1>
+          <p className="header-subtitle">設定不要でAI投稿生成</p>
+
+          <div className={`plan-badge ${userPlan}`}>
+            <span className="plan-icon">
+              {isPremium ? '👑' : '📱'}
+            </span>
+            <span className={`plan-text ${userPlan}`}>
+              {isPremium ? 'プレミアムプラン - 無制限' : '無料プラン'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* 使用量表示（無料プランのみ） */}
+      {!isPremium && (
+        <div className="usage-container">
+          <div className="usage-text">
+            本日の残り生成回数: <strong>{usage.remaining}/3回</strong>
+          </div>
+        </div>
+      )}
+
+      {/* メイン生成フォーム */}
+      <div className="form-card">
+        <div className="form-group">
+          <label className="form-label">💭 投稿のテーマ</label>
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="投稿したい内容やテーマを入力してください..."
-            style={{
-              ...styles.textarea,
-              ...(document.activeElement === event?.target ? styles.textareaFocus : {})
-            }}
+            className={`form-textarea ${isPremium ? 'premium-input' : ''}`}
             rows={4}
           />
         </div>
 
-        <div style={styles.formGroup}>
-          <label style={styles.label}>
-            🎭 トーン
-          </label>
+        <div className="form-group">
+          <label className="form-label">🎭 トーン</label>
           <select
             value={tone}
             onChange={(e) => setTone(e.target.value)}
-            style={styles.select}
+            className={`form-select ${isPremium ? 'premium-select' : ''}`}
           >
             <option value="カジュアル">😊 カジュアル</option>
             <option value="フォーマル">🎩 フォーマル</option>
@@ -449,34 +371,30 @@ const PostGenerator = () => {
           </select>
         </div>
 
-        <button
-          onClick={generatePostWithSharedAPI}
-          disabled={isGenerating || !prompt.trim() || usage.remaining === 0}
-          style={{
-            ...styles.button,
-            ...(isGenerating || !prompt.trim() || usage.remaining === 0 ? styles.buttonDisabled : {})
-          }}
-          onMouseEnter={(e) => {
-            if (!isGenerating && prompt.trim() && usage.remaining > 0) {
-              Object.assign(e.target.style, styles.buttonHover);
+        <div className="relative">
+          <button
+            onClick={handleGenerateClick}
+            disabled={isGenerating || !prompt.trim() || (!isPremium && usage.remaining === 0)}
+            className={`generate-button ${userPlan} ${isPremium ? 'premium-generate-btn' : ''}`}
+          >
+            {isGenerating ?
+              (isPremium ? '⚡ 高速生成中...' : '🤖 AI生成中...') :
+              (!isPremium && usage.remaining === 0) ?
+                '⏰ 本日の無料生成完了（明日リセット）' :
+                (isPremium ? '⚡ 高速AI生成' : '✨ AI投稿を生成')
             }
-          }}
-          onMouseLeave={(e) => {
-            Object.assign(e.target.style, styles.button);
-          }}
-        >
-          {isGenerating ? (
-            <>🤖 AI生成中...</>
-          ) : usage.remaining === 0 ? (
-            <>⏰ 本日の無料生成完了（明日リセット）</>
-          ) : (
-            <>✨ AI投稿を生成</>
-          )}
-        </button>
+          </button>
 
-        {usage.remaining === 0 && (
-          <div style={styles.limitCard}>
-            <div style={styles.limitText}>
+          {isPremium && (
+            <div className="fast-generation-indicator">
+              高速処理
+            </div>
+          )}
+        </div>
+
+        {!isPremium && usage.remaining === 0 && (
+          <div className="limit-card">
+            <div className="limit-text">
               📅 無料プランは1日3回まで生成可能です<br />
               明日の朝にリセットされます
             </div>
@@ -486,69 +404,113 @@ const PostGenerator = () => {
 
       {/* エラー表示 */}
       {error && (
-        <div style={styles.errorCard}>
+        <div className="error-card">
           <span>⚠️</span>
           <span>{error}</span>
         </div>
       )}
 
-      {/* 生成された投稿表示 */}
+      {/* 生成結果表示 */}
       {generatedPost && (
-        <div style={styles.successCard}>
-          <h3 style={styles.successHeader}>
+        <div className={`success-card ${isPremium ? 'premium-result' : ''}`}>
+          <h3 className="success-header">
             <span>✨</span>
             生成された投稿
           </h3>
-          <div style={styles.successContent}>{generatedPost}</div>
+          <div className="success-content">{generatedPost}</div>
 
           {quality && (
-            <div style={styles.qualityBadge}>
+            <div className={isPremium ? 'premium-quality-score' : 'quality-badge'}>
               <span>📊</span>
-              品質スコア: {quality}/100
+              品質スコア: {quality}/100 ({qualityGrade}グレード)
+            </div>
+          )}
+
+          {qualityFeedback && (
+            <div className="quality-feedback">
+              {qualityFeedback}
             </div>
           )}
 
           <button
-            onClick={() => {
-              navigator.clipboard.writeText(generatedPost);
-              // コピー成功の視覚フィードバック可能
-            }}
-            style={styles.copyButton}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#059669';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = colors.success;
-            }}
+            onClick={() => navigator.clipboard.writeText(generatedPost)}
+            className="copy-button"
           >
             <span>📋</span>
             クリップボードにコピー
           </button>
+
+          <SnsPostButtons
+            generatedPost={generatedPost}
+            userPlan={userPlan}
+          />
         </div>
       )}
 
-      {/* 使用方法ガイド */}
-      <div style={styles.guideCard}>
-        <h3 style={styles.guideHeader}>
+      {/* 使い方ガイド */}
+      <div className="guide-card">
+        <h3 className="guide-header">
           <span>💡</span>
           使い方ガイド
         </h3>
-        <ul style={styles.guideList}>
+        <ul className="guide-list">
           {[
             '投稿したいテーマを具体的に入力',
             'お好みのトーンを選択',
-            'AI生成ボタンをクリック',
+            isPremium ? '⚡ 高速AI生成ボタンをクリック' : 'AI生成ボタンをクリック',
             '生成されたテキストをコピーしてSNSに投稿'
           ].map((text, index) => (
-            <li key={index} style={styles.guideItem}>
-              <div style={styles.guideNumber}>{index + 1}</div>
-              <div style={styles.guideText}>{text}</div>
+            <li key={index} className="guide-item">
+              <div className="guide-number">{index + 1}</div>
+              <div className="guide-text">{text}</div>
             </li>
           ))}
         </ul>
       </div>
+
+      {/* 広告削除機能: プレミアムユーザーには広告を表示しない */}
+      {!isPremium && (
+        <div className="ad-section">
+          <div className="ad-content">
+            <p className="ad-label">広告</p>
+            <div className="ad-banner">
+              <p>プレミアムプランで広告なしの快適な体験を！</p>
+              <button
+                onClick={() => setShowUpgradePrompt(true)}
+                className="ad-upgrade-btn"
+              >
+                詳しく見る →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* アップグレードセクション（無料プランのみ） */}
+      {!isPremium && <UpgradeButton />}
+
+      {/* プレミアム統計表示 */}
+      {isPremium && generationCount > 0 && (
+        <div className="premium-unlimited-display">
+          <p className="text-sm opacity-90">今月の利用状況</p>
+          <p className="text-lg font-bold">
+            {generationCount}回生成完了 | 無制限利用中
+          </p>
+        </div>
+      )}
+
+      {/* アップグレードプロンプト */}
+      <UpgradePrompt
+        isVisible={showUpgradePrompt}
+        onClose={() => setShowUpgradePrompt(false)}
+        onUpgrade={() => {
+          setShowUpgradePrompt(false);
+          document.querySelector('.upgrade-btn')?.click();
+        }}
+        remainingUses={usage.remaining}
+      />
     </div>
   );
 };
-
+ 
 export default PostGenerator;
