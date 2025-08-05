@@ -590,6 +590,8 @@ const PostGenerator = () => {
         </div>
       )}
 
+// SNS投稿セクションの修正版 - PostGenerator.jsx内の該当部分
+
       {/* SNS投稿セクション */}
       {generatedPost && (
         <div className="sns-posting">
@@ -600,6 +602,7 @@ const PostGenerator = () => {
             <div className="platform-header">
               <span className="platform-icon">🐦</span>
               <span className="platform-name">Twitter</span>
+              {!isPremium && <span className="premium-required-badge">プレミアム限定</span>}
               {isPostingToSNS.twitter && (
                 <span className="posting-indicator">投稿中...</span>
               )}
@@ -615,10 +618,10 @@ const PostGenerator = () => {
             ) : (
               <button
                 onClick={() => postToSNS('twitter')}
-                disabled={!generatedPost || !isPremium || isPostingToSNS.twitter}
-                className="sns-post-button"
+                disabled={!generatedPost || isPostingToSNS.twitter}
+                className={`sns-post-button ${!isPremium ? 'premium-required' : ''}`}
               >
-                Twitterに投稿
+                {isPremium ? 'Twitterに投稿' : 'Twitterに投稿（プレミアム限定）'}
               </button>
             )}
           </div>
@@ -628,6 +631,7 @@ const PostGenerator = () => {
             <div className="platform-header">
               <span className="platform-icon">📸</span>
               <span className="platform-name">Threads</span>
+              {!isPremium && <span className="premium-required-badge">プレミアム限定</span>}
               {isPostingToSNS.threads && (
                 <span className="posting-indicator">投稿中...</span>
               )}
@@ -643,16 +647,16 @@ const PostGenerator = () => {
             ) : (
               <button
                 onClick={() => postToSNS('threads')}
-                disabled={!generatedPost || !isPremium || isPostingToSNS.threads}
-                className="sns-post-button"
+                disabled={!generatedPost || isPostingToSNS.threads}
+                className={`sns-post-button ${!isPremium ? 'premium-required' : ''}`}
               >
-                Threadsに投稿
+                {isPremium ? 'Threadsに投稿' : 'Threadsに投稿（プレミアム限定）'}
               </button>
             )}
           </div>
         </div>
       )}
-
+      
       {/* 統計情報（プレミアム限定） */}
       {isPremium && stats.totalGenerations > 0 && (
         <div className="stats-section">
