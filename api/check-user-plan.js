@@ -1,68 +1,140 @@
+// プラン確認API - api/check-user-plan.js
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
+    // 認証ヘッダーの確認
     const authHeader = req.headers.authorization;
-    const token = authHeader?.replace('Bearer ', '');
-    
-    if (!token) {
-      return res.json({ 
-        plan: 'free',
-        message: 'No authentication token provided'
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        plan: 'free'
       });
     }
 
-    const userInfo = await getUserInfoFromToken(token);
-    const userPlan = await checkUserPremiumStatus(userInfo);
+    const token = authHeader.substring(7);
 
-    return res.json({
-      plan: userPlan,
-      user_id: userInfo.userId,
-      email: userInfo.email,
-      token_received: !!token
-    });
+    // テスト環境での簡易認証（開発・テスト用）
+    if (token === 'test-premium-token' || token === 'premium-user-token') {
+      return res.status(200).json({
+        plan: 'premium',
+        status: 'active',
+        features: {
+          unlimited_generation: true,
+          sns_posting: true,
+          high_speed: true,
+          no_ads: true
+        },
+        subscription: {
+          current_period_start: new Date().toISOString(),
+          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        }
+      });
+    }
 
-  } catch (error) {
-    console.error('User plan check error:', error);
-    return res.json({ 
+    // Stripe連携での実際のプラン確認
+    if (process.env.STRIPE_SECRET_KEY && token.length > 10) {
+      const userPlan = await checkStripeSubscription(token);
+      return res.status(200).json({
+        plan: userPlan,
+        status: userPlan === 'premium' ? 'active' : 'free',
+        features: userPlan === 'premium' ? {
+          unlimited_generation: true,
+          sns_posting: true,
+          high_speed: true,
+          no_ads: true
+        } : {
+          daily_limit: 3,
+          basic_generation: true
+        }
+      });
+    }
+
+    // デフォルトは無料プラン
+    return res.status(200).json({
       plan: 'free',
-      error: 'Plan check failed, defaulting to free'
+      status: 'free',
+      features: {
+        daily_limit: 3,
+        basic_generation: true
+      }
+    });
+
+  } catch (error) {
+    console.error('Plan check error:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      plan: 'free' // エラー時は安全な無料プラン
     });
   }
 }
 
-async function getUserInfoFromToken(token) {
+// Stripe連携での実際のサブスクリプション確認
+async function checkStripeSubscription(token) {
   try {
-    if (token === 'premium-test-token') {
-      return { 
-        userId: 'premium-user-1', 
-        email: 'premium@example.com' 
-      };
+    // 実際のStripe APIコール
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+    // トークンからユーザーIDを取得する処理
+    // この部分は既存の認証システムに依存
+    const userId = await getUserIdFromToken(token);
+
+    if (!userId) {
+      return 'free';
     }
-    
-    return { 
-      userId: 'free-user-1', 
-      email: 'free@example.com' 
-    };
-    
+
+    // Stripeでサブスクリプション確認
+    const subscriptions = await stripe.subscriptions.list({
+      customer: userId,
+      status: 'active',
+      limit: 1
+    });
+
+    if (subscriptions.data.length > 0) {
+      const subscription = subscriptions.data[0];
+
+      // プランIDをチェック
+      const planId = subscription.items.data[0].price.id;
+
+      // プレミアムプランのIDリスト
+      const premiumPlanIds = [
+        process.env.STRIPE_PREMIUM_PRICE_ID,
+        'price_premium_monthly',
+        'price_premium_yearly'
+      ].filter(Boolean);
+
+      if (premiumPlanIds.includes(planId)) {
+        return 'premium';
+      }
+    }
+
+    return 'free';
+
   } catch (error) {
-    console.error('Token verification error:', error);
-    return { userId: 'unknown', email: 'unknown@example.com' };
+    console.error('Stripe subscription check error:', error);
+    return 'free';
   }
 }
 
-async function checkUserPremiumStatus(userInfo) {
+// トークンからユーザーIDを取得
+async function getUserIdFromToken(token) {
   try {
-    if (userInfo.userId === 'premium-user-1') {
-      return 'premium';
-    }
-    
-    return 'free';
-    
+    // JWT デコードまたは既存の認証システムを使用
+    // この部分は実際の認証実装に依存
+
+    // 仮実装：簡易マッピング
+    const userMappings = {
+      'test-premium-token': 'user_premium_123',
+      'premium-user-token': 'user_premium_456'
+    };
+
+    return userMappings[token] || null;
+
   } catch (error) {
-    console.error('Premium status check error:', error);
-    return 'free';
+    console.error('Token decode error:', error);
+    return null;
   }
 }
