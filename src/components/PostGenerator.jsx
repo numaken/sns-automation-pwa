@@ -425,6 +425,62 @@ const PostGenerator = () => {
       'test-premium-token'; // 開発用
   };
 
+
+  // 同時投稿関数 - PostGenerator.jsx内に追加
+
+  // 同時投稿関数（全SNSに一括投稿）
+  const postToAllSNS = async () => {
+    if (!generatedPost) {
+      setError('投稿するコンテンツがありません。まず投稿を生成してください。');
+      return;
+    }
+
+    // プレミアムプランチェック
+    if (!isPremium) {
+      setError('同時投稿機能はプレミアムプラン限定です。TwitterとThreadsに一括投稿できます！');
+      setShowUpgradePrompt(true);
+      return;
+    }
+
+    // 既に投稿中の場合はスキップ
+    if (isPostingToSNS.twitter || isPostingToSNS.threads) {
+      setError('投稿処理中です。しばらくお待ちください。');
+      return;
+    }
+
+    try {
+      setError('');
+
+      // Twitter と Threads に同時投稿
+      const platforms = ['twitter', 'threads'];
+      const promises = platforms.map(platform => postToSNS(platform));
+
+      // 両方の投稿を並行実行
+      await Promise.allSettled(promises);
+
+      // 結果を確認
+      const twitterSuccess = snsPostResults.twitter?.success;
+      const threadsSuccess = snsPostResults.threads?.success;
+
+      if (twitterSuccess && threadsSuccess) {
+        // 両方成功
+        setError(''); // 成功時はエラーをクリア
+      } else if (twitterSuccess || threadsSuccess) {
+        // 一部成功
+        const successPlatform = twitterSuccess ? 'Twitter' : 'Threads';
+        const failedPlatform = twitterSuccess ? 'Threads' : 'Twitter';
+        setError(`${successPlatform}への投稿は成功しましたが、${failedPlatform}への投稿に失敗しました。個別投稿で再試行してください。`);
+      } else {
+        // 両方失敗
+        setError('同時投稿に失敗しました。個別投稿で再試行してください。');
+      }
+
+    } catch (error) {
+      console.error('Simultaneous post error:', error);
+      setError('同時投稿でエラーが発生しました。個別投稿で再試行してください。');
+    }
+  };
+
   // 統計更新関数
   const updateStats = (newQuality, generationTime) => {
     const newStats = {
@@ -590,73 +646,102 @@ const PostGenerator = () => {
         </div>
       )}
 
-// SNS投稿セクションの修正版 - PostGenerator.jsx内の該当部分
-
       {/* SNS投稿セクション */}
       {generatedPost && (
         <div className="sns-posting">
           <h3>同時投稿</h3>
 
-          {/* Twitter */}
-          <div className="sns-platform">
-            <div className="platform-header">
-              <span className="platform-icon">🐦</span>
-              <span className="platform-name">Twitter</span>
-              {!isPremium && <span className="premium-required-badge">プレミアム限定</span>}
-              {isPostingToSNS.twitter && (
-                <span className="posting-indicator">投稿中...</span>
+          {/* 同時投稿ボタン（メイン） */}
+          <div className="simultaneous-posting">
+            <button
+              onClick={() => postToAllSNS()}
+              disabled={!generatedPost || (!isPremium) || isPostingToSNS.twitter || isPostingToSNS.threads}
+              className={`simultaneous-post-button ${!isPremium ? 'premium-required' : ''}`}
+            >
+              {isPremium ? (
+                <>
+                  🚀 全SNSに同時投稿
+                  {(isPostingToSNS.twitter || isPostingToSNS.threads) && <span className="loading-spinner">⏳</span>}
+                </>
+              ) : (
+                <>
+                  👑 全SNSに同時投稿（プレミアム限定）
+                </>
               )}
-            </div>
+            </button>
 
-            {snsPostResults.twitter ? (
-              <SNSResultMessage
-                platform="twitter"
-                result={snsPostResults.twitter}
-                onRetry={() => postToSNS('twitter')}
-                onClearResult={() => setSnsPostResults({ ...snsPostResults, twitter: null })}
-              />
-            ) : (
-              <button
-                onClick={() => postToSNS('twitter')}
-                disabled={!generatedPost || isPostingToSNS.twitter}
-                className={`sns-post-button ${!isPremium ? 'premium-required' : ''}`}
-              >
-                {isPremium ? 'Twitterに投稿' : 'Twitterに投稿（プレミアム限定）'}
-              </button>
+            {!isPremium && (
+              <p className="premium-hint">
+                プレミアムプランで Twitter・Threads に一括投稿できます
+              </p>
             )}
           </div>
 
-          {/* Threads */}
-          <div className="sns-platform">
-            <div className="platform-header">
-              <span className="platform-icon">📸</span>
-              <span className="platform-name">Threads</span>
-              {!isPremium && <span className="premium-required-badge">プレミアム限定</span>}
-              {isPostingToSNS.threads && (
-                <span className="posting-indicator">投稿中...</span>
+          {/* 個別投稿セクション */}
+          <div className="individual-posting">
+            <h4>個別投稿</h4>
+
+            {/* Twitter */}
+            <div className="sns-platform">
+              <div className="platform-header">
+                <span className="platform-icon">🐦</span>
+                <span className="platform-name">Twitter</span>
+                {!isPremium && <span className="premium-required-badge">プレミアム限定</span>}
+                {isPostingToSNS.twitter && (
+                  <span className="posting-indicator">投稿中...</span>
+                )}
+              </div>
+
+              {snsPostResults.twitter ? (
+                <SNSResultMessage
+                  platform="twitter"
+                  result={snsPostResults.twitter}
+                  onRetry={() => postToSNS('twitter')}
+                  onClearResult={() => setSnsPostResults({ ...snsPostResults, twitter: null })}
+                />
+              ) : (
+                <button
+                  onClick={() => postToSNS('twitter')}
+                  disabled={!generatedPost || isPostingToSNS.twitter}
+                  className={`sns-post-button ${!isPremium ? 'premium-required' : ''}`}
+                >
+                  {isPremium ? 'Twitterに投稿' : 'Twitterに投稿（プレミアム限定）'}
+                </button>
               )}
             </div>
 
-            {snsPostResults.threads ? (
-              <SNSResultMessage
-                platform="threads"
-                result={snsPostResults.threads}
-                onRetry={() => postToSNS('threads')}
-                onClearResult={() => setSnsPostResults({ ...snsPostResults, threads: null })}
-              />
-            ) : (
-              <button
-                onClick={() => postToSNS('threads')}
-                disabled={!generatedPost || isPostingToSNS.threads}
-                className={`sns-post-button ${!isPremium ? 'premium-required' : ''}`}
-              >
-                {isPremium ? 'Threadsに投稿' : 'Threadsに投稿（プレミアム限定）'}
-              </button>
-            )}
+            {/* Threads */}
+            <div className="sns-platform">
+              <div className="platform-header">
+                <span className="platform-icon">📸</span>
+                <span className="platform-name">Threads</span>
+                {!isPremium && <span className="premium-required-badge">プレミアム限定</span>}
+                {isPostingToSNS.threads && (
+                  <span className="posting-indicator">投稿中...</span>
+                )}
+              </div>
+
+              {snsPostResults.threads ? (
+                <SNSResultMessage
+                  platform="threads"
+                  result={snsPostResults.threads}
+                  onRetry={() => postToSNS('threads')}
+                  onClearResult={() => setSnsPostResults({ ...snsPostResults, threads: null })}
+                />
+              ) : (
+                <button
+                  onClick={() => postToSNS('threads')}
+                  disabled={!generatedPost || isPostingToSNS.threads}
+                  className={`sns-post-button ${!isPremium ? 'premium-required' : ''}`}
+                >
+                  {isPremium ? 'Threadsに投稿' : 'Threadsに投稿（プレミアム限定）'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
-      
+
       {/* 統計情報（プレミアム限定） */}
       {isPremium && stats.totalGenerations > 0 && (
         <div className="stats-section">

@@ -801,3 +801,140 @@
     font-size: 1rem;
   }
 }
+
+
+/* 同時投稿ボタンCSS - PostGenerator.css末尾に追加 */
+
+/* 同時投稿セクション */
+.simultaneous-posting {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 15px;
+  text-align: center;
+}
+
+.simultaneous-post-button {
+  width: 100%;
+  padding: 18px 24px;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.simultaneous-post-button:not(.premium-required) {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+}
+
+.simultaneous-post-button:not(.premium-required):hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(40, 167, 69, 0.6);
+}
+
+.simultaneous-post-button.premium-required {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(240, 147, 251, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.simultaneous-post-button.premium-required:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(240, 147, 251, 0.6);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.simultaneous-post-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.premium-hint {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  margin: 0;
+  font-style: italic;
+}
+
+/* 個別投稿セクション */
+.individual-posting {
+  margin-top: 20px;
+}
+
+.individual-posting h4 {
+  color: #333;
+  font-size: 1.1rem;
+  margin-bottom: 15px;
+  text-align: center;
+  position: relative;
+}
+
+.individual-posting h4::before,
+.individual-posting h4::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 40%;
+  height: 1px;
+  background: #e1e5e9;
+}
+
+.individual-posting h4::before {
+  left: 0;
+}
+
+.individual-posting h4::after {
+  right: 0;
+}
+
+/* 同時投稿ボタンのアニメーション効果 */
+.simultaneous-post-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: simultaneous-shine 2s ease-in-out infinite;
+}
+
+@keyframes simultaneous-shine {
+  0% {
+    left: -100%;
+  }
+
+  50% {
+    left: 100%;
+  }
+
+  100% {
+    left: -100%;
+  }
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+  .simultaneous-post-button {
+    font-size: 1rem;
+    padding: 16px 20px;
+  }
+
+  .individual-posting h4 {
+    font-size: 1rem;
+  }
+
+  .individual-posting h4::before,
+  .individual-posting h4::after {
+    width: 35%;
+  }
+}
