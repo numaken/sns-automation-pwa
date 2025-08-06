@@ -87,7 +87,12 @@ const PostGenerator = () => {
     }
   };
 
-  // プレミアム版生成（個人APIキー使用）
+
+
+  // PostGenerator.jsx - PWAエラー対策パッチ
+  // 既存のgeneratePost関数とgeneratePostWithSharedAPI関数に追加
+
+  // 1. プレミアム版生成関数（PWAエラー対策追加）
   const generatePost = async () => {
     if (!prompt.trim()) {
       setError('投稿のテーマを入力してください');
@@ -100,6 +105,10 @@ const PostGenerator = () => {
     const startTime = Date.now();
 
     try {
+      // PWAエラー対策: タイムアウト付きリクエスト
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       const response = await fetch('/api/generate-post', {
         method: 'POST',
         headers: {
@@ -111,8 +120,10 @@ const PostGenerator = () => {
           tone,
           userType: 'premium'
         }),
+        signal: controller.signal
       });
 
+      clearTimeout(timeoutId);
       const data = await response.json();
 
       if (!response.ok) {
@@ -129,13 +140,23 @@ const PostGenerator = () => {
 
     } catch (error) {
       console.error('Generate post error:', error);
-      setError('ネットワークエラーが発生しました。しばらく待ってから再試行してください。');
+
+      // PWAエラー対策: 詳細なエラーハンドリング
+      if (error.name === 'AbortError') {
+        setError('リクエストがタイムアウトしました。再試行してください。');
+      } else if (error.name === 'TypeError' || error.message.includes('Failed to fetch')) {
+        setError('ネットワークエラーです。接続を確認してください。');
+      } else if (error.message.includes('message channel closed')) {
+        setError('PWAエラーが発生しました。ページを更新して再試行してください。');
+      } else {
+        setError('投稿生成でエラーが発生しました。再試行してください。');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 無料版生成（共有APIキー使用）
+  // 2. 無料版生成関数（PWAエラー対策追加）
   const generatePostWithSharedAPI = async () => {
     if (!prompt.trim()) {
       setError('投稿のテーマを入力してください');
@@ -148,6 +169,10 @@ const PostGenerator = () => {
     const startTime = Date.now();
 
     try {
+      // PWAエラー対策: タイムアウト付きリクエスト
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       const response = await fetch('/api/generate-post-shared', {
         method: 'POST',
         headers: {
@@ -158,8 +183,10 @@ const PostGenerator = () => {
           tone,
           userType: 'free'
         }),
+        signal: controller.signal
       });
 
+      clearTimeout(timeoutId);
       const data = await response.json();
 
       if (!response.ok) {
@@ -168,7 +195,7 @@ const PostGenerator = () => {
           setUsage({ remaining: 0 });
           setShowUpgradePrompt(true);
         } else if (response.status === 503) {
-          setError('システム負荷により一時的に利用できません。しばらく後にお試しください。');
+          setError('システム負荷により一時的に利用できません。しばらく後にお試行してください。');
         } else {
           throw new Error(data.error || '投稿生成に失敗しました');
         }
@@ -196,11 +223,23 @@ const PostGenerator = () => {
 
     } catch (error) {
       console.error('Generate post error:', error);
-      setError('ネットワークエラーが発生しました。しばらく待ってから再試行してください。');
+
+      // PWAエラー対策: 詳細なエラーハンドリング
+      if (error.name === 'AbortError') {
+        setError('リクエストがタイムアウトしました。再試行してください。');
+      } else if (error.name === 'TypeError' || error.message.includes('Failed to fetch')) {
+        setError('ネットワークエラーです。接続を確認してください。');
+      } else if (error.message.includes('message channel closed')) {
+        setError('PWAエラーが発生しました。ページを更新して再試行してください。');
+      } else {
+        setError('投稿生成でエラーが発生しました。再試行してください。');
+      }
     } finally {
       setIsLoading(false);
     }
   };
+
+
 
   // SNS投稿関数
   const postToSNS = async (platform) => {
