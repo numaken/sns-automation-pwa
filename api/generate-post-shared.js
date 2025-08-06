@@ -66,8 +66,20 @@ export default async function handler(req, res) {
 
     // 使用量・コスト記録
     if (userType === 'free') {
+      // 先に残り回数を取得（インクリメント前）
+      const remainingBefore = await getRemainingUsage(clientIP);
       await incrementDailyUsage(clientIP);
+      // インクリメント後の正しい残り回数を計算
+      const remainingAfter = Math.max(0, remainingBefore.remaining - 1);
+
+      return res.status(200).json({
+        post: generatedPost,
+        quality: quality,
+        usage: { remaining: remainingAfter },
+        shared_api: true
+      });
     }
+
     await trackCost(data.usage);
 
     // 品質評価

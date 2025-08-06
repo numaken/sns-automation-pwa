@@ -14,7 +14,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { text, accessToken } = req.body;
+    const { text, content, accessToken } = req.body;
+    const postText = text || content; // どちらでも受け入れる
 
     // 入力検証
     if (!text || text.trim().length === 0) {
@@ -24,10 +25,10 @@ export default async function handler(req, res) {
       });
     }
 
-    if (text.length > 500) {
+    if (!postText || postText.trim().length === 0) {
       return res.status(400).json({
-        error: '投稿テキストが長すぎます（500文字以内）',
-        code: 'TEXT_TOO_LONG'
+        error: '投稿テキストが必要です',
+        code: 'MISSING_TEXT'
       });
     }
 
