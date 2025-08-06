@@ -44,7 +44,7 @@ export default async function handler(req, res) {
         messages: [
           {
             role: 'system',
-            content: `SNS投稿文を日本語で生成してください。トーン: ${tone}`
+            content: `SNS投稿文を日本語で生成してください。トーン: ${tone}。絵文字とハッシュタグを含めて魅力的な投稿にしてください。`
           },
           {
             role: 'user',
@@ -64,13 +64,22 @@ export default async function handler(req, res) {
 
     const generatedPost = data.choices[0].message.content.trim();
 
-    // 使用量・コスト記録
+    // 品質評価
+    const quality = evaluatePostQuality(generatedPost);
+
+    // 無料プランの使用量記録と正確な残り回数計算
     if (userType === 'free') {
-      // 先に残り回数を取得（インクリメント前）
-      const remainingBefore = await getRemainingUsage(clientIP);
+      // インクリメント前に現在の残り回数を取得
+      const currentUsage = await getCurrentUsage(clientIP);
+
+      // 使用回数をインクリメント
       await incrementDailyUsage(clientIP);
-      // インクリメント後の正しい残り回数を計算
-      const remainingAfter = Math.max(0, remainingBefore.remaining - 1);
+
+      // 正確な残り回数を計算
+      const remainingAfter = Math.max(0, DAILY_LIMIT - (currentUsage + 1));
+
+      // コスト記録
+      await trackCost(data.usage);
 
       return res.status(200).json({
         post: generatedPost,
@@ -80,15 +89,13 @@ export default async function handler(req, res) {
       });
     }
 
+    // プレミアムプランの場合
     await trackCost(data.usage);
-
-    // 品質評価
-    const quality = evaluatePostQuality(generatedPost);
 
     return res.status(200).json({
       post: generatedPost,
       quality: quality,
-      usage: userType === 'free' ? await getRemainingUsage(clientIP) : { remaining: 'unlimited' },
+      usage: { remaining: 'unlimited' },
       shared_api: true
     });
 
@@ -101,6 +108,7 @@ export default async function handler(req, res) {
     });
   }
 }
+
 
 // 修正された KV REST API ヘルパー関数群
 async function getKVValue(key) {
@@ -191,6 +199,7 @@ async function incrKVValue(key, ttl = null) {
 function getClientIP(req) {
   return req.headers['x-forwarded-for']?.split(',')[0] ||
     req.headers['x-real-ip'] ||
+    req.headers['cf-connecting-ip'] ||
     req.connection.remoteAddress ||
     'unknown';
 }
@@ -202,6 +211,14 @@ async function checkDailyLimit(clientIP) {
   return parseInt(usage) < DAILY_LIMIT;
 }
 
+// 現在の使用回数を取得（新規追加）
+async function getCurrentUsage(clientIP) {
+  const today = new Date().toISOString().split('T')[0];
+  const key = `daily_usage:${clientIP}:${today}`;
+  const usage = await getKVValue(key) || 0;
+  return parseInt(usage);
+}
+
 async function incrementDailyUsage(clientIP) {
   const today = new Date().toISOString().split('T')[0];
   const key = `daily_usage:${clientIP}:${today}`;
@@ -209,10 +226,8 @@ async function incrementDailyUsage(clientIP) {
 }
 
 async function getRemainingUsage(clientIP) {
-  const today = new Date().toISOString().split('T')[0];
-  const key = `daily_usage:${clientIP}:${today}`;
-  const usage = await getKVValue(key) || 0;
-  return { remaining: Math.max(0, DAILY_LIMIT - parseInt(usage)) };
+  const currentUsage = await getCurrentUsage(clientIP);
+  return { remaining: Math.max(0, DAILY_LIMIT - currentUsage) };
 }
 
 async function checkCostLimit() {
@@ -223,6 +238,8 @@ async function checkCostLimit() {
 }
 
 async function trackCost(usage) {
+  if (!usage) return;
+
   const today = new Date().toISOString().split('T')[0];
   const key = `daily_cost:${today}`;
 
@@ -243,12 +260,14 @@ function evaluatePostQuality(post) {
   const length = post.length;
   const hasHashtags = post.includes('#');
   const hasEmojis = /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/u.test(post);
+  const hasJapanese = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(post);
 
   let score = 50; // ベーススコア
 
   if (length > 50 && length < 200) score += 20;
   if (hasHashtags) score += 15;
   if (hasEmojis) score += 15;
+  if (hasJapanese) score += 10;
 
   return Math.min(100, score);
 }
