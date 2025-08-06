@@ -425,9 +425,6 @@ const PostGenerator = () => {
       'test-premium-token'; // 開発用
   };
 
-
-  // 同時投稿関数 - PostGenerator.jsx内に追加
-
   // 同時投稿関数（全SNSに一括投稿）
   const postToAllSNS = async () => {
     if (!generatedPost) {
@@ -646,10 +643,10 @@ const PostGenerator = () => {
         </div>
       )}
 
-      {/* SNS投稿セクション */}
+      {/* 統合されたSNS投稿セクション */}
       {generatedPost && (
         <div className="sns-posting">
-          <h3>同時投稿</h3>
+          <h3>🚀 SNS投稿</h3>
 
           {/* 同時投稿ボタン（メイン） */}
           <div className="simultaneous-posting">
