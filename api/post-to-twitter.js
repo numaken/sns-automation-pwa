@@ -1,5 +1,5 @@
 // api/post-to-twitter.js
-import { getTwitterTokens } from '../../utils/kv-client';
+import { getTwitterTokens } from '../utils/kv-client';
 
 export default async function handler(req, res) {
   // CORS 対応

@@ -1,5 +1,5 @@
 // api/post-to-threads.js
-import { getThreadsTokens } from '../../utils/kv-client';
+import { getThreadsTokens } from '../utils/kv-client';
 
 export default async function handler(req, res) {
   // CORS 対応
