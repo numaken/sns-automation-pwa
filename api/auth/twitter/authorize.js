@@ -45,10 +45,8 @@ export default async function handler(req, res) {
     await setKVValue(`oauth_session:${state}`, sessionData, 3600);
 
     // VERCEL_ENV が production なら本番ドメイン、それ以外は常に本番ドメインを使う
-    const origin =
-        process.env.VERCEL_ENV === 'production'
-            ? `https://${process.env.VERCEL_URL}`
-          : 'https://sns-automation-pwa.vercel.app';
+    // どの環境でも本番ドメインを使う
+    const origin = 'https://sns-automation-pwa.vercel.app';
 
     const redirectUri = `${origin}/api/auth/twitter/callback`;
 
