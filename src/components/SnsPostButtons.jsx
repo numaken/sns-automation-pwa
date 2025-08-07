@@ -1,338 +1,371 @@
-import React, { useState } from 'react';
-import { Twitter, MessageCircle, Send, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Twitter, MessageCircle, Link, CheckCircle, AlertCircle, Settings } from 'lucide-react';
 
-const SnsPostButtons = ({
-  generatedPost,
-  userPlan = 'free',
-  platform,
-  onPostResult,
-  className = ''
-}) => {
-  const [postingStates, setPostingStates] = useState({});
-  const [postResults, setPostResults] = useState({});
+// OAuth共通ヘルパー関数をインライン定義（localStorage使用不可のため）
+const OAuthHelpers = {
+  generateUserId() {
+    return `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  },
 
-  // API endpoint
-  const API_ENDPOINT = process.env.REACT_APP_API_URL || window.location.origin;
+  async startOAuthFlow(platform, userId) {
+    const response = await fetch(`/api/auth/${platform}/authorize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId })
+    });
 
-  // プラン別の利用可能機能チェック
-  const canUseDirectPost = userPlan === 'premium' || userPlan === 'standard';
-  const canUseMultiPost = userPlan === 'premium';
+    if (!response.ok) {
+      throw new Error(`OAuth start failed: ${response.status}`);
+    }
 
-  // デバッグログ追加
-  console.log('🐛 SnsPostButtons Debug:');
-  console.log('🐛 userPlan:', userPlan);
-  console.log('🐛 canUseDirectPost:', canUseDirectPost);
-  console.log('🐛 canUseMultiPost:', canUseMultiPost);
+    return await response.json();
+  },
 
-  // 投稿状態の更新
-  const updatePostingState = (platform, state) => {
-    setPostingStates(prev => ({ ...prev, [platform]: state }));
-  };
+  async checkOAuthConnection(platform, userId) {
+    try {
+      const response = await fetch(`/api/auth/${platform}/status?userId=${userId}`);
 
-  // 投稿結果の更新
-  const updatePostResult = (platform, result) => {
-    setPostResults(prev => ({ ...prev, [platform]: result }));
-    if (onPostResult) {
-      onPostResult(platform, result);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return { connected: false, message: `${platform}アカウントが接続されていません` };
+        }
+        throw new Error(`Connection check failed: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      return { connected: false, error: error.message };
+    }
+  },
+
+  async postToSNS(platform, content, userId) {
+    const response = await fetch(`/api/post-to-${platform}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content: content,
+        text: content, // 両方を送信（互換性確保）
+        userId: userId
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      if (data.code === 'PREMIUM_REQUIRED') {
+        throw new Error('プレミアムプラン限定機能です');
+      }
+
+      if (data.code === 'TWITTER_NOT_CONNECTED' || data.code === 'THREADS_NOT_CONNECTED') {
+        throw new Error(`${platform}アカウントの接続が必要です`);
+      }
+
+      if (data.code === 'TOKEN_EXPIRED' || data.code === 'TWITTER_AUTH_ERROR' || data.code === 'THREADS_AUTH_ERROR') {
+        throw new Error(`${platform}の再認証が必要です`);
+      }
+
+      throw new Error(data.error || `${platform}投稿に失敗しました`);
+    }
+
+    return data;
+  },
+
+  openOAuthWindow(authUrl, onSuccess, onError) {
+    const popup = window.open(authUrl, 'oauth', 'width=600,height=700,scrollbars=yes,resizable=yes');
+
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+
+        const urlParams = new URLSearchParams(window.location.search);
+
+        if (urlParams.get('twitter_connected') === 'success' || urlParams.get('threads_connected') === 'success') {
+          const username = urlParams.get('username');
+          onSuccess && onSuccess(username);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (urlParams.get('error')) {
+          const error = urlParams.get('error');
+          onError && onError(error);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+    }, 1000);
+
+    setTimeout(() => {
+      if (!popup.closed) {
+        popup.close();
+        clearInterval(checkClosed);
+        onError && onError('Authentication timeout');
+      }
+    }, 300000);
+  }
+};
+
+const SnsPostButtons = ({ generatedPost, userPlan = 'free' }) => {
+  const [userId] = useState(() => OAuthHelpers.generateUserId());
+  const [connections, setConnections] = useState({
+    twitter: { connected: false, loading: true },
+    threads: { connected: false, loading: true }
+  });
+  const [posting, setPosting] = useState({
+    twitter: false,
+    threads: false
+  });
+  const [results, setResults] = useState({
+    twitter: null,
+    threads: null
+  });
+
+  // コンポーネント初期化時にOAuth接続状態をチェック
+  useEffect(() => {
+    checkAllConnections();
+  }, []);
+
+  const checkAllConnections = async () => {
+    setConnections(prev => ({
+      twitter: { ...prev.twitter, loading: true },
+      threads: { ...prev.threads, loading: true }
+    }));
+
+    try {
+      const [twitterStatus, threadsStatus] = await Promise.allSettled([
+        OAuthHelpers.checkOAuthConnection('twitter', userId),
+        OAuthHelpers.checkOAuthConnection('threads', userId)
+      ]);
+
+      setConnections({
+        twitter: {
+          connected: twitterStatus.status === 'fulfilled' ? twitterStatus.value.connected : false,
+          loading: false,
+          username: twitterStatus.status === 'fulfilled' ? twitterStatus.value.username : null,
+          error: twitterStatus.status === 'rejected' ? twitterStatus.reason.message : null
+        },
+        threads: {
+          connected: threadsStatus.status === 'fulfilled' ? threadsStatus.value.connected : false,
+          loading: false,
+          username: threadsStatus.status === 'fulfilled' ? threadsStatus.value.username : null,
+          error: threadsStatus.status === 'rejected' ? threadsStatus.reason.message : null
+        }
+      });
+    } catch (error) {
+      console.error('Connection check failed:', error);
+      setConnections({
+        twitter: { connected: false, loading: false, error: error.message },
+        threads: { connected: false, loading: false, error: error.message }
+      });
     }
   };
 
-  // Twitter投稿
-  const postToTwitter = async () => {
-    updatePostingState('twitter', 'posting');
-    updatePostResult('twitter', null);
+  const handleOAuthConnect = async (platform) => {
+    try {
+      setConnections(prev => ({
+        ...prev,
+        [platform]: { ...prev[platform], loading: true }
+      }));
+
+      const oauthData = await OAuthHelpers.startOAuthFlow(platform, userId);
+
+      OAuthHelpers.openOAuthWindow(
+        oauthData.authUrl,
+        (username) => {
+          setConnections(prev => ({
+            ...prev,
+            [platform]: { connected: true, loading: false, username }
+          }));
+          alert(`${platform === 'twitter' ? 'Twitter' : 'Threads'}アカウント「@${username}」を接続しました！`);
+        },
+        (error) => {
+          setConnections(prev => ({
+            ...prev,
+            [platform]: { connected: false, loading: false, error }
+          }));
+          alert(`${platform === 'twitter' ? 'Twitter' : 'Threads'}認証に失敗しました: ${error}`);
+        }
+      );
+    } catch (error) {
+      console.error(`${platform} OAuth error:`, error);
+      setConnections(prev => ({
+        ...prev,
+        [platform]: { connected: false, loading: false, error: error.message }
+      }));
+      alert(`OAuth認証の開始に失敗しました: ${error.message}`);
+    }
+  };
+
+  const handlePost = async (platform) => {
+    if (!generatedPost) {
+      alert('投稿内容を生成してください');
+      return;
+    }
+
+    if (userPlan !== 'premium') {
+      alert('SNS投稿機能はプレミアムプラン限定です。アップグレードしてください。');
+      return;
+    }
+
+    if (!connections[platform].connected) {
+      alert(`まず${platform === 'twitter' ? 'Twitter' : 'Threads'}アカウントを接続してください`);
+      return;
+    }
+
+    setPosting(prev => ({ ...prev, [platform]: true }));
+    setResults(prev => ({ ...prev, [platform]: null }));
 
     try {
-      const response = await fetch(`${API_ENDPOINT}/api/post-to-twitter`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          content: generatedPost,
-          options: { maxRetries: 3 }
-        }),
-      });
+      const result = await OAuthHelpers.postToSNS(platform, generatedPost, userId);
 
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        updatePostResult('twitter', {
+      setResults(prev => ({
+        ...prev,
+        [platform]: {
           success: true,
-          url: data.url,
-          post_id: data.post_id,
-          message: data.message
-        });
-      } else {
-        updatePostResult('twitter', {
-          success: false,
-          error: data.message || 'Twitter投稿に失敗しました'
-        });
-      }
+          message: result.message,
+          url: result.tweetUrl || result.threadsUrl,
+          id: result.tweetId || result.threadId
+        }
+      }));
+
+      alert(`${platform === 'twitter' ? 'Twitter' : 'Threads'}に投稿しました！`);
     } catch (error) {
-      updatePostResult('twitter', {
-        success: false,
-        error: 'ネットワークエラーが発生しました'
-      });
+      console.error(`${platform} post error:`, error);
+
+      setResults(prev => ({
+        ...prev,
+        [platform]: {
+          success: false,
+          error: error.message
+        }
+      }));
+
+      // 認証エラーの場合は再接続を促す
+      if (error.message.includes('認証') || error.message.includes('接続')) {
+        setConnections(prev => ({
+          ...prev,
+          [platform]: { ...prev[platform], connected: false }
+        }));
+      }
+
+      alert(`投稿に失敗しました: ${error.message}`);
     } finally {
-      updatePostingState('twitter', null);
+      setPosting(prev => ({ ...prev, [platform]: false }));
     }
   };
 
-  // Threads投稿
-  const postToThreads = async () => {
-    updatePostingState('threads', 'posting');
-    updatePostResult('threads', null);
-
-    try {
-      const response = await fetch(`${API_ENDPOINT}/api/post-to-threads`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          content: generatedPost,
-          options: { maxRetries: 3 }
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        updatePostResult('threads', {
-          success: true,
-          url: data.url,
-          post_id: data.post_id,
-          message: data.message
-        });
-      } else {
-        updatePostResult('threads', {
-          success: false,
-          error: data.message || 'Threads投稿に失敗しました'
-        });
-      }
-    } catch (error) {
-      updatePostResult('threads', {
-        success: false,
-        error: 'ネットワークエラーが発生しました'
-      });
-    } finally {
-      updatePostingState('threads', null);
-    }
-  };
-
-  // 同時投稿
-  const postToMultiple = async () => {
-    updatePostingState('multiple', 'posting');
-    updatePostResult('multiple', null);
-
-    try {
-      const response = await fetch(`${API_ENDPOINT}/api/post-to-multiple`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          content: generatedPost,
-          platforms: ['twitter', 'threads'],
-          options: { maxRetries: 3 }
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        updatePostResult('multiple', {
-          success: data.success,
-          partial_success: data.partial_success,
-          summary: data.summary,
-          results: data.results,
-          errors: data.errors,
-          message: data.message
-        });
-      } else {
-        updatePostResult('multiple', {
-          success: false,
-          error: data.message || '同時投稿に失敗しました'
-        });
-      }
-    } catch (error) {
-      updatePostResult('multiple', {
-        success: false,
-        error: 'ネットワークエラーが発生しました'
-      });
-    } finally {
-      updatePostingState('multiple', null);
-    }
-  };
-
-  // 投稿ボタンのレンダリング
-  const renderPostButton = (platformKey, label, icon, onClick, isPrimary = false) => {
-    const isPosting = postingStates[platformKey] === 'posting';
-    const result = postResults[platformKey];
-
-    const buttonClass = `post-button ${isPrimary ? 'primary-button' : 'secondary-button'} ${isPosting ? 'posting' : ''
-      } ${result?.success ? 'success' : ''} ${result?.success === false ? 'error' : ''}`;
+  const PlatformButton = ({ platform, icon: Icon, name, color }) => {
+    const connection = connections[platform];
+    const isPosting = posting[platform];
+    const result = results[platform];
 
     return (
-      <button
-        className={buttonClass}
-        onClick={onClick}
-        disabled={isPosting || !generatedPost}
-        title={!canUseDirectPost ? 'スタンダード/プレミアムプランで利用可能' : ''}
-      >
-        {isPosting ? (
-          <>
-            <Loader2 className="button-icon spinning" size={16} />
-            投稿中...
-          </>
-        ) : result?.success ? (
-          <>
-            <CheckCircle className="button-icon" size={16} />
-            投稿完了
-          </>
-        ) : result?.success === false ? (
-          <>
-            <AlertCircle className="button-icon" size={16} />
-            再試行
-          </>
-        ) : (
-          <>
-            {icon}
-            {label}
-          </>
-        )}
-      </button>
-    );
-  };
+      <div className="border rounded-lg p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Icon className={`h-5 w-5 ${color}`} />
+            <span className="font-medium">{name}</span>
+          </div>
 
-  // 投稿結果の表示
-  const renderPostResults = () => {
-    const hasResults = Object.keys(postResults).some(key => postResults[key]);
+          {connection.loading ? (
+            <div className="text-gray-500 text-sm">確認中...</div>
+          ) : connection.connected ? (
+            <div className="flex items-center space-x-1 text-green-600 text-sm">
+              <CheckCircle className="h-4 w-4" />
+              <span>@{connection.username}</span>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-1 text-gray-500 text-sm">
+              <AlertCircle className="h-4 w-4" />
+              <span>未接続</span>
+            </div>
+          )}
+        </div>
 
-    if (!hasResults) return null;
+        <div className="space-y-2">
+          {!connection.connected ? (
+            <button
+              onClick={() => handleOAuthConnect(platform)}
+              disabled={connection.loading}
+              className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            >
+              <Settings className="h-4 w-4" />
+              <span>{connection.loading ? '確認中...' : `${name}を接続`}</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => handlePost(platform)}
+              disabled={isPosting || !generatedPost || userPlan !== 'premium'}
+              className="w-full bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            >
+              <Icon className="h-4 w-4" />
+              <span>{isPosting ? '投稿中...' : `${name}に投稿`}</span>
+            </button>
+          )}
 
-    return (
-      <div className="post-results">
-        <h4>投稿結果</h4>
-        {Object.entries(postResults).map(([platformKey, result]) => {
-          if (!result) return null;
+          {userPlan !== 'premium' && (
+            <p className="text-sm text-amber-600 bg-amber-50 p-2 rounded">
+              プレミアムプランで投稿機能が利用できます
+            </p>
+          )}
+        </div>
 
-          return (
-            <div key={platformKey} className={`result-item ${result.success ? 'success' : 'error'}`}>
-              <div className="result-platform">
-                {platformKey === 'twitter' && <Twitter size={16} />}
-                {platformKey === 'threads' && <MessageCircle size={16} />}
-                {platformKey === 'multiple' && <Send size={16} />}
-                <span className="platform-name">
-                  {platformKey === 'twitter' && 'Twitter'}
-                  {platformKey === 'threads' && 'Threads'}
-                  {platformKey === 'multiple' && '同時投稿'}
-                </span>
-              </div>
-
-              <div className="result-content">
-                {result.success ? (
-                  <>
-                    <span className="success-message">{result.message}</span>
-                    {result.url && (
-                      <a
-                        href={result.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="post-link"
-                      >
-                        投稿を見る →
-                      </a>
-                    )}
-                    {result.results && (
-                      <div className="multiple-results">
-                        {result.results.map((platformResult, index) => (
-                          <div key={index} className="platform-result">
-                            <span>{platformResult.platform}:</span>
-                            <a
-                              href={platformResult.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="post-link"
-                            >
-                              投稿を見る
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <span className="error-message">{result.error}</span>
+        {result && (
+          <div className={`p-2 rounded text-sm ${result.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+            }`}>
+            {result.success ? (
+              <div className="space-y-1">
+                <p>{result.message}</p>
+                {result.url && (
+                  <a
+                    href={result.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-1 text-blue-600 hover:text-blue-800"
+                  >
+                    <Link className="h-3 w-3" />
+                    <span>投稿を確認</span>
+                  </a>
                 )}
               </div>
-            </div>
-          );
-        })}
+            ) : (
+              <p>エラー: {result.error}</p>
+            )}
+          </div>
+        )}
       </div>
     );
   };
 
   return (
-    <div className={`sns-post-buttons ${className}`}>
-      {/* 無料プランの場合は機能制限の説明 */}
-      {!canUseDirectPost && (
-        <div className="feature-notice">
-          <span className="notice-text">
-            直接投稿機能はスタンダード/プレミアムプランで利用できます
-          </span>
-        </div>
-      )}
-
-      {/* 投稿ボタン群 */}
-      <div className="post-buttons-grid">
-        {canUseDirectPost && (
-          <>
-            {renderPostButton(
-              'twitter',
-              'Twitterに投稿',
-              <Twitter className="button-icon" size={16} />,
-              postToTwitter
-            )}
-
-            {renderPostButton(
-              'threads',
-              'Threadsに投稿',
-              <MessageCircle className="button-icon" size={16} />,
-              postToThreads
-            )}
-          </>
-        )}
-
-        {canUseMultiPost && (
-          renderPostButton(
-            'multiple',
-            '同時投稿',
-            <Send className="button-icon" size={16} />,
-            postToMultiple,
-            true
-          )
-        )}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">SNS投稿</h3>
+        <button
+          onClick={checkAllConnections}
+          className="text-sm text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+        >
+          <Settings className="h-4 w-4" />
+          <span>接続状態を更新</span>
+        </button>
       </div>
 
-      {/* 投稿結果表示 */}
-      {renderPostResults()}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <PlatformButton
+          platform="twitter"
+          icon={Twitter}
+          name="Twitter"
+          color="text-blue-500"
+        />
 
-      {/* プラン別機能説明 */}
-      {userPlan === 'free' && (
-        <div className="plan-features">
-          <div className="feature-list">
-            <div className="feature-item">
-              <span className="plan-name">スタンダード</span>
-              <span className="feature-desc">Twitter・Threads個別投稿</span>
-            </div>
-            <div className="feature-item">
-              <span className="plan-name">プレミアム</span>
-              <span className="feature-desc">全機能 + 同時投稿</span>
-            </div>
-          </div>
-        </div>
+        <PlatformButton
+          platform="threads"
+          icon={MessageCircle}
+          name="Threads"
+          color="text-purple-500"
+        />
+      </div>
+
+      {!generatedPost && (
+        <p className="text-center text-gray-500 text-sm py-4">
+          まずAI投稿生成を行ってください
+        </p>
       )}
     </div>
   );
