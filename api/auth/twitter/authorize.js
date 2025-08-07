@@ -56,14 +56,22 @@ export default async function handler(req, res) {
     await setKVValue(`oauth_session:${state}`, sessionData, 3600);
 
     // Twitter OAuth 2.0認証URL生成
+      // VERCEL_URL が「example.com」のようにプロトコル無しの場合は自動で https:// を付与する
+      const origin = process.env.VERCEL_URL && process.env.VERCEL_URL.startsWith('http')
+          ? process.env.VERCEL_URL
+        : process.env.VERCEL_URL
+            ? `https://${process.env.VERCEL_URL}`
+          : 'https://sns-automation-pwa.vercel.app';
+    const redirectUri = `${origin}/api/auth/twitter/callback`;
+
     const authParams = new URLSearchParams({
-      response_type: 'code',
-      client_id: process.env.TWITTER_CLIENT_ID,
-      redirect_uri: `${process.env.VERCEL_URL || 'https://sns-automation-pwa.vercel.app'}/api/auth/twitter/callback`,
-      scope: 'tweet.read tweet.write users.read offline.access',
-      state: state,
-      code_challenge: codeChallenge,
-      code_challenge_method: 'S256'
+        response_type: 'code',
+        client_id: process.env.TWITTER_CLIENT_ID,
+        redirect_uri: redirectUri,
+        scope: 'tweet.read tweet.write users.read offline.access',
+        state: state,
+        code_challenge: codeChallenge,
+        code_challenge_method: 'S256'
     });
 
     const authUrl = `https://twitter.com/i/oauth2/authorize?${authParams.toString()}`;
