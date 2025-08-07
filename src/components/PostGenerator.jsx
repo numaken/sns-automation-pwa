@@ -5,7 +5,7 @@ import './PostGenerator.css';
 
 const PostGenerator = () => {
   // プラン管理
-  const { userPlan, isPremium, isLoading: planLoading, refreshPlan } = useUserPlan();
+  const { userPlan, isPremium, isLoading: planLoading, refreshPlan, upgradeTopremium } = useUserPlan();
 
   // 状態管理
   const [prompt, setPrompt] = useState('');
@@ -830,10 +830,7 @@ const PostGenerator = () => {
       <UpgradePrompt
         isVisible={showUpgradePrompt}
         onClose={() => setShowUpgradePrompt(false)}
-        onUpgrade={() => {
-          // アップグレード処理
-          window.location.href = '/upgrade';
-        }}
+        onUpgrade={() => upgradeTopremium()}
         remainingUses={typeof usage.remaining === 'number' ? usage.remaining : 0}
       />
     </div>
