@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 export const useUserPlan = () => {
   // デフォルトをpremiumに設定（テスト環境での動作確認用）
-  const [userPlan, setUserPlan] = useState('premium');
+  const [userPlan, setUserPlan] = useState('free');
   const [isLoading, setIsLoading] = useState(true);
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
   const [error, setError] = useState(null);
