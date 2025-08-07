@@ -44,12 +44,12 @@ export default async function handler(req, res) {
     const sessionData = { userId, codeVerifier, state, platform: 'twitter', createdAt: new Date().toISOString() };
     await setKVValue(`oauth_session:${state}`, sessionData, 3600);
 
-    // redirect_uri を https:// 付きで組み立て
-    const origin = process.env.VERCEL_URL && process.env.VERCEL_URL.startsWith('http')
-      ? process.env.VERCEL_URL
-      : process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : 'https://sns-automation-pwa.vercel.app';
+    // VERCEL_ENV が production なら本番ドメイン、それ以外は常に本番ドメインを使う
+    const origin =
+        process.env.VERCEL_ENV === 'production'
+            ? `https://${process.env.VERCEL_URL}`
+          : 'https://sns-automation-pwa.vercel.app';
+
     const redirectUri = `${origin}/api/auth/twitter/callback`;
 
     // Twitter OAuth 2.0認証URL生成
