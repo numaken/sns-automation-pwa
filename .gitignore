@@ -29,3 +29,4 @@ sns-automation-pwa/
 ドキュメント一覧/
 .DS_Store
 *.backup
+api_backup*
