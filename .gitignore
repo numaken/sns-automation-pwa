@@ -30,3 +30,5 @@ sns-automation-pwa/
 .DS_Store
 *.backup
 api_backup*
+.env*
+!.env.example

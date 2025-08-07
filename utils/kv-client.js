@@ -337,3 +337,28 @@ export async function incrementDailyUsage(identifier) {
 
   return newCount;
 }
+
+
+
+
+
+// utils/kv-client.js
+// トークン取得関数
+
+/**
+ * Twitter の OAuth トークンを取得
+ */
+export async function getTwitterTokens(userId) {
+  const data = await getKVValue(`twitter_token:${userId}`);
+  if (!data) throw new Error('Twitter tokens not found');
+  return JSON.parse(data); // { accessToken, accessSecret }
+}
+
+/**
+ * Threads の OAuth トークンを取得
+ */
+export async function getThreadsTokens(userId) {
+  const data = await getKVValue(`threads_token:${userId}`);
+  if (!data) throw new Error('Threads token not found');
+  return JSON.parse(data); // { accessToken, userId }
+}
