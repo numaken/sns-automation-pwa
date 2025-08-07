@@ -1,8 +1,15 @@
 // SettingsPanel.jsx - 完全美化版（PostCSS不使用、インラインスタイルのみ）
 
 import React from 'react';
+import { useUserPlan } from '../hooks/useUserPlan';
 
+
+// SettingsPanel関数の最初に追加
 const SettingsPanel = () => {
+  const { userPlan, isLoading } = useUserPlan();
+  const isPremium = userPlan === 'premium';
+
+
   const PREMIUM_FEATURES_ENABLED = false;
 
   // 美しいカラーシステム
@@ -256,8 +263,8 @@ const SettingsPanel = () => {
           設定
         </h1>
         <div style={styles.planBadge}>
-          <span>📱</span>
-          無料プラン
+          <span>{isPremium ? '👑' : '📱'}</span>
+          {isPremium ? 'プレミアムプラン' : '無料プラン'}
         </div>
       </div>
 
@@ -269,7 +276,7 @@ const SettingsPanel = () => {
         </h2>
 
         <div style={styles.planStatus}>
-          現在のプラン: 無料プラン
+          現在のプラン: {isPremium ? 'プレミアムプラン' : '無料プラン'}
         </div>
 
         <ul style={styles.featureList}>
