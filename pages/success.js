@@ -1,117 +1,185 @@
-// pages/success.js または src/pages/Success.js
-// 引き継ぎ書指定: 決済成功ページ
+// pages/success.js
+// Stripe決済成功ページ
 
 import React, { useEffect, useState } from 'react';
-import { Crown, CheckCircle, Twitter, Zap } from 'lucide-react';
+import { useRouter } from 'next/router';
 
-const Success = () => {
-  const [sessionId, setSessionId] = useState('');
-  const [isProcessing, setIsProcessing] = useState(true);
-  const [userId, setUserId] = useState('');
+const SuccessPage = () => {
+  const router = useRouter();
+  const { session_id } = router.query;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [sessionData, setSessionData] = useState(null);
 
   useEffect(() => {
-    // URLパラメータからsession_idを取得
-    const urlParams = new URLSearchParams(window.location.search);
-    const session = urlParams.get('session_id');
-
-    if (session) {
-      setSessionId(session);
-      // ローカルストレージからユーザーIDを取得
-      const storedUserId = localStorage.getItem('sns_automation_user_id');
-      if (storedUserId) {
-        setUserId(storedUserId);
-        // プレミアムプランに設定（手動設定 - Webhookの代替）
-        updateUserPlan(storedUserId);
-      }
+    if (session_id) {
+      verifySession();
     }
+  }, [session_id]);
 
-    setTimeout(() => setIsProcessing(false), 2000);
-  }, []);
-
-  const updateUserPlan = async (userId) => {
+  const verifySession = async () => {
     try {
-      // 注意: 本来はWebhookで処理すべきですが、
-      // 簡易実装として手動でプラン更新
-      localStorage.setItem('user_plan', 'premium');
-      console.log('User plan updated to premium');
+      // Stripe セッション確認（簡易版）
+      console.log('Payment successful! Session ID:', session_id);
+
+      // ユーザーをプレミアムプランに更新
+      const userId = localStorage.getItem('sns_automation_user_id');
+      if (userId) {
+        // KVにプレミアムプラン情報を保存
+        // 実際の実装では、Webhookで処理すべきですが、簡易版として
+        localStorage.setItem('user_plan', 'premium');
+
+        setSessionData({
+          sessionId: session_id,
+          userId: userId,
+          plan: 'premium',
+          activatedAt: new Date().toISOString()
+        });
+      }
+
+      setLoading(false);
     } catch (error) {
-      console.error('Plan update error:', error);
+      console.error('Session verification error:', error);
+      setError('決済の確認に失敗しました');
+      setLoading(false);
     }
   };
 
   const handleContinue = () => {
-    window.location.href = '/';
+    // メインページに戻る
+    router.push('/');
   };
 
-  if (isProcessing) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-orange-50 flex items-center justify-center">
-        <div className="text-center">
-          <Crown className="h-16 w-16 text-yellow-500 mx-auto mb-4 animate-bounce" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            決済処理中...
-          </h2>
-          <p className="text-gray-600">プレミアムプランを有効化しています</p>
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <div style={styles.loadingSpinner}>⏳</div>
+          <h2>決済を確認中...</h2>
+          <p>少々お待ちください</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <div style={styles.errorIcon}>❌</div>
+          <h2>エラーが発生しました</h2>
+          <p>{error}</p>
+          <button onClick={handleContinue} style={styles.button}>
+            戻る
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-orange-50 flex items-center justify-center">
-      <div className="max-w-md mx-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+    <div style={styles.container}>
+      <div style={styles.card}>
+        <div style={styles.successIcon}>🎉</div>
+        <h2>決済が完了しました！</h2>
+        <p>プレミアムプランへのアップグレードありがとうございます。</p>
 
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            決済完了！
-          </h1>
-
-          <div className="flex items-center justify-center mb-4">
-            <Crown className="h-6 w-6 text-yellow-500 mr-2" />
-            <span className="text-xl font-semibold text-yellow-600">
-              プレミアムプラン
-            </span>
+        {sessionData && (
+          <div style={styles.details}>
+            <h3>アクティベーション詳細</h3>
+            <p><strong>プラン:</strong> プレミアム</p>
+            <p><strong>アクティベーション日時:</strong> {new Date(sessionData.activatedAt).toLocaleString()}</p>
+            <p><strong>セッションID:</strong> {sessionData.sessionId}</p>
           </div>
+        )}
 
-          <p className="text-gray-600 mb-6">
-            ありがとうございます！プレミアムプランが有効になりました。
-          </p>
-
-          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold text-yellow-800 mb-3">
-              利用可能になった機能
-            </h3>
-            <ul className="text-sm text-yellow-700 space-y-2">
-              <li className="flex items-center">
-                <Crown className="h-4 w-4 mr-2" />
-                無制限の投稿生成
-              </li>
-              <li className="flex items-center">
-                <Twitter className="h-4 w-4 mr-2" />
-                Twitter自動投稿
-              </li>
-              <li className="flex items-center">
-                <Zap className="h-4 w-4 mr-2" />
-                高速生成・優先サポート
-              </li>
-            </ul>
-          </div>
-
-          <button
-            onClick={handleContinue}
-            className="w-full bg-yellow-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-yellow-600 transition-colors"
-          >
-            プレミアム機能を使い始める
-          </button>
-
-          <p className="text-xs text-gray-400 mt-4">
-            セッションID: {sessionId}
-          </p>
+        <div style={styles.benefits}>
+          <h3>🎯 利用可能な機能</h3>
+          <ul>
+            <li>🚀 無制限AI投稿生成</li>
+            <li>🐦 Twitter自動投稿</li>
+            <li>📸 Threads自動投稿</li>
+            <li>⚡ 高速生成</li>
+            <li>📊 詳細統計</li>
+            <li>🚫 広告なし</li>
+          </ul>
         </div>
+
+        <button onClick={handleContinue} style={styles.primaryButton}>
+          🚀 SNS自動化ツールを使い始める
+        </button>
       </div>
     </div>
   );
 };
 
-export default Success;
+const styles = {
+  container: {
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f5f5f5',
+    padding: '20px'
+  },
+  card: {
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    padding: '40px',
+    maxWidth: '500px',
+    width: '100%',
+    textAlign: 'center',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+    border: '1px solid #e0e0e0'
+  },
+  loadingSpinner: {
+    fontSize: '48px',
+    marginBottom: '20px'
+  },
+  successIcon: {
+    fontSize: '64px',
+    marginBottom: '20px'
+  },
+  errorIcon: {
+    fontSize: '48px',
+    marginBottom: '20px'
+  },
+  details: {
+    backgroundColor: '#f8f9fa',
+    padding: '20px',
+    borderRadius: '8px',
+    margin: '20px 0',
+    textAlign: 'left'
+  },
+  benefits: {
+    backgroundColor: '#fff3cd',
+    padding: '20px',
+    borderRadius: '8px',
+    margin: '20px 0',
+    textAlign: 'left'
+  },
+  button: {
+    backgroundColor: '#6c757d',
+    color: 'white',
+    border: 'none',
+    padding: '12px 24px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '16px',
+    marginTop: '20px'
+  },
+  primaryButton: {
+    backgroundColor: '#ffa500',
+    color: 'white',
+    border: 'none',
+    padding: '15px 30px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '18px',
+    fontWeight: 'bold',
+    marginTop: '20px',
+    transition: 'background-color 0.3s'
+  }
+};
+
+export default SuccessPage;

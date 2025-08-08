@@ -1,76 +1,79 @@
-// api/check-user-plan.js
-// 引き継ぎ書指定: ユーザープラン判定API
-
-// KV REST API関数（引き継ぎ書の既存パターン使用）
-const kvGet = async (key) => {
-  const response = await fetch(process.env.KV_REST_API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(['GET', key]),
-  });
-  return (await response.json()).result;
-};
-
-const kvSet = async (key, value, ttl = null) => {
-  const command = ttl
-    ? ['SETEX', key, ttl, value.toString()]
-    : ['SET', key, value.toString()];
-
-  await fetch(process.env.KV_REST_API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(command),
-  });
-};
+// api/create-checkout-session.js
+// Stripe Checkout セッション作成API
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
+  if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { userId } = req.query;
+    const { userId } = req.body;
 
     if (!userId) {
-      return res.status(400).json({ error: 'User ID required' });
+      return res.status(400).json({ error: 'userId is required' });
     }
 
-    // KVからプラン情報取得（引き継ぎ書のキー仕様: user_plan:{userId}）
-    const planKey = `user_plan:${userId}`;
-    const userPlan = await kvGet(planKey);
+    // Stripe初期化
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-    // デフォルトは無料プラン
-    const plan = userPlan || 'free';
+    // 価格ID確認
+    const priceId = process.env.STRIPE_PRICE_ID;
+    if (!priceId) {
+      console.error('STRIPE_PRICE_ID environment variable not set');
+      return res.status(500).json({
+        error: 'Payment configuration incomplete',
+        details: 'STRIPE_PRICE_ID not configured'
+      });
+    }
 
-    return res.status(200).json({
-      userId: userId,
-      plan: plan,
-      isPremium: plan === 'premium',
-      features: {
-        unlimited_generation: plan === 'premium',
-        sns_posting: plan === 'premium',
-        priority_support: plan === 'premium'
+    // Checkout セッション作成
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: 'subscription',
+      success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.origin}?canceled=true`,
+      client_reference_id: userId,
+      customer_email: null, // オプション: 顧客のメールアドレス
+      subscription_data: {
+        metadata: {
+          userId: userId,
+          plan: 'premium'
+        }
+      },
+      metadata: {
+        userId: userId,
+        plan: 'premium'
       }
     });
 
-  } catch (error) {
-    console.error('Check user plan error:', error);
-    return res.status(500).json({
-      error: 'Failed to check user plan',
-      details: error.message
-    });
-  }
-}
+    console.log('Checkout session created:', session.id, 'for user:', userId);
 
-// 管理者用: プラン設定関数（将来の管理画面用）
-export async function setUserPlan(userId, plan) {
-  const planKey = `user_plan:${userId}`;
-  await kvSet(planKey, plan);
-  return { success: true, userId, plan };
+    return res.status(200).json({
+      sessionId: session.id,
+      url: session.url
+    });
+
+  } catch (error) {
+    console.error('Stripe checkout session creation error:', error);
+
+    if (error.type === 'StripeCardError') {
+      return res.status(400).json({ error: 'カード情報に問題があります' });
+    } else if (error.type === 'StripeInvalidRequestError') {
+      return res.status(400).json({
+        error: 'Stripe設定エラー',
+        details: error.message
+      });
+    } else {
+      return res.status(500).json({
+        error: '決済セッション作成に失敗しました',
+        details: error.message
+      });
+    }
+  }
 }
