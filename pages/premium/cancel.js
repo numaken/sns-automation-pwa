@@ -1,47 +1,91 @@
-// pages/premium/cancel.js - 決済キャンセルページ
+import React from 'react';
 import { useRouter } from 'next/router';
 
-export default function PremiumCancel() {
+const PremiumCancel = () => {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
-        <div className="text-6xl mb-4">😔</div>
-        <h1 className="text-2xl font-bold text-gray-600 mb-4">
-          決済がキャンセルされました
-        </h1>
-        <p className="text-gray-500 mb-6">
-          プレミアムプランの購入がキャンセルされました。<br />
-          無料プランは引き続きご利用いただけます。
-        </p>
-
-        <div className="bg-blue-50 p-4 rounded-lg mb-6">
-          <h2 className="font-semibold text-blue-800 mb-2">無料プランでできること:</h2>
-          <ul className="text-sm text-blue-700 text-left">
-            <li>• 1日3回のAI投稿生成</li>
-            <li>• 高品質な投稿作成</li>
-            <li>• 複数のトーン設定</li>
-            <li>• プレミアム体験</li>
+    <div style={styles.container}>
+      <div style={styles.card}>
+        <div style={styles.cancelIcon}>😔</div>
+        <h1>決済がキャンセルされました</h1>
+        <p>プレミアムプランの購入がキャンセルされました。</p>
+        
+        <div style={styles.freeFeatures}>
+          <h3>🆓 無料プランでできること</h3>
+          <ul>
+            <li>📝 1日3回のAI投稿生成</li>
+            <li>✨ 高品質な投稿作成</li>
+            <li>🎨 複数のトーン設定</li>
           </ul>
         </div>
 
-        <div className="space-y-3">
-          <button
-            onClick={() => router.push('/')}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors w-full"
-          >
+        <div style={styles.buttons}>
+          <button onClick={() => router.push('/')} style={styles.primaryButton}>
             無料プランを続ける
           </button>
-
-          <button
-            onClick={() => router.push('/premium')}
-            className="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors w-full"
-          >
+          <button onClick={() => router.push('/premium')} style={styles.secondaryButton}>
             プレミアムを再検討
           </button>
         </div>
       </div>
     </div>
   );
-}
+};
+
+const styles = {
+  container: {
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f9fafb',
+    padding: '20px'
+  },
+  card: {
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    padding: '40px',
+    maxWidth: '500px',
+    width: '100%',
+    textAlign: 'center',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
+  },
+  cancelIcon: {
+    fontSize: '64px',
+    marginBottom: '20px'
+  },
+  freeFeatures: {
+    backgroundColor: '#dbeafe',
+    padding: '20px',
+    borderRadius: '8px',
+    margin: '20px 0',
+    textAlign: 'left'
+  },
+  buttons: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    marginTop: '20px'
+  },
+  primaryButton: {
+    backgroundColor: '#3b82f6',
+    color: 'white',
+    border: 'none',
+    padding: '12px 24px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '16px'
+  },
+  secondaryButton: {
+    backgroundColor: '#e5e7eb',
+    color: '#374151',
+    border: 'none',
+    padding: '12px 24px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '16px'
+  }
+};
+
+export default PremiumCancel;
