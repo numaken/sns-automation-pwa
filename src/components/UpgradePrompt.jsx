@@ -1,184 +1,25 @@
 import React, { useState } from 'react';
+import { Crown, Zap, Infinity, X, CreditCard } from 'lucide-react';
 
-const UpgradePrompt = ({ isVisible, onClose, onUpgrade, remainingUses, userId }) => {
-  // 🆕 Stripe統合のためのstate追加
+const UpgradePrompt = ({ isVisible, onClose, remainingUses = 0 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   if (!isVisible) return null;
 
-  // PostGenerator.jsxと同じカラーパレット（既存のまま）
-  const colors = {
-    primary: '#3b82f6',
-    primaryHover: '#2563eb',
-    primaryLight: '#dbeafe',
-    primaryDark: '#1e40af',
-    success: '#10b981',
-    successLight: '#d1fae5',
-    warning: '#f59e0b',
-    warningLight: '#fef3c7',
-    error: '#ef4444',
-    errorLight: '#fee2e2',
-    gray: {
-      50: '#f9fafb',
-      100: '#f3f4f6',
-      200: '#e5e7eb',
-      300: '#d1d5db',
-      400: '#9ca3af',
-      500: '#6b7280',
-      600: '#4b5563',
-      700: '#374151',
-      800: '#1f2937',
-      900: '#111827'
-    }
-  };
-
-  // 既存のスタイル（全て保持）
-  const styles = {
-    overlay: {
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '1rem'
-    },
-    modal: {
-      backgroundColor: 'white',
-      borderRadius: '16px',
-      padding: '2rem',
-      maxWidth: '28rem',
-      width: '100%',
-      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      border: `1px solid ${colors.gray[200]}`,
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-    },
-    header: {
-      textAlign: 'center',
-      marginBottom: '1.5rem'
-    },
-    crown: {
-      fontSize: '3rem',
-      marginBottom: '0.5rem'
-    },
-    title: {
-      fontSize: '1.5rem',
-      fontWeight: '700',
-      color: colors.gray[900],
-      marginBottom: '0.5rem'
-    },
-    subtitle: {
-      fontSize: '0.875rem',
-      color: colors.gray[600]
-    },
-    featuresCard: {
-      background: `linear-gradient(135deg, ${colors.warningLight} 0%, #fef3c7 100%)`,
-      borderRadius: '12px',
-      padding: '1.5rem',
-      marginBottom: '1.5rem',
-      border: `1px solid ${colors.warning}`
-    },
-    featuresTitle: {
-      fontWeight: '600',
-      color: colors.gray[800],
-      marginBottom: '1rem',
-      fontSize: '1rem',
-      textAlign: 'center'
-    },
-    featuresList: {
-      listStyle: 'none',
-      padding: 0,
-      margin: 0
-    },
-    featureItem: {
-      display: 'flex',
-      alignItems: 'center',
-      marginBottom: '0.75rem',
-      fontSize: '0.875rem',
-      color: colors.gray[700]
-    },
-    featureIcon: {
-      fontSize: '1.125rem',
-      marginRight: '0.75rem',
-      width: '1.5rem'
-    },
-    message: {
-      textAlign: 'center',
-      fontSize: '0.875rem',
-      color: colors.gray[600],
-      marginBottom: '1.5rem',
-      lineHeight: '1.5'
-    },
-    buttonContainer: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '0.75rem'
-    },
-    upgradeButton: {
-      width: '100%',
-      background: `linear-gradient(135deg, ${colors.warning} 0%, #f59e0b 100%)`,
-      color: 'white',
-      padding: '0.875rem 1.5rem',
-      borderRadius: '8px',
-      fontWeight: '600',
-      fontSize: '1rem',
-      border: 'none',
-      cursor: 'pointer',
-      transition: 'all 0.3s ease',
-      boxShadow: '0 4px 12px 0 rgba(245, 158, 11, 0.3)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '0.5rem',
-      // 🆕 ローディング状態のスタイル追加
-      opacity: isLoading ? 0.7 : 1,
-      pointerEvents: isLoading ? 'none' : 'auto'
-    },
-    laterButton: {
-      width: '100%',
-      backgroundColor: 'transparent',
-      color: colors.gray[500],
-      padding: '0.75rem 1rem',
-      fontSize: '0.875rem',
-      border: 'none',
-      cursor: 'pointer',
-      transition: 'color 0.2s ease'
-    },
-    priceHighlight: {
-      background: `linear-gradient(135deg, ${colors.warning} 0%, #f59e0b 100%)`,
-      WebkitBackgroundClip: 'text',
-      WebkitTextFillColor: 'transparent',
-      backgroundClip: 'text',
-      fontWeight: '700'
-    },
-    // 🆕 エラー表示スタイル追加
-    errorMessage: {
-      backgroundColor: colors.errorLight,
-      color: colors.error,
-      padding: '0.75rem',
-      borderRadius: '8px',
-      fontSize: '0.875rem',
-      marginBottom: '1rem',
-      textAlign: 'center'
-    }
-  };
-
-  // 🆕 Stripe統合処理（既存のhandleUpgradeClickを置き換え）
-  const handleUpgradeClick = async () => {
-    if (!userId) {
-      setError('ユーザーIDが必要です');
-      return;
-    }
-
+  // Stripe Checkout開始
+  const handleUpgrade = async () => {
     setIsLoading(true);
     setError('');
 
     try {
+      // ユーザーIDの生成または取得
+      let userId = localStorage.getItem('sns_automation_user_id');
+      if (!userId) {
+        userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('sns_automation_user_id', userId);
+      }
+
       // Stripe Checkout Session作成
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
@@ -191,116 +32,145 @@ const UpgradePrompt = ({ isVisible, onClose, onUpgrade, remainingUses, userId })
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || '決済処理でエラーが発生しました');
+        throw new Error(data.error || '決済セッションの作成に失敗しました');
       }
 
-      // Stripe Checkoutページにリダイレクト
-      window.location.href = data.checkoutUrl;
+      if (data.success && data.url) {
+        // Stripe Checkoutページにリダイレクト
+        window.location.href = data.url;
+      } else {
+        throw new Error('決済URLの取得に失敗しました');
+      }
 
     } catch (error) {
       console.error('Upgrade error:', error);
-      setError(error.message);
+      setError(error.message || '決済の開始に失敗しました。しばらく待ってから再試行してください。');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div style={styles.overlay} onClick={onClose}>
-      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div style={styles.header}>
-          <div style={styles.crown}>👑</div>
-          <h2 style={styles.title}>
-            {remainingUses === 0 ? '本日の無料生成完了！' : 'もっと生成しませんか？'}
-          </h2>
-          <p style={styles.subtitle}>
-            プレミアムプランで制限なしの体験を
-          </p>
-        </div>
-
-        <div style={styles.featuresCard}>
-          <h3 style={styles.featuresTitle}>
-            プレミアムで解放される機能
-          </h3>
-          <ul style={styles.featuresList}>
-            <li style={styles.featureItem}>
-              <span style={styles.featureIcon}>∞</span>
-              無制限の投稿生成
-            </li>
-            <li style={styles.featureItem}>
-              <span style={styles.featureIcon}>⚡</span>
-              高速生成（専用APIキー）
-            </li>
-            <li style={styles.featureItem}>
-              <span style={styles.featureIcon}>📱</span>
-              直接SNS投稿機能
-            </li>
-            <li style={styles.featureItem}>
-              <span style={styles.featureIcon}>✨</span>
-              広告なしのクリーンUI
-            </li>
-          </ul>
-        </div>
-
-        <p style={styles.message}>
-          {remainingUses === 0
-            ? '明日も無料で3回生成できますが、今すぐ無制限で使いませんか？'
-            : `残り${remainingUses}回の無料生成があります。無制限でさらに効率的に！`
-          }
-        </p>
-
-        {/* 🆕 エラーメッセージ表示 */}
-        {error && (
-          <div style={styles.errorMessage}>
-            {error}
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-md w-full relative">
+        {/* ヘッダー */}
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Crown className="h-6 w-6 text-yellow-500 mr-2" />
+              <h2 className="text-xl font-bold text-gray-900">
+                プレミアムプラン
+              </h2>
+            </div>
+            <button
+              onClick={onClose}
+              disabled={isLoading}
+              className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+            >
+              <X className="h-6 w-6" />
+            </button>
           </div>
-        )}
+        </div>
 
-        <div style={styles.buttonContainer}>
-          <button
-            onClick={handleUpgradeClick}
-            style={styles.upgradeButton}
-            disabled={isLoading}
-            onMouseEnter={(e) => {
-              if (!isLoading) {
-                e.target.style.transform = 'translateY(-1px)';
-                e.target.style.boxShadow = '0 6px 20px 0 rgba(245, 158, 11, 0.4)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isLoading) {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 4px 12px 0 rgba(245, 158, 11, 0.3)';
-              }
-            }}
-          >
-            <span>👑</span>
-            {/* 🆕 ローディング状態の表示 */}
-            {isLoading ? (
-              '処理中...'
-            ) : (
-              <>
-                月額<span style={styles.priceHighlight}>¥980</span>でアップグレード
-              </>
-            )}
-          </button>
-          <button
-            onClick={onClose}
-            style={styles.laterButton}
-            disabled={isLoading}
-            onMouseEnter={(e) => {
-              if (!isLoading) {
-                e.target.style.color = colors.gray[700];
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isLoading) {
-                e.target.style.color = colors.gray[500];
-              }
-            }}
-          >
-            {remainingUses === 0 ? '明日まで待つ' : '後で決める'}
-          </button>
+        {/* メインコンテンツ */}
+        <div className="p-6">
+          {remainingUses === 0 ? (
+            <div className="text-center mb-4">
+              <div className="text-4xl mb-2">🎯</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                本日の無料生成完了！
+              </h3>
+              <p className="text-gray-600 text-sm">
+                もっと投稿を生成したい場合は、プレミアムプランをお試しください
+              </p>
+            </div>
+          ) : (
+            <div className="text-center mb-4">
+              <div className="text-4xl mb-2">✨</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                さらに生成しませんか？
+              </h3>
+              <p className="text-gray-600 text-sm">
+                残り{remainingUses}回の無料生成があります
+              </p>
+            </div>
+          )}
+
+          {/* プレミアム機能一覧 */}
+          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-4 mb-4">
+            <h4 className="font-semibold text-yellow-800 mb-3 text-center">
+              🚀 プレミアムで解放される機能
+            </h4>
+            <ul className="space-y-2 text-sm text-yellow-700">
+              <li className="flex items-center">
+                <Infinity className="h-4 w-4 mr-3 flex-shrink-0" />
+                <span>無制限の投稿生成</span>
+              </li>
+              <li className="flex items-center">
+                <Zap className="h-4 w-4 mr-3 flex-shrink-0" />
+                <span>Twitter・Threads自動投稿</span>
+              </li>
+              <li className="flex items-center">
+                <Crown className="h-4 w-4 mr-3 flex-shrink-0" />
+                <span>高速生成・広告なし</span>
+              </li>
+              <li className="flex items-center">
+                <CreditCard className="h-4 w-4 mr-3 flex-shrink-0" />
+                <span>優先サポート</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* 価格表示 */}
+          <div className="text-center mb-4">
+            <div className="text-3xl font-bold text-gray-900">¥980</div>
+            <div className="text-sm text-gray-500">月額（税込）</div>
+            <div className="text-xs text-gray-400 mt-1">いつでもキャンセル可能</div>
+          </div>
+
+          {/* エラーメッセージ */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
+          {/* アクションボタン */}
+          <div className="space-y-3">
+            <button
+              onClick={handleUpgrade}
+              disabled={isLoading}
+              className={`w-full py-3 px-4 rounded-lg font-medium text-white transition-colors ${isLoading
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-yellow-500 hover:bg-yellow-600'
+                }`}
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                  決済ページに移動中...
+                </div>
+              ) : (
+                '🚀 プレミアムプランを開始'
+              )}
+            </button>
+
+            <button
+              onClick={onClose}
+              disabled={isLoading}
+              className="w-full text-gray-500 py-2 px-4 text-sm hover:text-gray-700 transition-colors disabled:opacity-50"
+            >
+              {remainingUses === 0 ? '明日まで待つ' : '後で決める'}
+            </button>
+          </div>
+
+          {/* セキュリティ情報 */}
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-xs text-gray-500 text-center">
+              🔒 Stripe決済で安全・安心<br />
+              個人情報は暗号化して保護されています
+            </p>
+          </div>
         </div>
       </div>
     </div>
