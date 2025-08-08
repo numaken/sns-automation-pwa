@@ -102,8 +102,9 @@ export default async function handler(req, res) {
   try {
     // 複数のuserIdパターンでPKCEデータを検索
     const possibleUserIds = [
-      'ttl-fix-test',      // 新追加：最新テストユーザー
-      'final-test',        // 新追加：最終テストユーザー
+      'final-oauth-test',  // 新追加：最新テストユーザー
+      'ttl-fix-test',
+      'final-test',
       'kv-test-debug',
       'debug-test-user',
       'callback-test',
