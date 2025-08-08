@@ -1,5 +1,5 @@
 // api/create-checkout-session.js
-// Stripe Checkout セッション作成API
+// Stripe Checkout セッション作成API（修正版）
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -26,6 +26,8 @@ export default async function handler(req, res) {
       });
     }
 
+    console.log('Creating checkout session for user:', userId, 'with price:', priceId);
+
     // Checkout セッション作成
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -39,7 +41,8 @@ export default async function handler(req, res) {
       success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.origin}?canceled=true`,
       client_reference_id: userId,
-      customer_email: null, // オプション: 顧客のメールアドレス
+      // customer_email は省略（nullを渡すとエラーになる）
+      allow_promotion_codes: true,
       subscription_data: {
         metadata: {
           userId: userId,
@@ -52,7 +55,7 @@ export default async function handler(req, res) {
       }
     });
 
-    console.log('Checkout session created:', session.id, 'for user:', userId);
+    console.log('Checkout session created successfully:', session.id, 'for user:', userId);
 
     return res.status(200).json({
       sessionId: session.id,
