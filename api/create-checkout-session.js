@@ -1,6 +1,4 @@
-// api/create-checkout-session.js
-// Stripe Checkout セッション作成API（修正版）
-
+// api/create-checkout-session.js - URL設定修正版
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -13,70 +11,65 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'userId is required' });
     }
 
-    // Stripe初期化
-    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    // 環境変数確認
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    const stripePriceId = process.env.STRIPE_PRICE_ID;
 
-    // 価格ID確認
-    const priceId = process.env.STRIPE_PRICE_ID;
-    if (!priceId) {
-      console.error('STRIPE_PRICE_ID environment variable not set');
+    if (!stripeSecretKey || !stripePriceId) {
       return res.status(500).json({
-        error: 'Payment configuration incomplete',
-        details: 'STRIPE_PRICE_ID not configured'
+        error: 'Stripe設定エラー',
+        details: 'STRIPE_SECRET_KEY または STRIPE_PRICE_ID が設定されていません'
       });
     }
 
-    console.log('Creating checkout session for user:', userId, 'with price:', priceId);
+    // 🆕 本番URLを直接指定（req.headers.origin問題を回避）
+    const baseUrl = 'https://sns-automation-pwa.vercel.app';
 
-    // Checkout セッション作成
+    // Stripe初期化
+    const stripe = require('stripe')(stripeSecretKey);
+
+    // Checkout Session作成
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
+      line_items: [{
+        price: stripePriceId, // price_1RrbYjKTfKgNarB3jwcI332h
+        quantity: 1,
+      }],
       mode: 'subscription',
-      success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.origin}?canceled=true`,
+      success_url: `${baseUrl}/premium/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/premium/cancel`,
       client_reference_id: userId,
-      // customer_email は省略（nullを渡すとエラーになる）
-      allow_promotion_codes: true,
-      subscription_data: {
-        metadata: {
-          userId: userId,
-          plan: 'premium'
-        }
-      },
+      customer_email: undefined, // 🆕 不要なemail設定を削除
       metadata: {
         userId: userId,
         plan: 'premium'
+      },
+      subscription_data: {
+        metadata: {
+          userId: userId
+        }
       }
     });
 
-    console.log('Checkout session created successfully:', session.id, 'for user:', userId);
+    console.log('Stripe Checkout Session created:', {
+      sessionId: session.id,
+      userId: userId,
+      priceId: stripePriceId
+    });
 
     return res.status(200).json({
       sessionId: session.id,
-      url: session.url
+      url: session.url,
+      success: true
     });
 
   } catch (error) {
-    console.error('Stripe checkout session creation error:', error);
+    console.error('Stripe Checkout Session Error:', error);
 
-    if (error.type === 'StripeCardError') {
-      return res.status(400).json({ error: 'カード情報に問題があります' });
-    } else if (error.type === 'StripeInvalidRequestError') {
-      return res.status(400).json({
-        error: 'Stripe設定エラー',
-        details: error.message
-      });
-    } else {
-      return res.status(500).json({
-        error: '決済セッション作成に失敗しました',
-        details: error.message
-      });
-    }
+    return res.status(500).json({
+      error: 'Stripe設定エラー',
+      details: error.message,
+      success: false
+    });
   }
 }
