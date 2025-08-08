@@ -311,7 +311,8 @@ export default async function handler(req, res) {
         .success { background: rgba(255,255,255,0.1); padding: 30px; border-radius: 10px; max-width: 400px; margin: 0 auto; }
         .username { font-size: 24px; font-weight: bold; margin: 20px 0; }
         .message { margin: 20px 0; }
-        button { background: white; color: #1da1f2; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button { background: white; color: #1da1f2; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px; }
+        .auto-close { font-size: 12px; opacity: 0.8; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -319,21 +320,46 @@ export default async function handler(req, res) {
         <h1>🎉 認証完了！</h1>
         <div class="username">@${userData.data.username}</div>
         <div class="message">として接続されました</div>
-        <button onclick="window.close()">ウィンドウを閉じる</button>
+        <button onclick="closeWindow()">ウィンドウを閉じる</button>
+        <button onclick="window.location.href='https://sns-automation-pwa.vercel.app'">メインページに戻る</button>
+        <div class="auto-close">このウィンドウは10秒後に自動で閉じます</div>
         <script>
-            // 親ウィンドウに成功を通知
-            if (window.opener) {
-                window.opener.postMessage({
-                    type: 'twitter_auth_success',
-                    user: {
-                        id: '${userData.data.id}',
-                        username: '${userData.data.username}'
+            function closeWindow() {
+                // 複数の方法でウィンドウを閉じる
+                try {
+                    window.close();
+                } catch (e) {
+                    // window.close()が失敗した場合
+                    try {
+                        window.opener = null;
+                        window.open('', '_self');
+                        window.close();
+                    } catch (e2) {
+                        // 最終手段：メインページにリダイレクト
+                        window.location.href = 'https://sns-automation-pwa.vercel.app';
                     }
-                }, '*');
+                }
             }
             
-            // 5秒後に自動で閉じる
-            setTimeout(() => window.close(), 5000);
+            // 親ウィンドウに成功を通知
+            if (window.opener) {
+                try {
+                    window.opener.postMessage({
+                        type: 'twitter_auth_success',
+                        user: {
+                            id: '${userData.data.id}',
+                            username: '${userData.data.username}'
+                        }
+                    }, '*');
+                } catch (e) {
+                    console.log('Parent window notification failed:', e);
+                }
+            }
+            
+            // 10秒後に自動で閉じる（時間延長）
+            setTimeout(() => {
+                closeWindow();
+            }, 10000);
         </script>
     </div>
 </body>
