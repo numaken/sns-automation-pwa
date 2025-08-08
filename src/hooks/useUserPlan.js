@@ -268,20 +268,47 @@ export const useUserPlan = () => {
     }
   };
 
-  // 簡単アップグレード
-  const upgradeTopremium = async (customEmail = null) => {
-    const email = customEmail || prompt('プレミアムプランにアップグレードするには、メールアドレスを入力してください:');
+  // 🆕 修正版：userId使用に変更
+  const upgradeTopremium = async (userId = null) => {
+    try {
+      const actualUserId = userId || 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
-    if (!email) {
-      return { success: false, error: 'Email required' };
+      console.log('💳 Starting checkout for userId:', actualUserId);
+
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: actualUserId  // ← 重要：userIdを送信
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Checkout session creation failed');
+      }
+
+      const { url, sessionId } = await response.json();
+      console.log('✅ Checkout session created:', sessionId);
+
+      // メタデータを保存
+      localStorage.setItem('checkoutUserId', actualUserId);
+      localStorage.setItem('checkoutSessionId', sessionId);
+
+      if (url) {
+        window.location.href = url;
+        return { success: true, sessionId };
+      } else {
+        throw new Error('Checkout URL not received');
+      }
+
+    } catch (error) {
+      console.error('Upgrade error:', error);
+      alert('アップグレード処理でエラーが発生しました: ' + error.message);
+      return { success: false, error: error.message };
     }
-
-    if (!email.includes('@') || !email.includes('.')) {
-      alert('有効なメールアドレスを入力してください');
-      return { success: false, error: 'Invalid email format' };
-    }
-
-    return await startCheckout(email);
   };
 
   // デバッグ・テスト関数群

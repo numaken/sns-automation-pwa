@@ -851,13 +851,39 @@ const PostGenerator = () => {
       <UpgradePrompt
         isVisible={showUpgradePrompt}
         onClose={() => setShowUpgradePrompt(false)}
-        onUpgrade={() => upgradeTopremium()}
+        onUpgrade={() => upgradeTopremium(userId)}
         remainingUses={typeof usage.remaining === 'number' ? usage.remaining : 0}
         userId={userId}
       />
     </div>
   );
 };
+
+
+// PostGenerator.jsx内に追加
+const handleUpgradeClick = async () => {
+  try {
+    const response = await fetch('/api/create-checkout-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId: 'user_' + Date.now() // 一意のユーザーID生成
+      }),
+    });
+
+    const { url } = await response.json();
+
+    if (url) {
+      // Stripe Checkoutページにリダイレクト
+      window.location.href = url;
+    }
+  } catch (error) {
+    console.error('Checkout error:', error);
+  }
+};
+
 
 // SNS結果メッセージコンポーネント
 const SNSResultMessage = ({ platform, result, onRetry, onClearResult }) => {
