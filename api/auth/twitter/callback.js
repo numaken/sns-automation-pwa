@@ -1,148 +1,65 @@
-// Twitter OAuth 2.0 with PKCE - 認証完了コールバック
-
-// KVからデータを取得
+// api/auth/twitter/callback.js
 async function getKVValue(key) {
-  const response = await fetch(`${process.env.KV_REST_API_URL}`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(['GET', key]),
+  const resp = await fetch(`${process.env.KV_REST_API_URL}/get/${key}`, {
+    headers: { 'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}` }
   });
-
-  if (!response.ok) {
-    throw new Error(`KV get error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.result ? JSON.parse(data.result) : null;
+  if (!resp.ok) return null;
+  return resp.json();
 }
 
-// KVにデータを保存
-async function setKVValue(key, value, ttl = null) {
-  const command = ttl
-    ? ['SETEX', key, ttl, JSON.stringify(value)]
-    : ['SET', key, JSON.stringify(value)];
-
-  const response = await fetch(`${process.env.KV_REST_API_URL}`, {
+async function setKVValue(key, value, ttl = 86400 * 30) {
+  const resp = await fetch(process.env.KV_REST_API_URL, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(command),
+    body: JSON.stringify(['SETEX', key, ttl, JSON.stringify(value)]),
   });
-
-  if (!response.ok) {
-    throw new Error(`KV set error: ${response.status}`);
-  }
-}
-
-// KVからキーを削除
-async function deleteKVValue(key) {
-  const response = await fetch(`${process.env.KV_REST_API_URL}`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(['DEL', key]),
-  });
-
-  if (!response.ok) {
-    throw new Error(`KV delete error: ${response.status}`);
-  }
+  if (!resp.ok) throw new Error(`KV set error: ${resp.status}`);
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { code, state, error: oauthError } = req.query;
+    const { code, state } = req.query;
+    if (!code || !state) return res.status(400).json({ error: 'code/state が不足' });
 
-    // OAuth エラーチェック
-    if (oauthError) {
-      console.error('OAuth error:', oauthError);
-      return res.redirect(`${process.env.VERCEL_URL || 'https://sns-automation-pwa.vercel.app'}/?error=oauth_denied`);
-    }
+    const session = await getKVValue(`oauth_session:${state}`);
+    if (!session?.userId) return res.status(400).json({ error: '無効な state' });
 
-    if (!code || !state) {
-      return res.status(400).json({ error: 'Authorization code and state are required' });
-    }
-
-    // セッション情報を取得
-    const sessionData = await getKVValue(`oauth_session:${state}`);
-    if (!sessionData) {
-      return res.status(400).json({ error: 'Invalid or expired OAuth session' });
-    }
-
-    // アクセストークンを取得
-    const tokenResponse = await fetch('https://api.twitter.com/2/oauth2/token', {
+    // アクセストークン交換
+    const tokenResp = await fetch('https://api.twitter.com/2/oauth2/token', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${Buffer.from(
-          `${process.env.TWITTER_CLIENT_ID}:${process.env.TWITTER_CLIENT_SECRET}`
-        ).toString('base64')}`
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
+        client_id: process.env.TWITTER_CLIENT_ID,
         grant_type: 'authorization_code',
-        code: code,
-        redirect_uri: `${process.env.VERCEL_URL || 'https://sns-automation-pwa.vercel.app'}/api/auth/twitter/callback`,
-        code_verifier: sessionData.codeVerifier
+        code,
+        redirect_uri: `${process.env.VERCEL_ENV === 'production'
+          ? `https://${process.env.VERCEL_URL}`
+          : 'https://sns-automation-pwa.vercel.app'
+          }/api/auth/twitter/callback`,
+        code_verifier: session.codeVerifier
       })
     });
 
-    if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.text();
-      console.error('Token exchange error:', errorData);
-      return res.redirect(`${process.env.VERCEL_URL || 'https://sns-automation-pwa.vercel.app'}/?error=token_exchange_failed`);
-    }
+    const tokenData = await tokenResp.json();
+    if (!tokenResp.ok) throw new Error(tokenData.error || 'Token exchange failed');
 
-    const tokenData = await tokenResponse.json();
-
-    // ユーザー情報を取得
-    const userResponse = await fetch('https://api.twitter.com/2/users/me', {
-      headers: {
-        'Authorization': `Bearer ${tokenData.access_token}`
-      }
-    });
-
-    if (!userResponse.ok) {
-      console.error('User info fetch error:', userResponse.status);
-      return res.redirect(`${process.env.VERCEL_URL || 'https://sns-automation-pwa.vercel.app'}/?error=user_fetch_failed`);
-    }
-
-    const userData = await userResponse.json();
-
-    // トークン情報をKVに保存（永続化 - refresh_tokenがある場合は長期保存）
-    const tokenInfo = {
+    // KV保存（userIdキーで永続化）
+    await setKVValue(`twitter_tokens:${session.userId}`, {
       accessToken: tokenData.access_token,
       refreshToken: tokenData.refresh_token,
-      expiresAt: new Date(Date.now() + (tokenData.expires_in * 1000)).toISOString(),
-      tokenType: tokenData.token_type,
-      scope: tokenData.scope,
-      twitterUserId: userData.data.id,
-      twitterUsername: userData.data.username,
-      connectedAt: new Date().toISOString()
-    };
+      expiresIn: tokenData.expires_in,
+      obtainedAt: Date.now()
+    });
 
-    // ユーザーのTwitterトークンを保存
-    await setKVValue(`twitter_token:${sessionData.userId}`, tokenInfo);
+    res.status(200).send('Twitter アカウント連携が完了しました。画面を閉じてください。');
 
-    // セッション情報を削除
-    await deleteKVValue(`oauth_session:${state}`);
-
-    // 成功ページにリダイレクト
-    const successUrl = `${process.env.VERCEL_URL || 'https://sns-automation-pwa.vercel.app'}/?twitter_connected=success&username=${userData.data.username}`;
-
-    return res.redirect(successUrl);
-
-  } catch (error) {
-    console.error('Twitter OAuth callback error:', error);
-    return res.redirect(`${process.env.VERCEL_URL || 'https://sns-automation-pwa.vercel.app'}/?error=oauth_callback_failed`);
+  } catch (e) {
+    console.error('Twitter OAuth callback error:', e);
+    res.status(500).json({ error: 'OAuth コールバック失敗', details: e.message });
   }
 }
