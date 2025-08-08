@@ -1,50 +1,137 @@
-// api/post-to-twitter.js
-async function getTwitterTokens(userId) {
-  const resp = await fetch(`${process.env.KV_REST_API_URL}/get/twitter_tokens:${userId}`, {
-    headers: { 'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}` }
-  });
-  if (!resp.ok) throw new Error('NO_TWITTER_CONNECTION');
-  return resp.json();
-}
-
+// Twitter投稿API（OAuth認証済みユーザー用）
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   try {
-    const { text, media_urls } = req.body;
-    const postText = (text || '').trim();
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) return res.status(401).json({ error: 'UNAUTHORIZED' });
+    const { content, userId } = req.body;
 
-    if (!postText) return res.status(400).json({ error: 'MISSING_TEXT' });
-    if (postText.length > 280) return res.status(400).json({ error: 'TEXT_TOO_LONG' });
-
-    // KVからOAuthトークン取得
-    let twitterTokens;
-    try {
-      twitterTokens = await getTwitterTokens(token);
-    } catch {
-      return res.status(400).json({ error: 'NO_TWITTER_CONNECTION', message: 'Twitter連携を先に行ってください' });
+    if (!content || !userId) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['content', 'userId']
+      });
     }
 
-    // --- 実際の投稿処理（モック） ---
-    const tweetId = `mock_${Date.now()}`;
-    const tweetUrl = `https://twitter.com/user/status/${tweetId}`;
+    // 文字数制限チェック（Twitter: 280文字）
+    if (content.length > 280) {
+      return res.status(400).json({
+        error: 'Content too long',
+        current: content.length,
+        limit: 280
+      });
+    }
 
-    res.status(200).json({
-      success: true,
-      tweet_id: tweetId,
-      tweet_url: tweetUrl,
-      posted_at: new Date().toISOString()
+    // KVからTwitterトークンを取得
+    const tokenKey = `twitter_token:${userId}`;
+    const tokenResponse = await fetch(process.env.KV_REST_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(['GET', tokenKey]),
     });
 
-  } catch (e) {
-    console.error('Twitter post error:', e);
-    res.status(500).json({ error: 'INTERNAL_ERROR', details: e.message });
+    const tokenResult = await tokenResponse.json();
+
+    if (!tokenResult.result) {
+      return res.status(401).json({
+        error: 'Twitter account not connected',
+        action: 'Please connect your Twitter account first'
+      });
+    }
+
+    const tokenData = JSON.parse(tokenResult.result);
+    const { access_token, expires_at, username, user_id } = tokenData;
+
+    // トークン有効期限チェック
+    if (new Date(expires_at) <= new Date()) {
+      return res.status(401).json({
+        error: 'Twitter token expired',
+        action: 'Please reconnect your Twitter account'
+      });
+    }
+
+    // Twitter API v2でツイート投稿
+    const tweetResponse = await fetch('https://api.twitter.com/2/tweets', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text: content
+      }),
+    });
+
+    const tweetData = await tweetResponse.json();
+
+    if (!tweetResponse.ok) {
+      console.error('Twitter API Error:', tweetData);
+
+      // 詳細なエラーハンドリング
+      if (tweetData.errors) {
+        const errorDetails = tweetData.errors.map(err => err.detail || err.message).join(', ');
+        return res.status(tweetResponse.status).json({
+          error: 'Twitter API error',
+          details: errorDetails,
+          type: tweetData.type || 'unknown'
+        });
+      }
+
+      return res.status(tweetResponse.status).json({
+        error: 'Failed to post tweet',
+        status: tweetResponse.status,
+        message: tweetData.detail || tweetData.message || 'Unknown error'
+      });
+    }
+
+    // 投稿成功
+    const tweetId = tweetData.data.id;
+    const tweetUrl = `https://twitter.com/${username}/status/${tweetId}`;
+
+    // 投稿統計の記録
+    const statKey = `twitter_post_stat:${userId}:${new Date().toISOString().split('T')[0]}`;
+    await fetch(process.env.KV_REST_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(['INCR', statKey]),
+    });
+
+    // TTL設定（7日間）
+    await fetch(process.env.KV_REST_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(['EXPIRE', statKey, 604800]),
+    });
+
+    return res.status(200).json({
+      success: true,
+      tweet: {
+        id: tweetId,
+        url: tweetUrl,
+        text: content,
+        user: {
+          id: user_id,
+          username: username
+        }
+      },
+      message: 'Tweet posted successfully'
+    });
+
+  } catch (error) {
+    console.error('Twitter post error:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
   }
 }
