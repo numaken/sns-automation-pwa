@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-const UpgradePrompt = ({ isVisible, onClose, onUpgrade, remainingUses }) => {
+const UpgradePrompt = ({ isVisible, onClose, onUpgrade, remainingUses, userId }) => {
+  // 🆕 Stripe統合のためのstate追加
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
   if (!isVisible) return null;
 
-  // PostGenerator.jsxと同じカラーパレット
+  // PostGenerator.jsxと同じカラーパレット（既存のまま）
   const colors = {
     primary: '#3b82f6',
     primaryHover: '#2563eb',
@@ -29,6 +33,7 @@ const UpgradePrompt = ({ isVisible, onClose, onUpgrade, remainingUses }) => {
     }
   };
 
+  // 既存のスタイル（全て保持）
   const styles = {
     overlay: {
       position: 'fixed',
@@ -129,7 +134,10 @@ const UpgradePrompt = ({ isVisible, onClose, onUpgrade, remainingUses }) => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: '0.5rem'
+      gap: '0.5rem',
+      // 🆕 ローディング状態のスタイル追加
+      opacity: isLoading ? 0.7 : 1,
+      pointerEvents: isLoading ? 'none' : 'auto'
     },
     laterButton: {
       width: '100%',
@@ -147,12 +155,54 @@ const UpgradePrompt = ({ isVisible, onClose, onUpgrade, remainingUses }) => {
       WebkitTextFillColor: 'transparent',
       backgroundClip: 'text',
       fontWeight: '700'
+    },
+    // 🆕 エラー表示スタイル追加
+    errorMessage: {
+      backgroundColor: colors.errorLight,
+      color: colors.error,
+      padding: '0.75rem',
+      borderRadius: '8px',
+      fontSize: '0.875rem',
+      marginBottom: '1rem',
+      textAlign: 'center'
     }
   };
 
-  const handleUpgradeClick = () => {
-    onUpgrade();
-    onClose();
+  // 🆕 Stripe統合処理（既存のhandleUpgradeClickを置き換え）
+  const handleUpgradeClick = async () => {
+    if (!userId) {
+      setError('ユーザーIDが必要です');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // Stripe Checkout Session作成
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || '決済処理でエラーが発生しました');
+      }
+
+      // Stripe Checkoutページにリダイレクト
+      window.location.href = data.checkoutUrl;
+
+    } catch (error) {
+      console.error('Upgrade error:', error);
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -199,30 +249,54 @@ const UpgradePrompt = ({ isVisible, onClose, onUpgrade, remainingUses }) => {
           }
         </p>
 
+        {/* 🆕 エラーメッセージ表示 */}
+        {error && (
+          <div style={styles.errorMessage}>
+            {error}
+          </div>
+        )}
+
         <div style={styles.buttonContainer}>
           <button
             onClick={handleUpgradeClick}
             style={styles.upgradeButton}
+            disabled={isLoading}
             onMouseEnter={(e) => {
-              e.target.style.transform = 'translateY(-1px)';
-              e.target.style.boxShadow = '0 6px 20px 0 rgba(245, 158, 11, 0.4)';
+              if (!isLoading) {
+                e.target.style.transform = 'translateY(-1px)';
+                e.target.style.boxShadow = '0 6px 20px 0 rgba(245, 158, 11, 0.4)';
+              }
             }}
             onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = '0 4px 12px 0 rgba(245, 158, 11, 0.3)';
+              if (!isLoading) {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = '0 4px 12px 0 rgba(245, 158, 11, 0.3)';
+              }
             }}
           >
             <span>👑</span>
-            月額<span style={styles.priceHighlight}>¥980</span>でアップグレード
+            {/* 🆕 ローディング状態の表示 */}
+            {isLoading ? (
+              '処理中...'
+            ) : (
+              <>
+                月額<span style={styles.priceHighlight}>¥980</span>でアップグレード
+              </>
+            )}
           </button>
           <button
             onClick={onClose}
             style={styles.laterButton}
+            disabled={isLoading}
             onMouseEnter={(e) => {
-              e.target.style.color = colors.gray[700];
+              if (!isLoading) {
+                e.target.style.color = colors.gray[700];
+              }
             }}
             onMouseLeave={(e) => {
-              e.target.style.color = colors.gray[500];
+              if (!isLoading) {
+                e.target.style.color = colors.gray[500];
+              }
             }}
           >
             {remainingUses === 0 ? '明日まで待つ' : '後で決める'}
