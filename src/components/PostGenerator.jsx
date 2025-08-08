@@ -826,14 +826,24 @@ const PostGenerator = () => {
         <div className="premium-promotion">
           <div className="promotion-header">
             <span className="crown">👑</span>
-            <h3>1回生成して気に入ったら無制限利用中</h3>
+            <h3>もっと生成したい方へ</h3>
           </div>
+          <p className="promotion-description">
+            プレミアムプランで無制限生成＋SNS自動投稿をお楽しみください
+          </p>
           <button
             onClick={() => setShowUpgradePrompt(true)}
             className="upgrade-button"
           >
-            1日生成数0 | 無制限利用中
+            💎 プレミアムプランを見る（¥980/月）
           </button>
+
+          {/* 現在の使用状況表示 */}
+          <div className="current-usage">
+            <span className="usage-text">
+              今日の残り生成数: {typeof usage.remaining === 'number' ? usage.remaining : 0}回/3回
+            </span>
+          </div>
         </div>
       )}
 
