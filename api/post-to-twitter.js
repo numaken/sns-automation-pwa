@@ -46,19 +46,51 @@ export default async function handler(req, res) {
     const tokenData = JSON.parse(tokenResult.result);
     const { access_token, expires_at, username, user_id } = tokenData;
 
-    // トークン有効期限チェック
+    // トークン有効期限チェックと自動リフレッシュ
+    let currentAccessToken = access_token;
     if (new Date(expires_at) <= new Date()) {
-      return res.status(401).json({
-        error: 'Twitter token expired',
-        action: 'Please reconnect your Twitter account'
+      console.log('Token expired, attempting refresh for user:', username);
+
+      // トークンリフレッシュを実行
+      const refreshResponse = await fetch(`${req.headers.origin || 'https://sns-automation-pwa.vercel.app'}/api/auth/twitter/refresh-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
       });
+
+      if (!refreshResponse.ok) {
+        return res.status(401).json({
+          error: 'Twitter token expired and refresh failed',
+          action: 'Please reconnect your Twitter account'
+        });
+      }
+
+      const refreshData = await refreshResponse.json();
+
+      // 更新されたトークンを再取得
+      const updatedTokenResponse = await fetch(process.env.KV_REST_API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(['GET', tokenKey]),
+      });
+
+      const updatedTokenResult = await updatedTokenResponse.json();
+      const updatedTokenData = JSON.parse(updatedTokenResult.result);
+      currentAccessToken = updatedTokenData.access_token;
+
+      console.log('Token refreshed successfully for user:', username);
     }
 
-    // Twitter API v2でツイート投稿
+    // Twitter API v2でツイート投稿（リフレッシュされたトークン使用）
     const tweetResponse = await fetch('https://api.twitter.com/2/tweets', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${access_token}`,
+        'Authorization': `Bearer ${currentAccessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
