@@ -1,20 +1,21 @@
-// Twitter OAuth 2.0 with PKCE - 認証開始（デバッグ強化版）
+// Twitter OAuth 2.0 with PKCE - 認証開始（TTL延長・保存確認強化版）
 import crypto from 'crypto';
 
 // PKCE用のコードベリファイアとチャレンジを生成
 function generateCodeChallenge() {
   const codeVerifier = crypto.randomBytes(32).toString('base64url');
-  const codeChallenge = crypto.createHash('sha256')
-    .update(codeVerifier)
-    .digest('base64url');
-
+  const codeChallenge = crypto.createHash('sha256').update(codeVerifier).digest('base64url');
   return { codeVerifier, codeChallenge };
 }
 
-// KVにデータを保存（デバッグ強化版）
-async function setKVValue(key, value, ttl = 3600) {
+// KVにデータを保存
+async function setKVValue(key, value, ttlSeconds = null) {
   try {
-    console.log('KV Save attempt:', { key, valueLength: value.length, ttl });
+    const command = ttlSeconds
+      ? ['SETEX', key, ttlSeconds, value]
+      : ['SET', key, value];
+
+    console.log(`KV SET command:`, command);
 
     const response = await fetch(`${process.env.KV_REST_API_URL}`, {
       method: 'POST',
@@ -22,179 +23,200 @@ async function setKVValue(key, value, ttl = 3600) {
         'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(['SETEX', key, ttl, value]),
+      body: JSON.stringify(command),
     });
 
-    const responseData = await response.json();
-    console.log('KV Save response:', {
-      ok: response.ok,
-      status: response.status,
-      data: responseData
-    });
+    const result = await response.json();
+    console.log(`KV SET response:`, { status: response.status, result });
 
-    if (response.ok) {
-      // 保存確認のため即座に読み取りテスト
-      const verifyResponse = await fetch(`${process.env.KV_REST_API_URL}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(['GET', key]),
-      });
-
-      const verifyData = await verifyResponse.json();
-      console.log('KV Save verification:', {
-        found: !!verifyData.result,
-        key,
-        dataMatches: verifyData.result === value
-      });
-
-      return response.ok && !!verifyData.result;
-    }
-
-    return false;
+    return response.ok;
   } catch (error) {
-    console.error('KV Save error:', error);
+    console.error(`KV SET error:`, error);
     return false;
   }
 }
 
-// KV接続テスト
-async function testKVConnection() {
+// KVからデータを取得
+async function getKVValue(key) {
   try {
-    const testKey = `test_connection_${Date.now()}`;
-    const testValue = 'test_data';
+    const response = await fetch(`${process.env.KV_REST_API_URL}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(['GET', key]),
+    });
 
-    console.log('Testing KV connection...');
+    const result = await response.json();
+    console.log(`KV GET response for ${key}:`, { status: response.status, result });
 
-    // テストデータ保存
-    const saveResult = await setKVValue(testKey, testValue, 60);
-
-    // テストデータ削除
-    if (saveResult) {
-      await fetch(`${process.env.KV_REST_API_URL}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(['DEL', testKey]),
-      });
+    if (!response.ok) {
+      return null;
     }
 
-    console.log('KV connection test result:', saveResult);
-    return saveResult;
+    return result.result;
   } catch (error) {
-    console.error('KV connection test failed:', error);
-    return false;
+    console.error(`KV GET error:`, error);
+    return null;
   }
 }
 
 export default async function handler(req, res) {
+  console.log('=== Twitter OAuth Authorize START ===');
+  console.log('Method:', req.method);
+  console.log('Body:', req.body);
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const { userId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ error: 'userId is required' });
+  }
+
+  console.log('OAuth request for userId:', userId);
+
   try {
-    const { userId } = req.body;
+    // 環境変数チェック
+    const requiredEnvVars = {
+      TWITTER_CLIENT_ID: process.env.TWITTER_CLIENT_ID,
+      KV_REST_API_URL: process.env.KV_REST_API_URL,
+      KV_REST_API_TOKEN: process.env.KV_REST_API_TOKEN
+    };
 
-    if (!userId) {
-      return res.status(400).json({ error: 'User ID is required' });
-    }
-
-    console.log('Starting Twitter OAuth for user:', userId);
-
-    // KV接続テスト
-    const kvConnected = await testKVConnection();
-    if (!kvConnected) {
-      console.error('KV connection failed');
-      return res.status(500).json({
-        error: 'Database connection failed',
-        debug: 'KV store not accessible'
-      });
-    }
-
-    // Twitter Client ID確認
-    const clientId = process.env.TWITTER_CLIENT_ID;
-    if (!clientId) {
-      console.error('Twitter Client ID not configured');
-      return res.status(500).json({
-        error: 'Twitter Client ID not configured',
-        code: 'MISSING_CLIENT_ID'
-      });
-    }
-
-    // redirect_uri設定
-    const redirectUri = `https://${req.headers.host}/api/auth/twitter/callback`;
-    console.log('Using redirect_uri:', redirectUri);
-
-    // PKCE生成
-    const { codeVerifier, codeChallenge } = generateCodeChallenge();
-    console.log('Generated PKCE:', {
-      verifierLength: codeVerifier.length,
-      challengeLength: codeChallenge.length
+    console.log('Environment variables check:', {
+      TWITTER_CLIENT_ID: !!requiredEnvVars.TWITTER_CLIENT_ID,
+      KV_REST_API_URL: !!requiredEnvVars.KV_REST_API_URL,
+      KV_REST_API_TOKEN: !!requiredEnvVars.KV_REST_API_TOKEN
     });
 
-    // state生成（CSRF対策）
-    const state = crypto.randomBytes(16).toString('hex');
-    console.log('Generated state:', state);
+    const missingEnvVars = Object.entries(requiredEnvVars)
+      .filter(([key, value]) => !value)
+      .map(([key]) => key);
 
-    // OAuth認証URLパラメータ
+    if (missingEnvVars.length > 0) {
+      return res.status(500).json({
+        error: 'Server configuration error',
+        details: `Missing environment variables: ${missingEnvVars.join(', ')}`
+      });
+    }
+
+    // KV接続テスト
+    console.log('Testing KV connection...');
+    const testKey = 'connection_test_' + Date.now();
+    const testValue = 'test_data';
+    const kvTestSave = await setKVValue(testKey, testValue, 60);
+    const kvTestRead = await getKVValue(testKey);
+    const kvConnectionWorking = kvTestSave && kvTestRead === testValue;
+
+    console.log('KV connection test result:', {
+      save: kvTestSave,
+      read: kvTestRead === testValue,
+      working: kvConnectionWorking
+    });
+
+    if (!kvConnectionWorking) {
+      return res.status(500).json({
+        error: 'KV storage connection failed',
+        debug: 'Cannot connect to KV storage'
+      });
+    }
+
+    // PKCEコードの生成
+    const { codeVerifier, codeChallenge } = generateCodeChallenge();
+    const state = crypto.randomBytes(16).toString('hex');
+
+    console.log('PKCE data generated:', {
+      state,
+      codeVerifier: codeVerifier.substring(0, 10) + '...',
+      codeChallenge: codeChallenge.substring(0, 10) + '...'
+    });
+
+    // PKCEデータの準備
+    const pkceData = {
+      codeVerifier,
+      userId,
+      redirectUri: 'https://sns-automation-pwa.vercel.app/api/auth/twitter/callback',
+      timestamp: Date.now()
+    };
+
+    // KVにPKCEデータを保存（TTL延長: 30分）
+    const kvKey = `twitter_oauth_pkce:${userId}:${state}`;
+    console.log('Saving PKCE data to KV:', { key: kvKey });
+
+    const pkceStored = await setKVValue(kvKey, JSON.stringify(pkceData), 30 * 60); // 30分に延長
+
+    console.log('PKCE data saved:', { success: pkceStored });
+
+    if (!pkceStored) {
+      return res.status(500).json({
+        error: 'Failed to save PKCE data',
+        debug: 'KV storage save failed'
+      });
+    }
+
+    // 保存確認（即座に読み取りテスト）
+    console.log('Verifying PKCE data save...');
+    const savedData = await getKVValue(kvKey);
+    const saveVerification = {
+      found: savedData !== null,
+      dataMatches: savedData ? JSON.stringify(JSON.parse(savedData)) === JSON.stringify(pkceData) : false
+    };
+
+    console.log('KV Save verification:', saveVerification);
+
+    if (!saveVerification.found) {
+      return res.status(500).json({
+        error: 'PKCE data save verification failed',
+        debug: 'Data not found immediately after save'
+      });
+    }
+
+    // OAuth認証URLの生成
     const params = new URLSearchParams({
       response_type: 'code',
-      client_id: clientId,
-      redirect_uri: redirectUri,
+      client_id: process.env.TWITTER_CLIENT_ID,
+      redirect_uri: 'https://sns-automation-pwa.vercel.app/api/auth/twitter/callback',
       scope: 'tweet.read tweet.write users.read offline.access',
       state: state,
       code_challenge: codeChallenge,
-      code_challenge_method: 'S256'
+      code_challenge_method: 'S256',
     });
 
-    // 認証URL構築
     const authUrl = `https://twitter.com/i/oauth2/authorize?${params.toString()}`;
 
-    // PKCE情報をKVに保存
-    const pkceKey = `twitter_oauth_pkce:${userId}:${state}`;
-    const pkceData = JSON.stringify({
-      codeVerifier,
-      userId,
-      redirectUri,
-      timestamp: Date.now()
+    console.log('OAuth URL generated:', {
+      state,
+      clientId: process.env.TWITTER_CLIENT_ID?.substring(0, 10) + '...',
+      redirectUri: 'https://sns-automation-pwa.vercel.app/api/auth/twitter/callback'
     });
 
-    console.log('Saving PKCE data:', { key: pkceKey, dataLength: pkceData.length });
+    console.log('=== Twitter OAuth Authorize SUCCESS ===');
 
-    const saveSuccess = await setKVValue(pkceKey, pkceData, 3600); // 1時間有効
-
-    if (!saveSuccess) {
-      console.error('Failed to save PKCE data to KV');
-      return res.status(500).json({
-        error: 'Failed to save authentication data',
-        debug: 'PKCE data save failed'
-      });
-    }
-
-    console.log('PKCE data saved successfully');
-
-    return res.status(200).json({
+    return res.json({
       success: true,
-      authUrl,
-      state,
+      authUrl: authUrl,
+      state: state,
       message: 'Twitter認証を開始してください',
       debug: {
-        userId,
-        kvKey: pkceKey,
-        kvSaved: saveSuccess
+        userId: userId,
+        kvKey: kvKey,
+        kvSaved: pkceStored,
+        kvVerified: saveVerification.found,
+        ttl: '30分', // TTL情報追加
+        timestamp: new Date().toISOString()
       }
     });
 
   } catch (error) {
     console.error('Twitter OAuth authorize error:', error);
     return res.status(500).json({
-      error: 'OAuth認証の開始に失敗しました',
-      code: 'OAUTH_START_ERROR',
-      debug: error.message
+      error: 'サーバーエラーが発生しました',
+      message: error.message,
+      debug: 'Internal server error during OAuth authorize'
     });
   }
 }
