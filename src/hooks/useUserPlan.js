@@ -275,31 +275,28 @@ export const useUserPlan = () => {
 
       console.log('💳 Starting checkout for userId:', actualUserId);
 
-      const response = await fetch('/api/create-checkout-session', {
+      // 🆕 絶対URL使用
+      const response = await fetch('https://sns-automation-pwa.vercel.app/api/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: actualUserId  // ← 重要：userIdを送信
+          userId: actualUserId
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Checkout session creation failed');
+        throw new Error(data.error || 'Checkout session creation failed');
       }
 
-      const { url, sessionId } = await response.json();
-      console.log('✅ Checkout session created:', sessionId);
+      console.log('✅ Checkout session created:', data.sessionId);
 
-      // メタデータを保存
-      localStorage.setItem('checkoutUserId', actualUserId);
-      localStorage.setItem('checkoutSessionId', sessionId);
-
-      if (url) {
-        window.location.href = url;
-        return { success: true, sessionId };
+      if (data.url) {
+        window.location.href = data.url;
+        return { success: true, sessionId: data.sessionId };
       } else {
         throw new Error('Checkout URL not received');
       }
