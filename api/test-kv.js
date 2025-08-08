@@ -36,21 +36,31 @@ export default async function handler(req, res) {
   // PKCE検索機能
   if (req.method === 'GET' && req.query.action === 'search-pkce') {
     const state = req.query.state;
+    const userId = req.query.userId; // 新追加：特定userId指定
+
     if (!state) {
       return res.json({ error: 'State parameter required' });
     }
 
-    console.log(`PKCE search for state: ${state}`);
+    console.log(`PKCE search for state: ${state}, userId: ${userId}`);
 
+    // 基本的な検索パターン + 動的userId対応
     const searchPatterns = [
       `twitter_oauth_pkce:kv-test-debug:${state}`,
       `twitter_oauth_pkce:debug-test-user:${state}`,
       `twitter_oauth_pkce:callback-test:${state}`,
       `twitter_oauth_pkce:test-user:${state}`,
       `twitter_oauth_pkce:test:${state}`,
+      `twitter_oauth_pkce:final-test:${state}`,
+      `twitter_oauth_pkce:ttl-fix-test:${state}`, // 新追加
       `twitter_oauth_pkce:${state}`,
       state
     ];
+
+    // 特定userIdが指定された場合、最優先で検索
+    if (userId) {
+      searchPatterns.unshift(`twitter_oauth_pkce:${userId}:${state}`);
+    }
 
     const results = [];
 
