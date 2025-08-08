@@ -13,7 +13,7 @@ function generateCodeChallenge() {
 
 // KVにデータを保存
 async function setKVValue(key, value, ttl = 3600) {
-  const response = await fetch(`${process.env.KV_REST_API_URL}`, {
+  const response = await fetch(process.env.KV_REST_API_URL, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
@@ -21,34 +21,39 @@ async function setKVValue(key, value, ttl = 3600) {
     },
     body: JSON.stringify(['SETEX', key, ttl, JSON.stringify(value)]),
   });
-  if (!response.ok) {
-    throw new Error(`KV set error: ${response.status}`);
-  }
+  if (!response.ok) throw new Error(`KV set error: ${response.status}`);
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
   try {
     const { userId } = req.body;
-    if (!userId) {
-      return res.status(400).json({ error: 'User ID is required' });
-    }
+    if (!userId) return res.status(400).json({ error: 'User ID is required' });
 
     // PKCEコード生成
     const { codeVerifier, codeChallenge } = generateCodeChallenge();
     const state = crypto.randomBytes(16).toString('hex');
 
-    // セッション情報をKVに保存（1時間有効）
-    const sessionData = { userId, codeVerifier, state, platform: 'twitter', createdAt: new Date().toISOString() };
-    await setKVValue(`oauth_session:${state}`, sessionData, 3600);
+    // KV保存（1時間有効）
+    await setKVValue(`oauth_session:${state}`, {
+      userId,
+      codeVerifier,
+      state,
+      platform: 'twitter',
+      createdAt: new Date().toISOString()
+    }, 3600);
 
-    // 本番ドメインを固定
+    // 本番ドメイン固定
     const origin = 'https://sns-automation-pwa.vercel.app';
     const redirectUri = `${origin}/api/auth/twitter/callback`;
 
-    // Twitter OAuth 2.0認証URL生成
+    // 認証URL
     const authParams = new URLSearchParams({
       response_type: 'code',
       client_id: process.env.TWITTER_CLIENT_ID,
@@ -58,11 +63,16 @@ export default async function handler(req, res) {
       code_challenge: codeChallenge,
       code_challenge_method: 'S256'
     });
-    const authUrl = `https://twitter.com/i/oauth2/authorize?${authParams.toString()}`;
 
-    return res.status(200).json({ success: true, authUrl, state, message: 'Twitter 認証を開始してください' });
+    return res.status(200).json({
+      success: true,
+      authUrl: `https://twitter.com/i/oauth2/authorize?${authParams.toString()}`,
+      state,
+      message: 'Twitter 認証を開始してください'
+    });
+
   } catch (error) {
     console.error('Twitter OAuth authorize error:', error);
-    return res.status(500).json({ error: 'OAuth 認証の開始に失敗しました', details: error.message });
+    return res.status(500).json({ error: 'OAuth認証の開始に失敗しました', details: error.message });
   }
 }
