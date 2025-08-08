@@ -1,173 +1,233 @@
-// KV接続基本テスト API
+// Vercel KV 接続テスト API（拡張版）
 export default async function handler(req, res) {
+  console.log('KV Test API called:', req.method, req.query);
+
+  // 特定キー検索機能
+  if (req.method === 'GET' && req.query.action === 'get') {
+    const key = req.query.key;
+    if (!key) {
+      return res.json({ error: 'Key parameter required' });
+    }
+
+    console.log(`KV GET request for key: ${key}`);
+
+    try {
+      const result = await getKVValue(key);
+      console.log(`KV GET result for ${key}:`, { found: result !== null, result });
+
+      return res.json({
+        action: 'get',
+        key: key,
+        found: result !== null,
+        data: result,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error(`KV GET error for ${key}:`, error);
+      return res.json({
+        action: 'get',
+        key: key,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
+  // PKCE検索機能
+  if (req.method === 'GET' && req.query.action === 'search-pkce') {
+    const state = req.query.state;
+    if (!state) {
+      return res.json({ error: 'State parameter required' });
+    }
+
+    console.log(`PKCE search for state: ${state}`);
+
+    const searchPatterns = [
+      `twitter_oauth_pkce:kv-test-debug:${state}`,
+      `twitter_oauth_pkce:debug-test-user:${state}`,
+      `twitter_oauth_pkce:callback-test:${state}`,
+      `twitter_oauth_pkce:test-user:${state}`,
+      `twitter_oauth_pkce:test:${state}`,
+      `twitter_oauth_pkce:${state}`,
+      state
+    ];
+
+    const results = [];
+
+    for (const pattern of searchPatterns) {
+      try {
+        const result = await getKVValue(pattern);
+        results.push({
+          pattern: pattern,
+          found: result !== null,
+          data: result
+        });
+
+        if (result !== null) {
+          console.log(`✅ PKCE data found with pattern: ${pattern}`);
+          break;
+        }
+      } catch (error) {
+        results.push({
+          pattern: pattern,
+          found: false,
+          error: error.message
+        });
+      }
+    }
+
+    return res.json({
+      action: 'search-pkce',
+      state: state,
+      searchResults: results,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // 基本的なKV接続テスト（既存機能）
   try {
-    console.log('KV Environment Variables Check:');
-    console.log('KV_REST_API_URL:', !!process.env.KV_REST_API_URL);
-    console.log('KV_REST_API_TOKEN:', !!process.env.KV_REST_API_TOKEN);
+    // 環境変数の確認
+    const hasKvUrl = !!process.env.KV_REST_API_URL;
+    const hasKvToken = !!process.env.KV_REST_API_TOKEN;
 
-    const KV_URL = process.env.KV_REST_API_URL;
-    const KV_TOKEN = process.env.KV_REST_API_TOKEN;
+    console.log('Environment check:', { hasKvUrl, hasKvToken });
 
-    if (!KV_URL || !KV_TOKEN) {
+    if (!hasKvUrl || !hasKvToken) {
       return res.status(500).json({
-        error: 'KV environment variables not set',
-        hasUrl: !!KV_URL,
-        hasToken: !!KV_TOKEN
+        success: false,
+        error: 'KV environment variables not configured',
+        environment: { hasKvUrl, hasKvToken }
       });
     }
 
-    const testKey = `test_${Date.now()}`;
-    const testValue = `test_value_${Date.now()}`;
+    // 基本的な読み書きテスト
+    const testKey = 'kv_test_' + Date.now();
+    const testValue = 'test_value_' + Date.now();
 
-    console.log('Testing KV with:', { testKey, testValue });
+    console.log('Starting KV operations test...');
 
-    // 1. SET操作テスト
-    console.log('1. Testing SET operation...');
-    const setResponse = await fetch(KV_URL, {
+    // SET操作のテスト
+    const setResponse = await fetch(`${process.env.KV_REST_API_URL}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${KV_TOKEN}`,
+        'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(['SET', testKey, testValue]),
     });
-
     const setResult = await setResponse.json();
-    console.log('SET response:', {
-      status: setResponse.status,
-      ok: setResponse.ok,
-      result: setResult
-    });
+    console.log('SET result:', { status: setResponse.status, result: setResult });
 
-    if (!setResponse.ok) {
-      return res.status(500).json({
-        error: 'KV SET operation failed',
-        status: setResponse.status,
-        result: setResult
-      });
-    }
-
-    // 2. GET操作テスト
-    console.log('2. Testing GET operation...');
-    const getResponse = await fetch(KV_URL, {
+    // GET操作のテスト
+    const getResponse = await fetch(`${process.env.KV_REST_API_URL}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${KV_TOKEN}`,
+        'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(['GET', testKey]),
     });
-
     const getResult = await getResponse.json();
-    console.log('GET response:', {
-      status: getResponse.status,
-      ok: getResponse.ok,
-      result: getResult
-    });
+    console.log('GET result:', { status: getResponse.status, result: getResult });
 
-    // 3. SETEX（TTL付きSET）操作テスト
-    console.log('3. Testing SETEX operation...');
-    const setexKey = `setex_test_${Date.now()}`;
-    const setexValue = `setex_value_${Date.now()}`;
-
-    const setexResponse = await fetch(KV_URL, {
+    // SETEX操作のテスト（TTL付き）
+    const setexKey = testKey + '_ttl';
+    const setexResponse = await fetch(`${process.env.KV_REST_API_URL}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${KV_TOKEN}`,
+        'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(['SETEX', setexKey, 60, setexValue]), // 60秒TTL
+      body: JSON.stringify(['SETEX', setexKey, 60, testValue]),
     });
-
     const setexResult = await setexResponse.json();
-    console.log('SETEX response:', {
-      status: setexResponse.status,
-      ok: setexResponse.ok,
-      result: setexResult
-    });
+    console.log('SETEX result:', { status: setexResponse.status, result: setexResult });
 
-    // 4. SETEX結果確認
-    const verifyResponse = await fetch(KV_URL, {
+    // SETEX検証のGET
+    const setexVerifyResponse = await fetch(`${process.env.KV_REST_API_URL}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${KV_TOKEN}`,
+        'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(['GET', setexKey]),
     });
+    const setexVerifyResult = await setexVerifyResponse.json();
+    console.log('SETEX verify result:', { status: setexVerifyResponse.status, result: setexVerifyResult });
 
-    const verifyResult = await verifyResponse.json();
-    console.log('SETEX verification:', {
-      status: verifyResponse.status,
-      ok: verifyResponse.ok,
-      result: verifyResult
-    });
+    // 結果の評価
+    const allSuccess = setResponse.ok && getResponse.ok && setexResponse.ok && setexVerifyResponse.ok;
+    const dataRetrieved = getResult.result === testValue;
+    const setexDataRetrieved = setexVerifyResult.result === testValue;
 
-    // 5. クリーンアップ
-    console.log('4. Cleanup...');
-    await fetch(KV_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${KV_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(['DEL', testKey, setexKey]),
-    });
-
-    // 結果サマリー
-    const testResults = {
-      environment: {
-        hasKvUrl: !!KV_URL,
-        hasKvToken: !!KV_TOKEN
-      },
-      operations: {
-        set: {
-          success: setResponse.ok,
-          status: setResponse.status,
-          result: setResult
-        },
-        get: {
-          success: getResponse.ok,
-          status: getResponse.status,
-          retrieved: getResult.result === testValue
-        },
-        setex: {
-          success: setexResponse.ok,
-          status: setexResponse.status,
-          result: setexResult
-        },
-        setexVerify: {
-          success: verifyResponse.ok,
-          status: verifyResponse.status,
-          retrieved: verifyResult.result === setexValue
+    return res.json({
+      success: allSuccess && dataRetrieved && setexDataRetrieved,
+      message: allSuccess && dataRetrieved && setexDataRetrieved
+        ? 'All KV operations successful'
+        : 'Some KV operations failed',
+      testResults: {
+        environment: { hasKvUrl, hasKvToken },
+        operations: {
+          set: {
+            success: setResponse.ok,
+            status: setResponse.status,
+            result: setResult
+          },
+          get: {
+            success: getResponse.ok,
+            status: getResponse.status,
+            retrieved: dataRetrieved
+          },
+          setex: {
+            success: setexResponse.ok,
+            status: setexResponse.status,
+            result: setexResult
+          },
+          setexVerify: {
+            success: setexVerifyResponse.ok,
+            status: setexVerifyResponse.status,
+            retrieved: setexDataRetrieved
+          }
         }
-      }
-    };
-
-    console.log('KV Test Summary:', testResults);
-
-    const allSuccess = setResponse.ok &&
-      getResponse.ok &&
-      getResult.result === testValue &&
-      setexResponse.ok &&
-      verifyResponse.ok &&
-      verifyResult.result === setexValue;
-
-    return res.status(200).json({
-      success: allSuccess,
-      message: allSuccess ? 'All KV operations successful' : 'Some KV operations failed',
-      testResults,
-      recommendation: allSuccess ?
-        'KV is working correctly' :
-        'Check KV configuration or permissions'
+      },
+      recommendation: allSuccess && dataRetrieved && setexDataRetrieved
+        ? 'KV is working correctly'
+        : 'Check KV configuration and permissions'
     });
 
   } catch (error) {
-    console.error('KV Test Error:', error);
+    console.error('KV test error:', error);
     return res.status(500).json({
-      error: 'KV test failed with exception',
+      success: false,
+      error: 'KV test failed',
       message: error.message,
       stack: error.stack
     });
+  }
+}
+
+// KVからデータを取得するヘルパー関数
+async function getKVValue(key) {
+  try {
+    const response = await fetch(`${process.env.KV_REST_API_URL}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(['GET', key]),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error(`KV GET failed for ${key}:`, result);
+      return null;
+    }
+
+    return result.result;
+  } catch (error) {
+    console.error(`KV GET error for ${key}:`, error);
+    return null;
   }
 }
