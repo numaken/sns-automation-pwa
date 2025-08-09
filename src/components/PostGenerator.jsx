@@ -1,5 +1,5 @@
 // src/components/PostGenerator.jsx
-// 🎨 元の美しいデザイン完全保持 + 最小限のStripe統合
+// 🆕 プレミアムボタンクリック問題緊急修正版
 
 import React, { useState, useEffect } from 'react';
 import { useUserPlan } from '../hooks/useUserPlan';
@@ -10,7 +10,7 @@ const PostGenerator = () => {
   // プラン管理
   const { userPlan, isPremium, isLoading: planLoading, refreshPlan, upgradeTopremium } = useUserPlan();
 
-  // 🆕 ユーザーID管理（Stripe統合用 - 追加1）
+  // 🆕 ユーザーID管理（Stripe統合用）
   const [userId, setUserId] = useState('');
 
   // 状態管理
@@ -40,13 +40,84 @@ const PostGenerator = () => {
     averageTime: 0
   });
 
+  // 🆕 プレミアムボタン緊急修正（引き継ぎ書類指示）
+  useEffect(() => {
+    const fixPremiumButton = () => {
+      const button = document.querySelector('.upgrade-button');
+      if (button && !button.dataset.fixed) {
+        console.log('🔧 プレミアムボタンの緊急修正を実行中...');
+
+        // 既存ボタンをクローンして置き換え
+        const newButton = button.cloneNode(true);
+        button.parentNode.replaceChild(newButton, button);
+
+        // 修正済みマークを付与
+        newButton.dataset.fixed = 'true';
+
+        // 新しいクリックハンドラーを設定
+        newButton.onclick = function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          // ボタンを無効化して処理中表示
+          this.disabled = true;
+          this.innerHTML = '⏳ 決済画面を準備中...';
+
+          // Stripe決済セッション作成
+          fetch('https://sns-automation-pwa.vercel.app/api/create-checkout-session', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              userId: 'button-fix-' + Date.now()
+            })
+          })
+            .then(res => res.json())
+            .then(data => {
+              console.log('✅ Stripe セッション作成成功:', data);
+              if (data.url) {
+                // 決済画面にリダイレクト
+                window.location.href = data.url;
+              } else {
+                throw new Error('決済URLが取得できませんでした');
+              }
+            })
+            .catch(err => {
+              console.error('❌ 決済セッション作成エラー:', err);
+              // ボタンを元に戻す
+              this.disabled = false;
+              this.innerHTML = '💎 プレミアムプランを見る（¥980/月）';
+              alert('決済画面の準備でエラーが発生しました。もう一度お試しください。');
+            });
+        };
+
+        console.log('✅ プレミアムボタンの修正完了');
+      }
+    };
+
+    // DOM読み込み後に修正実行
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', fixPremiumButton);
+    } else {
+      fixPremiumButton();
+    }
+
+    // React rendering後にもう一度実行
+    const timeoutId = setTimeout(fixPremiumButton, 1000);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, []);
+
   // コンポーネント初期化
   useEffect(() => {
     loadStats();
     loadUsage();
   }, []);
 
-  // 🆕 ユーザーID初期化（Stripe統合用 - 追加2）
+  // 🆕 ユーザーID初期化（Stripe統合用）
   useEffect(() => {
     const storedUserId = localStorage.getItem('sns_automation_user_id');
     if (storedUserId) {
@@ -91,6 +162,36 @@ const PostGenerator = () => {
       }
     } catch (error) {
       console.error('Usage loading error:', error);
+    }
+  };
+
+  // 🆕 修正されたupgradeToPremium関数（引き継ぎ書類指示）
+  const upgradeToPremium = async () => {
+    try {
+      console.log('🚀 upgradeToPremium 関数が呼び出されました');
+
+      const response = await fetch('https://sns-automation-pwa.vercel.app/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userId || 'upgrade-' + Date.now()
+        }),
+      });
+
+      const data = await response.json();
+      console.log('✅ Stripe レスポンス:', data);
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error('❌ 決済URLが見つかりません:', data);
+        alert('決済画面の準備でエラーが発生しました。');
+      }
+    } catch (error) {
+      console.error('❌ upgradeToPremium エラー:', error);
+      alert('決済機能でエラーが発生しました。');
     }
   };
 
@@ -832,7 +933,7 @@ const PostGenerator = () => {
             プレミアムプランで無制限生成＋SNS自動投稿をお楽しみください
           </p>
           <button
-            onClick={() => setShowUpgradePrompt(true)}
+            onClick={upgradeToPremium}
             className="upgrade-button"
           >
             💎 プレミアムプランを見る（¥980/月）
@@ -847,43 +948,17 @@ const PostGenerator = () => {
         </div>
       )}
 
-      {/* 🆕 アップグレードプロンプト（Stripe統合 - 追加3） */}
+      {/* 🆕 アップグレードプロンプト（Stripe統合） */}
       <UpgradePrompt
         isVisible={showUpgradePrompt}
         onClose={() => setShowUpgradePrompt(false)}
-        onUpgrade={() => upgradeTopremium(userId)}
+        onUpgrade={() => upgradeToPremium()}
         remainingUses={typeof usage.remaining === 'number' ? usage.remaining : 0}
         userId={userId}
       />
     </div>
   );
 };
-
-
-// PostGenerator.jsx内に追加
-const handleUpgradeClick = async () => {
-  try {
-    const response = await fetch('/api/create-checkout-session', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        userId: 'user_' + Date.now() // 一意のユーザーID生成
-      }),
-    });
-
-    const { url } = await response.json();
-
-    if (url) {
-      // Stripe Checkoutページにリダイレクト
-      window.location.href = url;
-    }
-  } catch (error) {
-    console.error('Checkout error:', error);
-  }
-};
-
 
 // SNS結果メッセージコンポーネント
 const SNSResultMessage = ({ platform, result, onRetry, onClearResult }) => {
