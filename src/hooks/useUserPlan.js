@@ -5,9 +5,9 @@ import { useState, useEffect, useCallback } from 'react';
 export const useUserPlan = () => {
   const [userPlan, setUserPlan] = useState('free');
   const [isLoading, setIsLoading] = useState(true);
+  
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
   const [error, setError] = useState(null);
-  const [lastChecked, setLastChecked] = useState(null);
 
   // プレミアムプランかどうかの判定
   const isPremium = userPlan === 'premium';

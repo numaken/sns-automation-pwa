@@ -1,27 +1,31 @@
-// src/components/PostGenerator.jsx
-// 🆕 サブスクリプション管理機能統合完全版
+// src/components/PostGenerator.jsx - 完全機能版（削除機能復活）
 
 import React, { useState, useEffect } from 'react';
 import { Settings, ArrowLeft } from 'lucide-react';
 import { useUserPlan } from '../hooks/useUserPlan';
 import UpgradePrompt from './UpgradePrompt';
 import SubscriptionManager from './SubscriptionManager';
-
-// 🔧 重要: CSSファイルのインポート（先頭に配置）
 import './PostGenerator.css';
 
-
 const PostGenerator = () => {
-  // 🆕 ビュー管理（メイン画面 or 設定画面）
-  const [currentView, setCurrentView] = useState('generator'); // 'generator' | 'subscription'
+  // 🔧 プラン管理（修正版useUserPlan使用）
+  const {
+    userPlan,
+    isPremium,
+    isLoading: planLoading,
+    refreshPlan,
+    setPlanManually,
+    upgradeTopremium,
+    getDebugInfo
+  } = useUserPlan();
 
-  // プラン管理
-  const { userPlan, isPremium, isLoading: planLoading, refreshPlan, upgradeTopremium } = useUserPlan();
+  // 🔧 ビュー管理（デバッグ強化版）
+  const [currentView, setCurrentView] = useState('generator');
 
-  // 🆕 ユーザーID管理（Stripe統合用）
+  // 🔧 ユーザーID管理
   const [userId, setUserId] = useState('');
 
-  // 他の既存のstate...
+  // 基本状態管理
   const [prompt, setPrompt] = useState('');
   const [tone, setTone] = useState('カジュアル');
   const [generatedPost, setGeneratedPost] = useState('');
@@ -36,6 +40,7 @@ const PostGenerator = () => {
     twitter: false,
     threads: false
   });
+
   const [snsPostResults, setSnsPostResults] = useState({
     twitter: null,
     threads: null
@@ -47,6 +52,72 @@ const PostGenerator = () => {
     averageQuality: 0,
     averageTime: 0
   });
+
+  // 🔧 デバッグ情報（開発時のみ表示）
+  const [showDebug, setShowDebug] = useState(false);
+
+  // 🔧 コンポーネント初期化
+  useEffect(() => {
+    loadStats();
+    loadUsage();
+
+    // デバッグモード検出
+    const isDebugMode = window.location.hostname === 'localhost' ||
+      window.location.search.includes('debug=true');
+    setShowDebug(isDebugMode);
+
+    console.log('🚀 PostGenerator initialized');
+  }, []);
+
+  // 🔧 ユーザーID初期化
+  useEffect(() => {
+    const storedUserId = localStorage.getItem('sns_automation_user_id');
+    if (storedUserId) {
+      setUserId(storedUserId);
+    } else {
+      const newUserId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('sns_automation_user_id', newUserId);
+      setUserId(newUserId);
+    }
+  }, []);
+
+  // 🔧 プラン変更時のusage更新
+  useEffect(() => {
+    if (userPlan === 'premium') {
+      setUsage({ remaining: 'unlimited' });
+    } else {
+      loadUsage();
+    }
+  }, [userPlan]);
+
+  // 🔧 ビュー変更のデバッグ
+  useEffect(() => {
+    console.log('🔄 Current view changed to:', currentView);
+
+    // DOM要素の確認（デバッグ用）
+    setTimeout(() => {
+      if (currentView === 'subscription') {
+        const subscriptionElements = document.querySelectorAll('.subscription-card, .subscription-manager, [data-component="subscription"]');
+        console.log('📋 SubscriptionManager DOM elements found:', subscriptionElements.length);
+      } else {
+        const settingsButton = document.querySelector('.settings-button');
+        const generateButton = document.querySelector('.generate-button');
+        console.log('⚙️ Main view DOM elements - Settings:', !!settingsButton, 'Generate:', !!generateButton);
+      }
+    }, 100);
+  }, [currentView]);
+
+  // 🔧 プラン同期問題の修正
+  useEffect(() => {
+    const storedPlan = localStorage.getItem('userPlan');
+    console.log('🔄 Plan sync check:', { userPlan, storedPlan, isPremium });
+
+    // 不整合検出と修正
+    if (storedPlan !== userPlan && setPlanManually) {
+      console.log('⚠️ Plan mismatch detected, syncing...', { stored: storedPlan, current: userPlan });
+      setPlanManually(userPlan);
+    }
+  }, [userPlan, isPremium, setPlanManually]);
 
   // 🆕 プレミアムボタン緊急修正（引き継ぎ書類指示）
   useEffect(() => {
@@ -119,44 +190,73 @@ const PostGenerator = () => {
     };
   }, []);
 
-  // コンポーネント初期化
-  useEffect(() => {
-    loadStats();
-    loadUsage();
-  }, []);
-
-  // 🆕 ユーザーID初期化（Stripe統合用）
-  useEffect(() => {
-    const storedUserId = localStorage.getItem('sns_automation_user_id');
-    if (storedUserId) {
-      setUserId(storedUserId);
-    } else {
-      const newUserId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('sns_automation_user_id', newUserId);
-      setUserId(newUserId);
-    }
-  }, []);
-
-  // プラン変更時の処理
-  useEffect(() => {
-    if (userPlan === 'premium') {
-      setUsage({ remaining: 'unlimited' });
-    }
-  }, [userPlan]);
-
-  // 🆕 プラン変更ハンドラー
+  // 🔧 プラン変更ハンドラー（強化版）
   const handlePlanChange = (newPlan) => {
-    console.log('🔄 Plan changed to:', newPlan);
-    localStorage.setItem('userPlan', newPlan);
+    console.log('🔄 Plan change requested:', newPlan);
 
-    if (refreshPlan) {
-      refreshPlan();
+    try {
+      // localStorage複数キー更新
+      localStorage.setItem('userPlan', newPlan);
+      localStorage.setItem('user_plan', newPlan);
+      localStorage.setItem('plan', newPlan);
+
+      if (newPlan === 'premium') {
+        localStorage.setItem('subscriptionStatus', 'active');
+        localStorage.setItem('premiumActivatedAt', new Date().toISOString());
+        setUsage({ remaining: 'unlimited' });
+      } else {
+        localStorage.removeItem('subscriptionStatus');
+        localStorage.removeItem('premiumActivatedAt');
+        localStorage.removeItem('checkoutSessionId');
+        localStorage.removeItem('stripeSessionId');
+        loadUsage();
+      }
+
+      // useUserPlanの更新
+      if (refreshPlan) {
+        refreshPlan();
+      }
+
+      // 手動でも更新
+      if (setPlanManually) {
+        setPlanManually(newPlan);
+      }
+
+      console.log('✅ Plan change completed:', newPlan);
+
+    } catch (error) {
+      console.error('❌ Plan change error:', error);
     }
+  };
 
-    if (newPlan === 'premium') {
-      setUsage({ remaining: 'unlimited' });
-    } else {
-      loadUsage();
+  // 🔧 設定画面切り替え（修正版）
+  const handleShowSettings = () => {
+    console.log('🔧 Settings button clicked');
+    console.log('📊 Current state before switch:', {
+      currentView,
+      userPlan,
+      isPremium,
+      userId,
+      debugInfo: getDebugInfo ? getDebugInfo() : 'N/A'
+    });
+
+    try {
+      setCurrentView('subscription');
+      console.log('✅ View switched to subscription');
+    } catch (error) {
+      console.error('❌ View switch error:', error);
+    }
+  };
+
+  // 🔧 メイン画面に戻る（修正版）
+  const handleBackToMain = () => {
+    console.log('🔧 Back button clicked');
+
+    try {
+      setCurrentView('generator');
+      console.log('✅ View switched to generator');
+    } catch (error) {
+      console.error('❌ View switch error:', error);
     }
   };
 
@@ -173,7 +273,6 @@ const PostGenerator = () => {
   };
 
   // 使用量読み込み
-  // 基本的な関数群（引き継ぎ書類から）
   const loadUsage = () => {
     try {
       const savedUsage = localStorage.getItem('dailyUsage');
@@ -190,53 +289,27 @@ const PostGenerator = () => {
     }
   };
 
-  // 🆕 修正されたupgradeToPremium関数（引き継ぎ書類指示）
+  // プレミアムアップグレード
   const upgradeToPremium = async () => {
     try {
-      console.log('🚀 upgradeToPremium 関数が呼び出されました');
-
-      const response = await fetch('https://sns-automation-pwa.vercel.app/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: userId || 'upgrade-' + Date.now()
-        }),
-      });
-
-      const data = await response.json();
-      console.log('✅ Stripe レスポンス:', data);
-
-      if (data.url) {
-        window.location.href = data.url;
+      console.log('🚀 upgradeToPremium called');
+      if (upgradeTopremium) {
+        await upgradeTopremium();
       } else {
-        console.error('❌ 決済URLが見つかりません:', data);
-        alert('決済画面の準備でエラーが発生しました。');
+        console.error('❌ upgradeTopremium function not available');
+        alert('アップグレード機能が利用できません。ページを再読み込みしてください。');
       }
     } catch (error) {
-      console.error('❌ upgradeToPremium エラー:', error);
-      alert('決済機能でエラーが発生しました。');
+      console.error('❌ Upgrade error:', error);
+      alert('アップグレード処理でエラーが発生しました。');
     }
   };
-
-  // レンダリング
-  if (planLoading) {
-    return (
-      <div className="post-generator">
-        <div className="loading-container">プラン情報を読み込み中...</div>
-      </div>
-    );
-  }
-
 
   // AI投稿生成（プラン別処理）
   const handleGenerateClick = () => {
     if (isPremium) {
-      // プレミアムプランは無制限（個人APIキー使用）
       generatePost();
     } else {
-      // 無料プランは共有APIキー使用
       generatePostWithSharedAPI();
     }
   };
@@ -719,11 +792,24 @@ const PostGenerator = () => {
 
   // レンダリング
   if (planLoading) {
-    return <div className="loading-container">プラン情報を読み込み中...</div>;
+    return (
+      <div className="post-generator">
+        <div className="loading-container">
+          プラン情報を読み込み中...
+          {showDebug && (
+            <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '10px' }}>
+              Debug: currentView={currentView}, userPlan={userPlan}
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
-  // 🆕 サブスクリプション管理画面の表示
+  // 🔧 サブスクリプション管理画面（修正版）
   if (currentView === 'subscription') {
+    console.log('🖥️ Rendering subscription view');
+
     return (
       <div className="post-generator">
         {/* 設定画面ヘッダー */}
@@ -731,26 +817,66 @@ const PostGenerator = () => {
           <div className="header-content">
             <h1>⚙️ アカウント設定</h1>
             <button
-              onClick={() => setCurrentView('generator')}
+              onClick={handleBackToMain}
               className="back-button"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 1rem',
+                background: '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: 500
+              }}
             >
-              <ArrowLeft className="back-icon" />
+              <ArrowLeft style={{ width: '1rem', height: '1rem' }} />
               メインに戻る
             </button>
           </div>
         </div>
 
+        {/* デバッグ情報（開発時のみ） */}
+        {showDebug && (
+          <div style={{
+            background: '#f3f4f6',
+            padding: '10px',
+            margin: '10px 0',
+            borderRadius: '5px',
+            fontSize: '0.8rem',
+            color: '#374151'
+          }}>
+            Debug: userId={userId}, userPlan={userPlan}, isPremium={isPremium}
+            <details style={{ marginTop: '5px' }}>
+              <summary>詳細情報</summary>
+              <pre style={{ fontSize: '0.7rem', marginTop: '5px' }}>
+                {JSON.stringify(getDebugInfo ? getDebugInfo() : {}, null, 2)}
+              </pre>
+            </details>
+          </div>
+        )}
+
         {/* サブスクリプション管理コンポーネント */}
-        <SubscriptionManager
-          userId={userId}
-          onPlanChange={handlePlanChange}
-        />
+        <div data-component="subscription" style={{
+          border: showDebug ? '2px solid #10b981' : 'none',
+          borderRadius: '10px',
+          padding: showDebug ? '10px' : '0'
+        }}>
+          <SubscriptionManager
+            userId={userId}
+            onPlanChange={handlePlanChange}
+          />
+        </div>
       </div>
     );
   }
 
-
   // メインの投稿生成画面
+  console.log('🖥️ Rendering main generator view');
+
   return (
     <div className="post-generator">
       {/* ヘッダー - 設定ボタン統合版 */}
@@ -765,21 +891,51 @@ const PostGenerator = () => {
               </div>
             )}
 
-            {/* 🆕 設定ボタン */}
+            {/* 🔧 設定ボタン（修正版） */}
             <button
-              onClick={() => {
-                console.log('🔧 設定ボタンがクリックされました');
-                setCurrentView('subscription');
-              }}
+              onClick={handleShowSettings}
               className="settings-button"
               title="アカウント設定・サブスクリプション管理"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 1rem',
+                background: '#f3f4f6',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.5rem',
+                color: '#374151',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: 500
+              }}
             >
-              <Settings className="settings-icon" />
+              <Settings style={{ width: '1rem', height: '1rem' }} />
               設定
             </button>
           </div>
         </div>
       </div>
+
+      {/* デバッグ情報（開発時のみ） */}
+      {showDebug && (
+        <div style={{
+          background: '#f3f4f6',
+          padding: '10px',
+          margin: '10px 0',
+          borderRadius: '5px',
+          fontSize: '0.8rem',
+          color: '#374151'
+        }}>
+          Debug: currentView={currentView}, userPlan={userPlan}, isPremium={isPremium}
+          <button
+            onClick={() => console.log('Debug info:', getDebugInfo ? getDebugInfo() : 'N/A')}
+            style={{ marginLeft: '10px', padding: '2px 6px', fontSize: '0.7rem' }}
+          >
+            Show Debug
+          </button>
+        </div>
+      )}
 
       {/* プラン情報 */}
       <div className={`plan-info ${isPremium ? 'premium' : 'free'}`}>
@@ -822,7 +978,7 @@ const PostGenerator = () => {
         </div>
 
         <button
-          onClick={() => console.log('生成ボタンクリック')}
+          onClick={handleGenerateClick}
           disabled={isLoading || !prompt.trim()}
           className={`generate-button ${isPremium ? 'premium' : 'free'}`}
         >
@@ -839,6 +995,158 @@ const PostGenerator = () => {
           )}
         </button>
       </div>
+
+      {/* エラー表示 */}
+      {error && (
+        <div className="error-message">
+          <span className="error-icon">⚠️</span>
+          {error}
+        </div>
+      )}
+
+      {/* 生成結果 */}
+      {generatedPost && (
+        <div className="generated-content">
+          <h3>生成された投稿</h3>
+          <div className="post-content">
+            <p>{generatedPost}</p>
+
+            {quality && (
+              <div className="quality-info">
+                <span className="quality-score">
+                  ⭐ 品質スコア: {quality}点/100
+                </span>
+                <span className="quality-grade">
+                  {getQualityGrade(quality)}グレード
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="action-buttons">
+            <button onClick={copyToClipboard} className="copy-button">
+              📋 クリップボードにコピー
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 統合されたSNS投稿セクション */}
+      {generatedPost && (
+        <div className="sns-posting">
+          <h3>🚀 SNS投稿</h3>
+
+          {/* 同時投稿ボタン（メイン） */}
+          <div className="simultaneous-posting">
+            <button
+              onClick={() => postToAllSNS()}
+              disabled={!generatedPost || (!isPremium) || isPostingToSNS.twitter || isPostingToSNS.threads}
+              className={`simultaneous-post-button ${!isPremium ? 'premium-required' : ''}`}
+            >
+              {isPremium ? (
+                <>
+                  🚀 全SNSに同時投稿
+                  {(isPostingToSNS.twitter || isPostingToSNS.threads) && <span className="loading-spinner">⏳</span>}
+                </>
+              ) : (
+                <>
+                  👑 全SNSに同時投稿（プレミアム限定）
+                </>
+              )}
+            </button>
+
+            {!isPremium && (
+              <p className="premium-hint">
+                プレミアムプランで Twitter・Threads に一括投稿できます
+              </p>
+            )}
+          </div>
+
+          {/* 個別投稿セクション */}
+          <div className="individual-posting">
+            <h4>個別投稿</h4>
+
+            {/* Twitter */}
+            <div className="sns-platform">
+              <div className="platform-header">
+                <span className="platform-icon">🐦</span>
+                <span className="platform-name">Twitter</span>
+                {!isPremium && <span className="premium-required-badge">プレミアム限定</span>}
+                {isPostingToSNS.twitter && (
+                  <span className="posting-indicator">投稿中...</span>
+                )}
+              </div>
+
+              {snsPostResults.twitter ? (
+                <SNSResultMessage
+                  platform="twitter"
+                  result={snsPostResults.twitter}
+                  onRetry={() => postToSNS('twitter')}
+                  onClearResult={() => setSnsPostResults({ ...snsPostResults, twitter: null })}
+                />
+              ) : (
+                <button
+                  onClick={() => postToSNS('twitter')}
+                  disabled={!generatedPost || isPostingToSNS.twitter}
+                  className={`sns-post-button ${!isPremium ? 'premium-required' : ''}`}
+                >
+                  {isPremium ? 'Twitterに投稿' : 'Twitterに投稿（プレミアム限定）'}
+                </button>
+              )}
+            </div>
+
+            {/* Threads */}
+            <div className="sns-platform">
+              <div className="platform-header">
+                <span className="platform-icon">📸</span>
+                <span className="platform-name">Threads</span>
+                {!isPremium && <span className="premium-required-badge">プレミアム限定</span>}
+                {isPostingToSNS.threads && (
+                  <span className="posting-indicator">投稿中...</span>
+                )}
+              </div>
+
+              {snsPostResults.threads ? (
+                <SNSResultMessage
+                  platform="threads"
+                  result={snsPostResults.threads}
+                  onRetry={() => postToSNS('threads')}
+                  onClearResult={() => setSnsPostResults({ ...snsPostResults, threads: null })}
+                />
+              ) : (
+                <button
+                  onClick={() => postToSNS('threads')}
+                  disabled={!generatedPost || isPostingToSNS.threads}
+                  className={`sns-post-button ${!isPremium ? 'premium-required' : ''}`}
+                >
+                  {isPremium ? 'Threadsに投稿' : 'Threadsに投稿（プレミアム限定）'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 統計情報（プレミアム限定） */}
+      {isPremium && stats.totalGenerations > 0 && (
+        <div className="stats-section">
+          <h3>📊 統計情報</h3>
+          <div className="stats-grid">
+            <div className="stat-item">
+              <span className="stat-value">{stats.totalGenerations}</span>
+              <span className="stat-label">生成回数</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">{stats.averageQuality}</span>
+              <span className="stat-label">平均品質</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">{(stats.averageTime / 1000).toFixed(1)}s</span>
+              <span className="stat-label">平均生成時間</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 使い方ガイド */}
       <div className="usage-guide">
@@ -868,6 +1176,7 @@ const PostGenerator = () => {
             💎 プレミアムプランを見る（¥980/月）
           </button>
 
+          {/* 現在の使用状況表示 */}
           <div className="current-usage">
             <span className="usage-text">
               今日の残り生成数: {typeof usage.remaining === 'number' ? usage.remaining : 0}回/3回
@@ -875,10 +1184,17 @@ const PostGenerator = () => {
           </div>
         </div>
       )}
+
+      {/* 🆕 アップグレードプロンプト（Stripe統合） */}
+      <UpgradePrompt
+        isVisible={showUpgradePrompt}
+        onClose={() => setShowUpgradePrompt(false)}
+        onUpgrade={() => upgradeToPremium()}
+        remainingUses={typeof usage.remaining === 'number' ? usage.remaining : 0}
+        userId={userId}
+      />
     </div>
   );
-
-
 };
 
 // SNS結果メッセージコンポーネント
