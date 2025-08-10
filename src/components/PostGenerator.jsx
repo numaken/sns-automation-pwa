@@ -371,7 +371,6 @@ const PostGenerator = () => {
       return;
     }
 
-
     try {
       const response = await fetch('/api/cancel-subscription', {
         method: 'POST',
