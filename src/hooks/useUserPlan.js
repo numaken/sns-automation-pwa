@@ -1,9 +1,8 @@
-// src/hooks/useUserPlan.js - プラン管理完全版
+// src/hooks/useUserPlan.js - プラン管理修正版（ローカルストレージベース）
 
 import { useState, useEffect, useCallback } from 'react';
 
 export const useUserPlan = () => {
-  // デフォルトをpremiumに設定（テスト環境での動作確認用）
   const [userPlan, setUserPlan] = useState('free');
   const [isLoading, setIsLoading] = useState(true);
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
@@ -13,94 +12,91 @@ export const useUserPlan = () => {
   // プレミアムプランかどうかの判定
   const isPremium = userPlan === 'premium';
 
-  // プラン確認のメイン関数
+  // プラン確認のメイン関数（ローカルストレージベース）
   const checkUserSubscription = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // 認証トークン取得
+      console.log('🔍 Checking user plan from localStorage...');
+
+      // ローカルストレージから直接プラン情報を取得
+      const planSources = [
+        'userPlan',
+        'user_plan',
+        'plan',
+        'subscriptionStatus'
+      ];
+
+      let detectedPlan = 'free';
+      let planSource = 'default';
+
+      // 複数のソースからプラン情報を検索
+      for (const source of planSources) {
+        const value = localStorage.getItem(source);
+        if (value === 'premium' || value === 'active') {
+          detectedPlan = 'premium';
+          planSource = source;
+          console.log(`✅ Premium plan detected from ${source}: ${value}`);
+          break;
+        }
+      }
+
+      // 認証トークンの確認（追加の検証）
       const authToken = getAuthToken();
-
-      if (!authToken) {
-        console.log('🔓 No auth token found, using free plan');
-        setUserPlan('free');
-        setLastChecked(new Date().toISOString());
-        setIsLoading(false);
-        return;
+      if (authToken && authToken.includes('premium')) {
+        detectedPlan = 'premium';
+        planSource = 'authToken';
+        console.log('✅ Premium plan detected from authToken');
       }
 
-      console.log('🔍 Checking subscription with token:', authToken.substring(0, 10) + '...');
-
-      // キャッシュチェック（5分以内なら使用）
-      const cached = loadFromCache();
-      if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) {
-        console.log('📦 Using cached plan data:', cached.plan);
-        setUserPlan(cached.plan);
-        setSubscriptionInfo(cached.subscription);
-        setLastChecked(new Date(cached.timestamp).toISOString());
-        setIsLoading(false);
-        return;
+      // Stripe セッション情報の確認
+      const stripeSessionId = localStorage.getItem('stripeSessionId') ||
+        localStorage.getItem('checkoutSessionId');
+      if (stripeSessionId && stripeSessionId.startsWith('cs_')) {
+        detectedPlan = 'premium';
+        planSource = 'stripeSession';
+        console.log('✅ Premium plan detected from Stripe session');
       }
 
-      // API呼び出し
-      const response = await fetch('/api/check-user-plan', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(10000) // 10秒タイムアウト
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          console.log('🔒 Unauthorized, falling back to free plan');
-          setUserPlan('free');
-          setLastChecked(new Date().toISOString());
-          setIsLoading(false);
-          return;
-        }
-
-        if (response.status === 404) {
-          console.log('❓ User plan API not found, falling back to free plan');
-          setUserPlan('free');
-          setLastChecked(new Date().toISOString());
-          setIsLoading(false);
-          return;
-        }
-
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      // テストモード確認
+      const testMode = localStorage.getItem('testMode');
+      if (testMode === 'premium') {
+        detectedPlan = 'premium';
+        planSource = 'testMode';
+        console.log('🧪 Test premium mode enabled');
+      } else if (testMode === 'free') {
+        detectedPlan = 'free';
+        planSource = 'testMode';
+        console.log('🧪 Test free mode enabled');
       }
 
-      const data = await response.json();
-      console.log('✅ Plan check response:', data);
+      // サブスクリプション情報の構築
+      const subscriptionData = buildSubscriptionInfo(detectedPlan, planSource);
 
-      // プラン情報を設定
-      const planData = {
-        plan: data.plan || 'free',
-        subscription: data.subscription || null,
-        features: data.features || [],
-        timestamp: Date.now()
-      };
-
-      setUserPlan(planData.plan);
-      setSubscriptionInfo(planData.subscription);
+      // 状態更新
+      setUserPlan(detectedPlan);
+      setSubscriptionInfo(subscriptionData);
       setLastChecked(new Date().toISOString());
 
-      // 成功をローカルストレージにキャッシュ
-      saveToCache(planData);
+      // キャッシュに保存
+      saveToCache({
+        plan: detectedPlan,
+        subscription: subscriptionData,
+        source: planSource,
+        timestamp: Date.now()
+      });
 
-      console.log(`🎯 Final plan set: ${planData.plan}`);
+      console.log(`🎯 Final plan set: ${detectedPlan} (source: ${planSource})`);
 
     } catch (error) {
-      console.error('❌ Subscription check error:', error);
+      console.error('❌ Plan check error:', error);
       setError(error.message);
 
-      // エラー時はキャッシュまたは無料プランにフォールバック
+      // エラー時はキャッシュまたはフリープランにフォールバック
       const cached = loadFromCache();
-      if (cached && Date.now() - cached.timestamp < 30 * 60 * 1000) { // 30分以内のキャッシュ
-        console.log('🔄 Using fallback cached plan data:', cached.plan);
+      if (cached && Date.now() - cached.timestamp < 60 * 60 * 1000) { // 1時間以内のキャッシュ
+        console.log('🔄 Using cached plan data:', cached.plan);
         setUserPlan(cached.plan);
         setSubscriptionInfo(cached.subscription);
         setLastChecked(new Date(cached.timestamp).toISOString());
@@ -114,16 +110,47 @@ export const useUserPlan = () => {
     }
   }, []);
 
+  // サブスクリプション情報の構築
+  const buildSubscriptionInfo = (plan, source) => {
+    if (plan !== 'premium') return null;
+
+    const activatedAt = localStorage.getItem('premiumActivatedAt') || new Date().toISOString();
+    const sessionId = localStorage.getItem('stripeSessionId') || localStorage.getItem('checkoutSessionId');
+
+    return {
+      status: 'active',
+      plan: 'premium',
+      source: source,
+      activated_at: activatedAt,
+      stripe_session_id: sessionId,
+      current_period_end: null, // API未実装のため未設定
+      cancel_at_period_end: false
+    };
+  };
+
   // 初期化
   useEffect(() => {
     checkUserSubscription();
 
-    // 定期的な更新（10分ごと）
+    // ローカルストレージの変更を監視
+    const handleStorageChange = (e) => {
+      if (['userPlan', 'user_plan', 'plan', 'subscriptionStatus', 'testMode'].includes(e.key)) {
+        console.log('📦 LocalStorage change detected:', e.key, e.newValue);
+        checkUserSubscription();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // 定期的な更新（30分ごと）
     const interval = setInterval(() => {
       checkUserSubscription();
-    }, 10 * 60 * 1000);
+    }, 30 * 60 * 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
   }, [checkUserSubscription]);
 
   // キャッシュから読み込み
@@ -163,19 +190,16 @@ export const useUserPlan = () => {
     // 1. テストモード確認
     const testMode = localStorage.getItem('testMode');
     if (testMode === 'premium') {
-      console.log('🧪 Using test premium mode');
-      return 'test-premium-token'; // 動作確認済みトークン
+      return 'test-premium-token';
     }
 
     if (testMode === 'free') {
-      console.log('🧪 Using test free mode');
       return null;
     }
 
     // 2. 明示的プレミアムトークン
     const explicitToken = localStorage.getItem('premiumToken');
     if (explicitToken) {
-      console.log('🔑 Using explicit premium token');
       return explicitToken;
     }
 
@@ -193,14 +217,12 @@ export const useUserPlan = () => {
       // ローカルストレージを優先
       const token = localStorage.getItem(source);
       if (token && token.length > 10) {
-        console.log(`🔑 Found token in localStorage: ${source}`);
         return token;
       }
 
       // セッションストレージをフォールバック
       const sessionToken = sessionStorage.getItem(source);
       if (sessionToken && sessionToken.length > 10) {
-        console.log(`🔑 Found token in sessionStorage: ${source}`);
         return sessionToken;
       }
     }
@@ -209,7 +231,6 @@ export const useUserPlan = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const urlToken = urlParams.get('token') || urlParams.get('auth_token');
     if (urlToken) {
-      console.log('🔗 Found token in URL parameters');
       // URLトークンはローカルストレージに保存
       localStorage.setItem('authToken', urlToken);
       return urlToken;
@@ -225,58 +246,42 @@ export const useUserPlan = () => {
     await checkUserSubscription();
   }, [checkUserSubscription]);
 
-  // Stripe Checkout開始
-  const startCheckout = async (email) => {
-    try {
-      console.log('💳 Starting checkout for:', email);
+  // プレミアムプランへの手動設定
+  const setPremiumPlan = (sessionId = null) => {
+    console.log('🔄 Setting premium plan manually...');
 
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          success_url: `${window.location.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${window.location.origin}/cancel`
-        }),
-      });
+    localStorage.setItem('userPlan', 'premium');
+    localStorage.setItem('user_plan', 'premium');
+    localStorage.setItem('subscriptionStatus', 'active');
+    localStorage.setItem('premiumActivatedAt', new Date().toISOString());
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Checkout session creation failed');
-      }
-
-      const { url, sessionId, customerId } = await response.json();
-      console.log('✅ Checkout session created:', sessionId);
-
-      // メタデータを保存
-      localStorage.setItem('checkoutEmail', email);
-      localStorage.setItem('checkoutSessionId', sessionId);
-      if (customerId) {
-        localStorage.setItem('customerId', customerId);
-      }
-
-      // Stripe Checkoutページへリダイレクト
-      window.location.href = url;
-
-      return { success: true, url, sessionId };
-
-    } catch (error) {
-      console.error('❌ Checkout error:', error);
-      return { success: false, error: error.message };
+    if (sessionId) {
+      localStorage.setItem('stripeSessionId', sessionId);
     }
+
+    // プレミアムトークンも設定
+    const userId = localStorage.getItem('sns_automation_user_id') || 'premium-user-' + Date.now();
+    localStorage.setItem('authToken', `premium-${userId}-${Date.now()}`);
+
+    // キャッシュクリアして更新
+    localStorage.removeItem('userPlanCache');
+    checkUserSubscription();
+
+    console.log('✅ Premium plan set manually');
   };
 
-  // 🆕 修正版：userId使用に変更
+  // プレミアムプランへのアップグレード
   const upgradeTopremium = async (userId = null) => {
     try {
-      const actualUserId = userId || 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      const actualUserId = userId || localStorage.getItem('sns_automation_user_id') ||
+        'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
       console.log('💳 Starting checkout for userId:', actualUserId);
 
-      // 🆕 絶対URL使用
-      const response = await fetch('https://sns-automation-pwa.vercel.app/api/create-checkout-session', {
+      // ユーザーIDを保存
+      localStorage.setItem('sns_automation_user_id', actualUserId);
+
+      const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -293,6 +298,9 @@ export const useUserPlan = () => {
       }
 
       console.log('✅ Checkout session created:', data.sessionId);
+
+      // チェックアウト情報を保存
+      localStorage.setItem('checkoutSessionId', data.sessionId);
 
       if (data.url) {
         window.location.href = data.url;
@@ -330,22 +338,19 @@ export const useUserPlan = () => {
     refreshPlan();
   };
 
-  const setPremiumToken = (token = 'test-premium-token') => {
-    localStorage.setItem('premiumToken', token);
-    localStorage.removeItem('userPlanCache');
-    console.log('🔑 Premium token set:', token.substring(0, 10) + '...');
-    refreshPlan();
-  };
+  const clearAllData = () => {
+    const keysToRemove = [
+      'userPlan', 'user_plan', 'plan', 'subscriptionStatus',
+      'authToken', 'userToken', 'accessToken', 'sessionToken', 'jwt', 'bearer_token', 'premiumToken',
+      'testMode', 'userPlanCache', 'stripeSessionId', 'checkoutSessionId', 'premiumActivatedAt'
+    ];
 
-  const clearAllTokens = () => {
-    const tokenKeys = ['authToken', 'userToken', 'accessToken', 'sessionToken', 'jwt', 'bearer_token', 'premiumToken'];
-    tokenKeys.forEach(key => {
+    keysToRemove.forEach(key => {
       localStorage.removeItem(key);
       sessionStorage.removeItem(key);
     });
-    localStorage.removeItem('testMode');
-    localStorage.removeItem('userPlanCache');
-    console.log('🧹 All tokens and cache cleared');
+
+    console.log('🧹 All user plan data cleared');
     refreshPlan();
   };
 
@@ -366,9 +371,7 @@ export const useUserPlan = () => {
           '優先サポート'
         ],
         badge: '👑 PREMIUM',
-        color: 'premium',
-        bgColor: 'bg-gradient-to-r from-yellow-400 to-orange-500',
-        textColor: 'text-yellow-900'
+        color: 'premium'
       };
     } else {
       return {
@@ -382,34 +385,9 @@ export const useUserPlan = () => {
           '基本統計情報'
         ],
         badge: '🆓 FREE',
-        color: 'free',
-        bgColor: 'bg-gradient-to-r from-gray-100 to-gray-200',
-        textColor: 'text-gray-700'
+        color: 'free'
       };
     }
-  };
-
-  // サブスクリプション状態
-  const getSubscriptionStatus = () => {
-    if (!subscriptionInfo) {
-      return { status: 'none', message: 'サブスクリプション情報なし' };
-    }
-
-    const status = subscriptionInfo.status;
-    const statusMessages = {
-      active: '✅ アクティブ',
-      trialing: '🔄 トライアル中',
-      past_due: '⚠️ 支払い遅延',
-      canceled: '❌ キャンセル済み',
-      unpaid: '💳 未払い'
-    };
-
-    return {
-      status,
-      message: statusMessages[status] || `❓ ${status}`,
-      next_billing_date: subscriptionInfo.current_period_end,
-      cancel_at_period_end: subscriptionInfo.cancel_at_period_end
-    };
   };
 
   return {
@@ -422,26 +400,21 @@ export const useUserPlan = () => {
 
     // サブスクリプション情報
     subscriptionInfo,
-    getSubscriptionStatus,
 
     // 操作関数
     checkUserSubscription,
     refreshPlan,
     upgradeTopremium,
-    startCheckout,
+    setPremiumPlan,
 
     // デバッグ・テスト関数
     enableTestPremium,
     enableTestFree,
     disableTestMode,
-    setPremiumToken,
-    clearAllTokens,
+    clearAllData,
 
     // ヘルパー関数
     getPlanDetails,
-    getAuthToken,
-
-    // 状態
-    cached: !!loadFromCache()
+    getAuthToken
   };
 };
