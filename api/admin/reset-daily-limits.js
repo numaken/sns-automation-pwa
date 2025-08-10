@@ -1,5 +1,5 @@
-// /api/admin/reset-daily-limits.js (改善版)
-// 制限システムの完全リセット機能
+// /api/admin/reset-daily-limits.js (完全修正版)
+// 制限システムの強制リセット機能
 
 export default async function handler(req, res) {
   const adminKey = req.headers['x-admin-key'];
@@ -11,52 +11,20 @@ export default async function handler(req, res) {
   try {
     const today = new Date().toISOString().split('T')[0];
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-    // リセット対象のパターン取得
-    const patterns = [
-      `daily_usage:*:${today}`,
-      `daily_usage:*:${yesterday}`,
-      `daily_cost:${today}`,
-      `daily_cost:${yesterday}`,
-      `emergency_stop:${today}`,
-      `emergency_stop:${yesterday}`
-    ];
+    const { ip } = req.query; // 特定IP指定
 
     const results = {
       timestamp: new Date().toISOString(),
-      patterns_checked: patterns,
-      keys_deleted: [],
+      date: today,
+      resetCount: 0,
+      deletedKeys: [],
       errors: []
     };
 
-    // 各パターンのキーを検索・削除
-    for (const pattern of patterns) {
-      try {
-        const keys = await scanKVKeys(pattern);
-
-        for (const key of keys) {
-          try {
-            await deleteKVKey(key);
-            results.keys_deleted.push(key);
-            console.log('🗑️ Deleted key:', key);
-          } catch (error) {
-            results.errors.push({
-              key,
-              error: error.message
-            });
-          }
-        }
-      } catch (error) {
-        results.errors.push({
-          pattern,
-          error: error.message
-        });
-      }
-    }
-
-    // 特定IPの強制リセット（URLパラメータで指定可能）
-    const { ip } = req.query;
+    // 特定IPのリセット
     if (ip) {
+      console.log('🎯 Resetting specific IP:', ip);
+
       const specificKeys = [
         `daily_usage:${ip}:${today}`,
         `daily_usage:${ip}:${yesterday}`
@@ -64,44 +32,135 @@ export default async function handler(req, res) {
 
       for (const key of specificKeys) {
         try {
-          await deleteKVKey(key);
-          results.keys_deleted.push(key);
-          console.log('🎯 Force deleted key:', key);
+          const deleted = await deleteKVKey(key);
+          if (deleted > 0) {
+            results.deletedKeys.push(key);
+            results.resetCount++;
+            console.log('✅ Deleted:', key);
+          }
         } catch (error) {
-          results.errors.push({
-            key,
-            error: error.message
-          });
+          results.errors.push({ key, error: error.message });
+          console.error('❌ Delete error:', key, error.message);
         }
+      }
+    } else {
+      // 全体リセット
+      console.log('🔄 Full reset starting...');
+
+      // 一般的なパターンで削除
+      const commonPatterns = [
+        `daily_cost:${today}`,
+        `daily_cost:${yesterday}`,
+        `emergency_stop:${today}`,
+        `emergency_stop:${yesterday}`
+      ];
+
+      for (const key of commonPatterns) {
+        try {
+          const deleted = await deleteKVKey(key);
+          if (deleted > 0) {
+            results.deletedKeys.push(key);
+            results.resetCount++;
+            console.log('✅ Deleted:', key);
+          }
+        } catch (error) {
+          results.errors.push({ key, error: error.message });
+        }
+      }
+
+      // daily_usage パターンの一括削除
+      try {
+        const usageKeys = await getAllUsageKeys(today, yesterday);
+        for (const key of usageKeys) {
+          try {
+            const deleted = await deleteKVKey(key);
+            if (deleted > 0) {
+              results.deletedKeys.push(key);
+              results.resetCount++;
+            }
+          } catch (error) {
+            results.errors.push({ key, error: error.message });
+          }
+        }
+      } catch (error) {
+        results.errors.push({ operation: 'bulk_usage_delete', error: error.message });
       }
     }
 
-    console.log('✅ Reset completed:', results);
+    console.log('🎉 Reset completed:', results);
 
     return res.json({
       success: true,
-      message: 'Daily limits reset completed',
+      message: ip ? `IP ${ip} reset completed` : 'Full reset completed',
       details: results,
-      usage: 'Add ?ip=<IP_ADDRESS> to reset specific IP'
+      next_steps: ip ? 'Test with this IP now' : 'System ready for new usage'
     });
 
   } catch (error) {
     console.error('❌ Reset error:', error);
     return res.status(500).json({
       error: 'Reset failed',
-      message: error.message
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }
 
-// KVキー検索（パターンマッチ）
-async function scanKVKeys(pattern) {
+// KVキー削除（改良版）
+async function deleteKVKey(key) {
+  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+    throw new Error('KV environment variables not configured');
+  }
+
+  console.log('🗑️ Attempting to delete:', key);
+
+  const response = await fetch(process.env.KV_REST_API_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(['DEL', key]),
+  });
+
+  if (!response.ok) {
+    throw new Error(`KV DEL failed: ${response.status} ${response.statusText}`);
+  }
+
+  const result = await response.json();
+  console.log('🗑️ Delete result for', key, ':', result.result);
+  return result.result; // 削除されたキーの数
+}
+
+// 使用量キーの一括取得
+async function getAllUsageKeys(today, yesterday) {
+  const keys = [];
+
+  try {
+    // SCAN コマンドで daily_usage:* パターンを検索
+    const todayPattern = `daily_usage:*:${today}`;
+    const yesterdayPattern = `daily_usage:*:${yesterday}`;
+
+    const todayKeys = await scanKeys(todayPattern);
+    const yesterdayKeys = await scanKeys(yesterdayPattern);
+
+    keys.push(...todayKeys, ...yesterdayKeys);
+
+    console.log('📋 Found usage keys:', keys);
+  } catch (error) {
+    console.error('Key scan error:', error);
+  }
+
+  return keys;
+}
+
+// KVキー検索
+async function scanKeys(pattern) {
   if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
     throw new Error('KV environment variables not configured');
   }
 
   try {
-    // Redis KEYS コマンドでパターンマッチング
     const response = await fetch(process.env.KV_REST_API_URL, {
       method: 'POST',
       headers: {
@@ -118,30 +177,7 @@ async function scanKVKeys(pattern) {
     const result = await response.json();
     return result.result || [];
   } catch (error) {
-    console.error('Key scan error:', error);
+    console.error('Scan error for pattern', pattern, ':', error);
     return [];
   }
-}
-
-// KVキー削除
-async function deleteKVKey(key) {
-  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
-    throw new Error('KV environment variables not configured');
-  }
-
-  const response = await fetch(process.env.KV_REST_API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(['DEL', key]),
-  });
-
-  if (!response.ok) {
-    throw new Error(`KV DEL failed: ${response.status}`);
-  }
-
-  const result = await response.json();
-  return result.result;
 }
