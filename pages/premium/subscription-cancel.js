@@ -43,7 +43,7 @@ const SubscriptionCancel = () => {
 
 解約後は1日3回制限の無料プランに戻ります。`;
 
-    if (!confirm(confirmMessage)) {
+    if (!window.confirm(confirmMessage)) {
       return;
     }
 

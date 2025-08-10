@@ -6,19 +6,22 @@ import { Settings, ArrowLeft } from 'lucide-react';
 import { useUserPlan } from '../hooks/useUserPlan';
 import UpgradePrompt from './UpgradePrompt';
 import SubscriptionManager from './SubscriptionManager';
+
+// 🔧 重要: CSSファイルのインポート（先頭に配置）
 import './PostGenerator.css';
 
-const PostGenerator = () => {
-  // プラン管理
-  const { userPlan, isPremium, isLoading: planLoading, refreshPlan, upgradeTopremium } = useUserPlan();
 
+const PostGenerator = () => {
   // 🆕 ビュー管理（メイン画面 or 設定画面）
   const [currentView, setCurrentView] = useState('generator'); // 'generator' | 'subscription'
+
+  // プラン管理
+  const { userPlan, isPremium, isLoading: planLoading, refreshPlan, upgradeTopremium } = useUserPlan();
 
   // 🆕 ユーザーID管理（Stripe統合用）
   const [userId, setUserId] = useState('');
 
-  // 状態管理
+  // 他の既存のstate...
   const [prompt, setPrompt] = useState('');
   const [tone, setTone] = useState('カジュアル');
   const [generatedPost, setGeneratedPost] = useState('');
@@ -141,17 +144,15 @@ const PostGenerator = () => {
     }
   }, [userPlan]);
 
-  // 🆕 プラン変更ハンドラー（サブスクリプション管理用）
+  // 🆕 プラン変更ハンドラー
   const handlePlanChange = (newPlan) => {
     console.log('🔄 Plan changed to:', newPlan);
     localStorage.setItem('userPlan', newPlan);
 
-    // useUserPlanの更新機能を呼び出し
     if (refreshPlan) {
       refreshPlan();
     }
 
-    // プラン変更に応じて使用量更新
     if (newPlan === 'premium') {
       setUsage({ remaining: 'unlimited' });
     } else {
@@ -172,6 +173,7 @@ const PostGenerator = () => {
   };
 
   // 使用量読み込み
+  // 基本的な関数群（引き継ぎ書類から）
   const loadUsage = () => {
     try {
       const savedUsage = localStorage.getItem('dailyUsage');
@@ -217,6 +219,16 @@ const PostGenerator = () => {
       alert('決済機能でエラーが発生しました。');
     }
   };
+
+  // レンダリング
+  if (planLoading) {
+    return (
+      <div className="post-generator">
+        <div className="loading-container">プラン情報を読み込み中...</div>
+      </div>
+    );
+  }
+
 
   // AI投稿生成（プラン別処理）
   const handleGenerateClick = () => {
@@ -737,6 +749,7 @@ const PostGenerator = () => {
     );
   }
 
+
   // メインの投稿生成画面
   return (
     <div className="post-generator">
@@ -754,7 +767,10 @@ const PostGenerator = () => {
 
             {/* 🆕 設定ボタン */}
             <button
-              onClick={() => setCurrentView('subscription')}
+              onClick={() => {
+                console.log('🔧 設定ボタンがクリックされました');
+                setCurrentView('subscription');
+              }}
               className="settings-button"
               title="アカウント設定・サブスクリプション管理"
             >
@@ -806,7 +822,7 @@ const PostGenerator = () => {
         </div>
 
         <button
-          onClick={handleGenerateClick}
+          onClick={() => console.log('生成ボタンクリック')}
           disabled={isLoading || !prompt.trim()}
           className={`generate-button ${isPremium ? 'premium' : 'free'}`}
         >
@@ -823,158 +839,6 @@ const PostGenerator = () => {
           )}
         </button>
       </div>
-
-      {/* エラー表示 */}
-      {error && (
-        <div className="error-message">
-          <span className="error-icon">⚠️</span>
-          {error}
-        </div>
-      )}
-
-      {/* 生成結果 */}
-      {generatedPost && (
-        <div className="generated-content">
-          <h3>生成された投稿</h3>
-          <div className="post-content">
-            <p>{generatedPost}</p>
-
-            {quality && (
-              <div className="quality-info">
-                <span className="quality-score">
-                  ⭐ 品質スコア: {quality}点/100
-                </span>
-                <span className="quality-grade">
-                  {getQualityGrade(quality)}グレード
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="action-buttons">
-            <button onClick={copyToClipboard} className="copy-button">
-              📋 クリップボードにコピー
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 統合されたSNS投稿セクション */}
-      {generatedPost && (
-        <div className="sns-posting">
-          <h3>🚀 SNS投稿</h3>
-
-          {/* 同時投稿ボタン（メイン） */}
-          <div className="simultaneous-posting">
-            <button
-              onClick={() => postToAllSNS()}
-              disabled={!generatedPost || (!isPremium) || isPostingToSNS.twitter || isPostingToSNS.threads}
-              className={`simultaneous-post-button ${!isPremium ? 'premium-required' : ''}`}
-            >
-              {isPremium ? (
-                <>
-                  🚀 全SNSに同時投稿
-                  {(isPostingToSNS.twitter || isPostingToSNS.threads) && <span className="loading-spinner">⏳</span>}
-                </>
-              ) : (
-                <>
-                  👑 全SNSに同時投稿（プレミアム限定）
-                </>
-              )}
-            </button>
-
-            {!isPremium && (
-              <p className="premium-hint">
-                プレミアムプランで Twitter・Threads に一括投稿できます
-              </p>
-            )}
-          </div>
-
-          {/* 個別投稿セクション */}
-          <div className="individual-posting">
-            <h4>個別投稿</h4>
-
-            {/* Twitter */}
-            <div className="sns-platform">
-              <div className="platform-header">
-                <span className="platform-icon">🐦</span>
-                <span className="platform-name">Twitter</span>
-                {!isPremium && <span className="premium-required-badge">プレミアム限定</span>}
-                {isPostingToSNS.twitter && (
-                  <span className="posting-indicator">投稿中...</span>
-                )}
-              </div>
-
-              {snsPostResults.twitter ? (
-                <SNSResultMessage
-                  platform="twitter"
-                  result={snsPostResults.twitter}
-                  onRetry={() => postToSNS('twitter')}
-                  onClearResult={() => setSnsPostResults({ ...snsPostResults, twitter: null })}
-                />
-              ) : (
-                <button
-                  onClick={() => postToSNS('twitter')}
-                  disabled={!generatedPost || isPostingToSNS.twitter}
-                  className={`sns-post-button ${!isPremium ? 'premium-required' : ''}`}
-                >
-                  {isPremium ? 'Twitterに投稿' : 'Twitterに投稿（プレミアム限定）'}
-                </button>
-              )}
-            </div>
-
-            {/* Threads */}
-            <div className="sns-platform">
-              <div className="platform-header">
-                <span className="platform-icon">📸</span>
-                <span className="platform-name">Threads</span>
-                {!isPremium && <span className="premium-required-badge">プレミアム限定</span>}
-                {isPostingToSNS.threads && (
-                  <span className="posting-indicator">投稿中...</span>
-                )}
-              </div>
-
-              {snsPostResults.threads ? (
-                <SNSResultMessage
-                  platform="threads"
-                  result={snsPostResults.threads}
-                  onRetry={() => postToSNS('threads')}
-                  onClearResult={() => setSnsPostResults({ ...snsPostResults, threads: null })}
-                />
-              ) : (
-                <button
-                  onClick={() => postToSNS('threads')}
-                  disabled={!generatedPost || isPostingToSNS.threads}
-                  className={`sns-post-button ${!isPremium ? 'premium-required' : ''}`}
-                >
-                  {isPremium ? 'Threadsに投稿' : 'Threadsに投稿（プレミアム限定）'}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 統計情報（プレミアム限定） */}
-      {isPremium && stats.totalGenerations > 0 && (
-        <div className="stats-section">
-          <h3>📊 統計情報</h3>
-          <div className="stats-grid">
-            <div className="stat-item">
-              <span className="stat-value">{stats.totalGenerations}</span>
-              <span className="stat-label">生成回数</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-value">{stats.averageQuality}</span>
-              <span className="stat-label">平均品質</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-value">{(stats.averageTime / 1000).toFixed(1)}s</span>
-              <span className="stat-label">平均生成時間</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 使い方ガイド */}
       <div className="usage-guide">
@@ -1004,7 +868,6 @@ const PostGenerator = () => {
             💎 プレミアムプランを見る（¥980/月）
           </button>
 
-          {/* 現在の使用状況表示 */}
           <div className="current-usage">
             <span className="usage-text">
               今日の残り生成数: {typeof usage.remaining === 'number' ? usage.remaining : 0}回/3回
@@ -1012,17 +875,10 @@ const PostGenerator = () => {
           </div>
         </div>
       )}
-
-      {/* 🆕 アップグレードプロンプト（Stripe統合） */}
-      <UpgradePrompt
-        isVisible={showUpgradePrompt}
-        onClose={() => setShowUpgradePrompt(false)}
-        onUpgrade={() => upgradeToPremium()}
-        remainingUses={typeof usage.remaining === 'number' ? usage.remaining : 0}
-        userId={userId}
-      />
     </div>
   );
+
+
 };
 
 // SNS結果メッセージコンポーネント
