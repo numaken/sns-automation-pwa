@@ -353,6 +353,56 @@ const PostGenerator = () => {
     }
   };
 
+
+
+  // PostGenerator.jsx に追加
+  const handleCancelSubscription = async () => {
+    if (!confirm('プレミアムプランを解約しますか？\n\n解約すると1日3回制限に戻ります。')) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/cancel-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: localStorage.getItem('sns_automation_user_id')
+        })
+      });
+
+      if (response.ok) {
+        localStorage.setItem('userPlan', 'free');
+        alert('プレミアムプランを解約しました');
+        window.location.reload();
+      } else {
+        alert('解約処理でエラーが発生しました');
+      }
+    } catch (error) {
+      alert('解約処理に失敗しました');
+    }
+  };
+
+  // プレミアムユーザー向け設定セクションに追加
+  {
+    userPlan === 'premium' && (
+      <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <h3 className="font-semibold text-yellow-800 mb-2 flex items-center">
+          👑 プレミアム会員設定
+        </h3>
+        <p className="text-yellow-700 mb-3">
+          プランの管理や解約はこちらから行えます
+        </p>
+        <button
+          onClick={() => window.location.href = '/premium/subscription-cancel'}
+          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
+        >
+          プラン管理・解約
+        </button>
+      </div>
+    )
+  }
+
+
   // SNS投稿関数
   const postToSNS = async (platform) => {
     if (!generatedPost) {
