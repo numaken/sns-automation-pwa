@@ -357,9 +357,20 @@ const PostGenerator = () => {
 
   // PostGenerator.jsx に追加
   const handleCancelSubscription = async () => {
-    if (!confirm('プレミアムプランを解約しますか？\n\n解約すると1日3回制限に戻ります。')) {
+    const confirmMessage = `本当にプレミアムプランを解約しますか？
+
+解約すると以下の機能が使用できなくなります：
+- 無制限AI投稿生成
+- Twitter/Threads自動投稿
+- 高速生成機能
+- 広告なしの体験
+
+解約後は1日3回制限の無料プランに戻ります。`;
+
+    if (!window.confirm(confirmMessage)) {
       return;
     }
+
 
     try {
       const response = await fetch('/api/cancel-subscription', {
