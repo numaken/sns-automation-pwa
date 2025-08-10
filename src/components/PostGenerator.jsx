@@ -1,14 +1,19 @@
 // src/components/PostGenerator.jsx
-// 🆕 プレミアムボタンクリック問題緊急修正版
+// 🆕 サブスクリプション管理機能統合完全版
 
 import React, { useState, useEffect } from 'react';
+import { Settings, ArrowLeft } from 'lucide-react';
 import { useUserPlan } from '../hooks/useUserPlan';
 import UpgradePrompt from './UpgradePrompt';
+import SubscriptionManager from './SubscriptionManager';
 import './PostGenerator.css';
 
 const PostGenerator = () => {
   // プラン管理
   const { userPlan, isPremium, isLoading: planLoading, refreshPlan, upgradeTopremium } = useUserPlan();
+
+  // 🆕 ビュー管理（メイン画面 or 設定画面）
+  const [currentView, setCurrentView] = useState('generator'); // 'generator' | 'subscription'
 
   // 🆕 ユーザーID管理（Stripe統合用）
   const [userId, setUserId] = useState('');
@@ -135,6 +140,24 @@ const PostGenerator = () => {
       setUsage({ remaining: 'unlimited' });
     }
   }, [userPlan]);
+
+  // 🆕 プラン変更ハンドラー（サブスクリプション管理用）
+  const handlePlanChange = (newPlan) => {
+    console.log('🔄 Plan changed to:', newPlan);
+    localStorage.setItem('userPlan', newPlan);
+
+    // useUserPlanの更新機能を呼び出し
+    if (refreshPlan) {
+      refreshPlan();
+    }
+
+    // プラン変更に応じて使用量更新
+    if (newPlan === 'premium') {
+      setUsage({ remaining: 'unlimited' });
+    } else {
+      loadUsage();
+    }
+  };
 
   // 統計情報読み込み
   const loadStats = () => {
@@ -352,66 +375,6 @@ const PostGenerator = () => {
       setIsLoading(false);
     }
   };
-
-
-
-  // PostGenerator.jsx に追加
-  const handleCancelSubscription = async () => {
-    const confirmMessage = `本当にプレミアムプランを解約しますか？
-
-解約すると以下の機能が使用できなくなります：
-- 無制限AI投稿生成
-- Twitter/Threads自動投稿
-- 高速生成機能
-- 広告なしの体験
-
-解約後は1日3回制限の無料プランに戻ります。`;
-
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/cancel-subscription', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: localStorage.getItem('sns_automation_user_id')
-        })
-      });
-
-      if (response.ok) {
-        localStorage.setItem('userPlan', 'free');
-        alert('プレミアムプランを解約しました');
-        window.location.reload();
-      } else {
-        alert('解約処理でエラーが発生しました');
-      }
-    } catch (error) {
-      alert('解約処理に失敗しました');
-    }
-  };
-
-  // プレミアムユーザー向け設定セクションに追加
-  {
-    userPlan === 'premium' && (
-      <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <h3 className="font-semibold text-yellow-800 mb-2 flex items-center">
-          👑 プレミアム会員設定
-        </h3>
-        <p className="text-yellow-700 mb-3">
-          プランの管理や解約はこちらから行えます
-        </p>
-        <button
-          onClick={() => window.location.href = '/premium/subscription-cancel'}
-          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
-        >
-          プラン管理・解約
-        </button>
-      </div>
-    )
-  }
-
 
   // SNS投稿関数
   const postToSNS = async (platform) => {
@@ -747,17 +710,59 @@ const PostGenerator = () => {
     return <div className="loading-container">プラン情報を読み込み中...</div>;
   }
 
+  // 🆕 サブスクリプション管理画面の表示
+  if (currentView === 'subscription') {
+    return (
+      <div className="post-generator">
+        {/* 設定画面ヘッダー */}
+        <div className="header">
+          <div className="header-content">
+            <h1>⚙️ アカウント設定</h1>
+            <button
+              onClick={() => setCurrentView('generator')}
+              className="back-button"
+            >
+              <ArrowLeft className="back-icon" />
+              メインに戻る
+            </button>
+          </div>
+        </div>
+
+        {/* サブスクリプション管理コンポーネント */}
+        <SubscriptionManager
+          userId={userId}
+          onPlanChange={handlePlanChange}
+        />
+      </div>
+    );
+  }
+
+  // メインの投稿生成画面
   return (
     <div className="post-generator">
-      {/* ヘッダー */}
+      {/* ヘッダー - 設定ボタン統合版 */}
       <div className="header">
-        <h1>📝 SNS自動化ツール</h1>
-        {isPremium && (
-          <div className="premium-badge">
-            <span className="crown">👑</span>
-            <span>PREMIUM MEMBER</span>
+        <div className="header-content">
+          <h1>📝 SNS自動化ツール</h1>
+          <div className="header-controls">
+            {isPremium && (
+              <div className="premium-badge">
+                <span className="crown">👑</span>
+                <span>PREMIUM MEMBER</span>
+              </div>
+            )}
+
+            {/* 🆕 設定ボタン */}
+            <button
+              onClick={() => setCurrentView('subscription')}
+              className="settings-button"
+              title="アカウント設定・サブスクリプション管理"
+            >
+              <Settings className="settings-icon" />
+              設定
+            </button>
           </div>
-        )}
+        </div>
       </div>
 
       {/* プラン情報 */}

@@ -938,3 +938,730 @@
     width: 35%;
   }
 }
+
+
+/* PostGenerator.css - サブスクリプション管理機能追加スタイル */
+/* 既存のCSSファイルに以下を追加してください */
+
+/* ================================================ */
+/* ヘッダー統合スタイル */
+/* ================================================ */
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.settings-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.settings-button:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+  color: #1f2937;
+}
+
+.settings-button:active {
+  transform: translateY(1px);
+}
+
+.settings-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #6b7280;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.back-button:hover {
+  background: #4b5563;
+}
+
+.back-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ================================================ */
+/* サブスクリプション管理メインスタイル */
+/* ================================================ */
+
+.subscription-manager {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.subscription-card {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.subscription-card.free-plan {
+  border: 2px solid #e5e7eb;
+}
+
+.subscription-card.premium-plan {
+  border: 2px solid #fbbf24;
+  background: linear-gradient(135deg, #fefce8 0%, #ffffff 100%);
+}
+
+/* ================================================ */
+/* カードヘッダー */
+/* ================================================ */
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 1.5rem 1rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.card-header.premium {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: white;
+  border-bottom: none;
+}
+
+.header-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #6b7280;
+}
+
+.header-icon.premium {
+  color: #fef3c7;
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.card-header.premium h3 {
+  color: white;
+}
+
+/* ================================================ */
+/* プラン状況（無料プラン） */
+/* ================================================ */
+
+.plan-status {
+  text-align: center;
+  padding: 2rem 1.5rem 1.5rem;
+}
+
+.plan-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.plan-status h4 {
+  margin: 0 0 1rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.plan-description {
+  margin: 0 0 1.5rem;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+/* ================================================ */
+/* プレミアム機能一覧 */
+/* ================================================ */
+
+.premium-features {
+  padding: 0 1.5rem 1.5rem;
+}
+
+.premium-features h5 {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #f59e0b;
+  text-align: center;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: #fef3c7;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: #92400e;
+}
+
+.feature-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+/* ================================================ */
+/* 価格表示 */
+/* ================================================ */
+
+.pricing-section {
+  text-align: center;
+  padding: 0 1.5rem 1.5rem;
+}
+
+.price-display {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.price {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.period {
+  font-size: 1.125rem;
+  color: #6b7280;
+}
+
+.pricing-note {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+/* ================================================ */
+/* ステータス表示（プレミアム） */
+/* ================================================ */
+
+.status-section {
+  padding: 1.5rem;
+}
+
+.status-main {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.status-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.status-icon.success {
+  color: #10b981;
+}
+
+.status-icon.warning {
+  color: #f59e0b;
+}
+
+.status-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.status-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+}
+
+.status-value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.cancel-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: #fef3c7;
+  border-radius: 0.5rem;
+  color: #92400e;
+  font-size: 0.875rem;
+}
+
+.notice-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ================================================ */
+/* 請求情報 */
+/* ================================================ */
+
+.billing-section {
+  padding: 0 1.5rem 1.5rem;
+}
+
+.billing-section h4 {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.billing-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.billing-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border-radius: 0.5rem;
+}
+
+.billing-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #6b7280;
+}
+
+.billing-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.billing-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+}
+
+.billing-value {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+/* ================================================ */
+/* メッセージ表示 */
+/* ================================================ */
+
+.message-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  margin: 0 1.5rem 1.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.message-section.error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+.message-section.success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a;
+}
+
+.message-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* ================================================ */
+/* アクションボタン */
+/* ================================================ */
+
+.actions-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0 1.5rem 1.5rem;
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-button.primary {
+  background: #10b981;
+  color: white;
+}
+
+.action-button.primary:hover:not(:disabled) {
+  background: #059669;
+}
+
+.action-button.danger {
+  background: #dc2626;
+  color: white;
+}
+
+.action-button.danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.action-button.secondary {
+  background: #6b7280;
+  color: white;
+}
+
+.action-button.secondary:hover:not(:disabled) {
+  background: #4b5563;
+}
+
+/* ================================================ */
+/* プレミアム特典 */
+/* ================================================ */
+
+.premium-benefits {
+  padding: 0 1.5rem 1.5rem;
+}
+
+.premium-benefits h4 {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.5rem;
+}
+
+.benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #fef3c7;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: #92400e;
+}
+
+.benefit-item.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.benefit-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+/* ================================================ */
+/* モーダル */
+/* ================================================ */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 1rem;
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 1.5rem 1rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.modal-header h4 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: #374151;
+}
+
+.modal-body {
+  padding: 1rem 1.5rem;
+}
+
+.modal-body p {
+  margin: 0 0 1.5rem;
+  color: #6b7280;
+}
+
+.cancel-options {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cancel-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancel-option:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
+.cancel-option.recommended {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.cancel-option.immediate {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.option-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.option-title {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.option-badge {
+  padding: 0.25rem 0.5rem;
+  background: #10b981;
+  color: white;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.option-description {
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem 1.5rem;
+  border-top: 1px solid #f3f4f6;
+}
+
+.modal-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-button.secondary {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  color: #374151;
+}
+
+.modal-button.secondary:hover {
+  background: #e5e7eb;
+}
+
+/* ================================================ */
+/* 共通要素 */
+/* ================================================ */
+
+.loading-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: #6b7280;
+}
+
+.security-note {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  background: #f0fdf4;
+  border-top: 1px solid #bbf7d0;
+  font-size: 0.75rem;
+  color: #166534;
+  text-align: center;
+}
+
+.security-icon {
+  font-size: 0.875rem;
+}
+
+/* ================================================ */
+/* アニメーション */
+/* ================================================ */
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ================================================ */
+/* レスポンシブ対応 */
+/* ================================================ */
+
+@media (max-width: 640px) {
+  .header-content {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .header-controls {
+    justify-content: center;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .benefits-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .status-main {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .modal-content {
+    margin: 1rem;
+    max-height: calc(100vh - 2rem);
+  }
+
+  .cancel-options {
+    gap: 0.75rem;
+  }
+
+  .option-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
