@@ -921,35 +921,76 @@ const PostGenerator = () => {
   // プレミアムアップグレード処理
   const handleUpgrade = async () => {
     try {
-      console.log('🚀 Starting upgrade process...');
-      setError('');
+      setUpgrading(true); // ローディング状態設定
+
+      const userId = getCurrentUserId(); // planUtils.jsから
+
+      console.log('🚀 Starting upgrade process for user:', userId);
 
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: getCurrentUserId()
-        }),
+          userId,
+          customerEmail: userEmail // 任意：ユーザーメールアドレス
+        })
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Checkout session created:', data.sessionId);
 
-      const data = await response.json();
-      console.log('💳 Checkout session created:', data);
-
-      if (data.url) {
+        // Stripe Checkoutにリダイレクト
         window.location.href = data.url;
       } else {
-        throw new Error('決済URLが取得できませんでした');
+        const errorData = await response.json();
+        console.error('❌ Checkout session creation failed:', errorData);
+
+        setError('決済画面の作成に失敗しました。しばらく後で再試行してください。');
+        setUpgrading(false);
       }
     } catch (error) {
       console.error('❌ Upgrade error:', error);
-      setError('アップグレード処理でエラーが発生しました: ' + error.message);
+      setError('エラーが発生しました。ネットワーク接続を確認してください。');
+      setUpgrading(false);
     }
+  };
+
+  // アップグレードボタンコンポーネント例
+  const UpgradeButton = ({ className = "" }) => {
+    const [upgrading, setUpgrading] = useState(false);
+    const [error, setError] = useState(null);
+
+    return (
+      <div className={`space-y-2 ${className}`}>
+        <button
+          onClick={handleUpgrade}
+          disabled={upgrading}
+          className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 px-6 rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105"
+        >
+          {upgrading ? (
+            <div className="flex items-center justify-center space-x-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              <span>決済画面を準備中...</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center space-x-2">
+              <span>⭐</span>
+              <span>プレミアムにアップグレード</span>
+              <span>¥2,980</span>
+            </div>
+          )}
+        </button>
+
+        {error && (
+          <p className="text-sm text-red-600 text-center">{error}</p>
+        )}
+
+        <p className="text-xs text-gray-500 text-center">
+          💳 安全な決済（Stripe使用）・30日間有効
+        </p>
+      </div>
+    );
   };
 
   // AI投稿生成
