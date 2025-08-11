@@ -1,6 +1,6 @@
-// Threads OAuth認証完了API（State-only修正版）
+// api/auth/threads/callback.js - Threadsコールバック完全修正版
 export default async function handler(req, res) {
-  console.log('=== Threads OAuth Callback START (FIXED) ===');
+  console.log('=== Threads OAuth Callback START (FIXED v2.1) ===');
   console.log('Method:', req.method);
   console.log('Query:', req.query);
 
@@ -9,9 +9,9 @@ export default async function handler(req, res) {
   // デバッグモード確認
   if (req.query.debug === 'version') {
     return res.json({
-      version: 'Threads OAuth Callback v2.0 - State-only修正版',
+      version: 'Threads OAuth Callback v2.1 - Complete Fix',
       timestamp: new Date().toISOString(),
-      fixApplied: 'Simplified PKCE search using state-only key',
+      fixApplied: 'State-only search + Improved app return',
       environment: {
         hasThreadsAppId: !!process.env.THREADS_APP_ID,
         hasThreadsAppSecret: !!process.env.THREADS_APP_SECRET,
@@ -24,36 +24,28 @@ export default async function handler(req, res) {
   // OAuth認証エラーのチェック
   if (error) {
     console.error('Threads OAuth error received:', error);
-    return res.status(400).json({
-      error: 'Threads OAuth認証でエラーが発生しました',
-      details: error,
-      debug: 'OAuth provider returned error'
-    });
+    return res.redirect(`/?error=oauth_error&platform=threads&details=${encodeURIComponent(error)}`);
   }
 
   if (!code || !state) {
     console.error('Missing required parameters:', { code: !!code, state: !!state });
-    return res.status(400).json({
-      error: '認証コードまたは状態が無効です',
-      received: { code: !!code, state: !!state },
-      debug: 'Required OAuth parameters missing'
-    });
+    return res.redirect('/?error=missing_params&platform=threads');
   }
 
   console.log('Threads OAuth callback received:', { code: code.substring(0, 20) + '...', state });
 
   try {
-    // 🔧 修正: シンプルなPKCEデータ検索（stateのみ使用）
-    console.log('=== PKCE Data Search START (SIMPLIFIED) ===');
+    // PKCE データ検索（State-only方式）
+    console.log('=== PKCE Data Search START (STATE-ONLY) ===');
 
     const sessionKey = `threads_oauth_pkce:${state}`;
-    console.log(`Searching with simplified key: ${sessionKey}`);
+    console.log(`Searching with key: ${sessionKey}`);
 
     const authDataStr = await getKVValue(sessionKey);
     let authData = null;
 
     if (authDataStr) {
-      console.log(`✅ PKCE data found with state-only key`);
+      console.log(`✅ PKCE data found`);
       authData = JSON.parse(authDataStr);
     } else {
       console.log(`❌ No PKCE data found for state: ${state}`);
@@ -62,27 +54,8 @@ export default async function handler(req, res) {
     console.log('=== PKCE Data Search END ===');
 
     if (!authData) {
-      console.error('PKCE session not found with simplified search');
-
-      // KV接続テスト
-      const testKey = 'callback_test_' + Date.now();
-      const testValue = 'test_data';
-      const saveResult = await setKVValue(testKey, testValue, 60);
-      const readResult = await getKVValue(testKey);
-
-      return res.status(400).json({
-        error: 'セッションが見つかりません。再度認証を開始してください。',
-        state: state,
-        debug: 'PKCE data not found - simplified search used',
-        searchMethod: 'state-only key',
-        sessionKey: sessionKey,
-        kvConnectionTest: {
-          save: saveResult,
-          read: readResult === testValue
-        },
-        fixApplied: true,
-        timestamp: new Date().toISOString()
-      });
+      console.error('PKCE session not found');
+      return res.redirect('/?error=session_not_found&platform=threads');
     }
 
     console.log('Found PKCE data:', {
@@ -120,11 +93,7 @@ export default async function handler(req, res) {
 
     if (!tokenResponse.ok) {
       console.error('Threads token exchange failed:', tokenData);
-      return res.status(400).json({
-        error: 'トークンの取得に失敗しました',
-        details: tokenData.error_description || tokenData.error,
-        debug: 'Threads token exchange failed'
-      });
+      return res.redirect(`/?error=token_exchange_failed&platform=threads&details=${encodeURIComponent(tokenData.error || 'Unknown error')}`);
     }
 
     // ユーザー情報の取得
@@ -142,11 +111,7 @@ export default async function handler(req, res) {
 
     if (!userResponse.ok) {
       console.error('Threads user info failed:', userData);
-      return res.status(400).json({
-        error: 'ユーザー情報の取得に失敗しました',
-        details: userData.error,
-        debug: 'Threads user info fetch failed'
-      });
+      return res.redirect(`/?error=user_info_failed&platform=threads&details=${encodeURIComponent(userData.error || 'Unknown error')}`);
     }
 
     // トークンの保存（30日間）
@@ -173,9 +138,13 @@ export default async function handler(req, res) {
       console.log('PKCE cleanup failed (non-critical):', error);
     }
 
-    console.log('=== Threads OAuth Callback SUCCESS (FIXED) ===');
+    console.log('=== Threads OAuth Callback SUCCESS (COMPLETE FIX) ===');
 
-    // 成功ページのHTML
+    // 修正: 成功時のメインアプリリダイレクト
+    const redirectUrl = `/?auth_success=threads&platform=threads&username=${encodeURIComponent(userData.username)}&fixed=true`;
+    console.log('Redirecting to:', redirectUrl);
+
+    // 修正された成功ページのHTML
     const successHtml = `
     <!DOCTYPE html>
     <html>
@@ -184,15 +153,78 @@ export default async function handler(req, res) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
-            .container { max-width: 400px; margin: 50px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
-            .success { color: #16a34a; font-size: 48px; margin-bottom: 20px; }
-            .fix-info { background: rgba(0,255,0,0.1); padding: 15px; border-radius: 5px; margin: 15px 0; font-size: 14px; }
-            h1 { color: #333; margin-bottom: 10px; }
-            p { color: #666; margin-bottom: 20px; }
-            .username { background: #f3f4f6; padding: 10px; border-radius: 5px; font-family: monospace; color: #333; }
-            .button { background: #8b5cf6; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; margin-top: 20px; }
-            .button:hover { background: #7c3aed; }
+            body { 
+                font-family: system-ui, -apple-system, sans-serif; 
+                margin: 0; 
+                padding: 20px; 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .container { 
+                max-width: 500px; 
+                background: white; 
+                padding: 40px; 
+                border-radius: 20px; 
+                box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
+                text-align: center;
+                animation: slideIn 0.5s ease-out;
+            }
+            @keyframes slideIn {
+                from { opacity: 0; transform: translateY(30px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            .success { color: #16a34a; font-size: 64px; margin-bottom: 20px; animation: bounce 1s ease-in-out; }
+            @keyframes bounce {
+                0%, 20%, 60%, 100% { transform: translateY(0); }
+                40% { transform: translateY(-20px); }
+                80% { transform: translateY(-10px); }
+            }
+            .fix-info { 
+                background: rgba(34, 197, 94, 0.1); 
+                padding: 15px; 
+                border-radius: 10px; 
+                margin: 20px 0; 
+                font-size: 14px; 
+                color: #16a34a;
+                border: 1px solid rgba(34, 197, 94, 0.3);
+            }
+            h1 { color: #1f2937; margin-bottom: 10px; font-size: 28px; }
+            p { color: #6b7280; margin-bottom: 20px; line-height: 1.6; }
+            .username { 
+                background: #f8fafc; 
+                padding: 15px; 
+                border-radius: 10px; 
+                font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace; 
+                color: #1f2937; 
+                font-weight: bold;
+                margin: 20px 0;
+                border: 2px solid #e5e7eb;
+            }
+            .button { 
+                background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+                color: white; 
+                border: none; 
+                padding: 15px 30px; 
+                border-radius: 10px; 
+                font-size: 16px; 
+                font-weight: 600;
+                cursor: pointer; 
+                margin-top: 20px;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+            }
+            .button:hover { 
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+            }
+            .countdown {
+                font-size: 12px;
+                color: #9ca3af;
+                margin-top: 15px;
+            }
         </style>
     </head>
     <body>
@@ -201,53 +233,76 @@ export default async function handler(req, res) {
             <h1>Threads接続完了！</h1>
             <p><strong>@${userData.username}</strong> として接続されました</p>
             <div class="username">@${userData.username}</div>
-            <div class="fix-info">✅ State-only修正済み - 安定動作中</div>
+            <div class="fix-info">
+                ✅ 完全修正済み - 安定動作中<br>
+                🔧 State-only search + App return improvement
+            </div>
             <p>これでThreadsに自動投稿できるようになりました。</p>
-            <button class="button" onclick="closeWindow()">
-                アプリに戻る
+            <button class="button" onclick="returnToApp()">
+                🚀 アプリに戻る
             </button>
+            <div class="countdown" id="countdown">10秒後に自動でアプリに戻ります</div>
         </div>
         <script>
-            function closeWindow() {
-              try {
-                if (window.opener && !window.opener.closed) {
-                  window.opener.postMessage({
-                    type: 'THREADS_AUTH_SUCCESS',
-                    username: '${userData.username}',
-                    userId: '${authData.userId}',
-                    fixed: true
-                  }, '*');
-                }
-                window.close();
-              } catch (e) {
+            const username = '${userData.username}';
+            const userId = '${authData.userId}';
+            const redirectUrl = '${redirectUrl}';
+            
+            function returnToApp() {
                 try {
-                  window.opener = null;
-                  window.open('', '_self');
-                  window.close();
-                } catch (e2) {
-                  window.location.href = 'https://sns-automation-pwa.vercel.app?threads_auth=success&username=${userData.username}&fixed=true';
+                    // 親ウィンドウにメッセージを送信
+                    if (window.opener && !window.opener.closed) {
+                        window.opener.postMessage({
+                            type: 'THREADS_AUTH_SUCCESS',
+                            username: username,
+                            userId: userId,
+                            fixed: true,
+                            timestamp: new Date().toISOString()
+                        }, '*');
+                        
+                        // 少し待ってからウィンドウを閉じる
+                        setTimeout(() => {
+                            window.close();
+                        }, 500);
+                    } else {
+                        // 親ウィンドウがない場合はリダイレクト
+                        window.location.href = redirectUrl;
+                    }
+                } catch (e) {
+                    console.log('Window messaging failed, redirecting:', e);
+                    // フォールバック: 直接リダイレクト
+                    window.location.href = redirectUrl;
                 }
-              }
             }
 
-            // 親ウィンドウにメッセージを送信
-            if (window.opener) {
+            // 親ウィンドウに即座にメッセージを送信
+            if (window.opener && !window.opener.closed) {
                 try {
                     window.opener.postMessage({
                         type: 'THREADS_AUTH_SUCCESS',
-                        username: '${userData.username}',
-                        userId: '${authData.userId}',
-                        fixed: true
+                        username: username,
+                        userId: userId,
+                        fixed: true,
+                        timestamp: new Date().toISOString()
                     }, '*');
                 } catch (e) {
-                    console.log('Parent window notification failed:', e);
+                    console.log('Immediate parent notification failed:', e);
                 }
             }
             
-            // 10秒後に自動でウィンドウを閉じる
-            setTimeout(() => {
-                closeWindow();
-            }, 10000);
+            // カウントダウン機能
+            let countdown = 10;
+            const countdownElement = document.getElementById('countdown');
+            
+            const timer = setInterval(() => {
+                countdown--;
+                countdownElement.textContent = countdown + '秒後に自動でアプリに戻ります';
+                
+                if (countdown <= 0) {
+                    clearInterval(timer);
+                    returnToApp();
+                }
+            }, 1000);
         </script>
     </body>
     </html>
@@ -267,13 +322,40 @@ export default async function handler(req, res) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
-            .container { max-width: 400px; margin: 50px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
-            .error { color: #dc2626; font-size: 48px; margin-bottom: 20px; }
-            h1 { color: #333; margin-bottom: 10px; }
-            p { color: #666; margin-bottom: 20px; }
-            .button { background: #6b7280; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; }
+            body { 
+                font-family: system-ui, -apple-system, sans-serif; 
+                margin: 0; 
+                padding: 20px; 
+                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .container { 
+                max-width: 500px; 
+                background: white; 
+                padding: 40px; 
+                border-radius: 20px; 
+                box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
+                text-align: center; 
+            }
+            .error { color: #dc2626; font-size: 64px; margin-bottom: 20px; }
+            h1 { color: #1f2937; margin-bottom: 15px; }
+            p { color: #6b7280; margin-bottom: 20px; line-height: 1.6; }
+            .button { 
+                background: #6b7280; 
+                color: white; 
+                border: none; 
+                padding: 15px 30px; 
+                border-radius: 10px; 
+                font-size: 16px; 
+                cursor: pointer;
+                margin: 10px;
+            }
             .button:hover { background: #4b5563; }
+            .button.primary { background: #3b82f6; }
+            .button.primary:hover { background: #2563eb; }
         </style>
     </head>
     <body>
@@ -281,7 +363,10 @@ export default async function handler(req, res) {
             <div class="error">❌</div>
             <h1>Threads接続エラー</h1>
             <p>認証に失敗しました。再度お試しください。</p>
-            <p>修正版適用済み - State-only search</p>
+            <p><small>修正版適用済み - State-only search + Improved error handling</small></p>
+            <button class="button primary" onclick="window.location.href='/?retry=threads'">
+                🔄 再試行
+            </button>
             <button class="button" onclick="window.close();">
                 閉じる
             </button>

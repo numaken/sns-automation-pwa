@@ -1,12 +1,10 @@
-// PostGenerator.jsx - 完全修正版（ボタンラベル明確化対応）
-// 🔧 修正: 実装ロードマップ Phase 2-A対応
-// [⚙️設定] → [⚙️アカウント設定] / [📄契約情報]
+// PostGenerator.jsx - SNS投稿機能完全修正版
+// 🔧 修正: OAuth認証状態確認・投稿ボタン表示・プレミアム判定
 
 import React, { useState, useEffect } from 'react';
 
-// 🔧 SubscriptionManagerコンポーネントを直接統合
+// SubscriptionManagerコンポーネントを直接統合
 const SubscriptionManager = ({ userId, onPlanChange, onClose }) => {
-
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -14,7 +12,7 @@ const SubscriptionManager = ({ userId, onPlanChange, onClose }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // インラインスタイル（省略）
+  // インラインスタイル
   const styles = {
     container: {
       position: 'fixed',
@@ -194,7 +192,6 @@ const SubscriptionManager = ({ userId, onPlanChange, onClose }) => {
     }
   };
 
-
   const formatDate = (timestamp) => {
     return new Date(timestamp * 1000).toLocaleDateString('ja-JP', {
       year: 'numeric',
@@ -220,7 +217,6 @@ const SubscriptionManager = ({ userId, onPlanChange, onClose }) => {
     <div style={styles.container}>
       <div style={styles.modal}>
         <div style={styles.header}>
-          {/* 🔧 修正: タイトルを明確化 */}
           <h3 style={styles.title}>📄 アカウント設定</h3>
           <button onClick={onClose} style={styles.closeButton}>×</button>
         </div>
@@ -372,13 +368,14 @@ const PostGenerator = () => {
   const [twitterConnected, setTwitterConnected] = useState(false);
   const [threadsConnected, setThreadsConnected] = useState(false);
   const [twitterUsername, setTwitterUsername] = useState('');
+  const [threadsUsername, setThreadsUsername] = useState('');
   const [isPostingToTwitter, setIsPostingToTwitter] = useState(false);
   const [isPostingToThreads, setIsPostingToThreads] = useState(false);
 
-  // 🔧 修正: アカウント設定ボタン状態管理
+  // アカウント設定ボタン状態管理
   const [showSubscriptionManager, setShowSubscriptionManager] = useState(false);
 
-  // プレミアム確認
+  // 🔧 修正: プレミアム確認とSNS接続状況確認を統合
   const checkPremiumStatus = () => {
     console.log('🔍 Checking premium status...');
 
@@ -394,57 +391,215 @@ const PostGenerator = () => {
       setUserPlan('premium');
       setUsage({ remaining: 'unlimited' });
       localStorage.removeItem('dailyUsage');
+      // プレミアムユーザーの場合のみSNS接続確認
       checkSnsConnections();
     } else {
       console.log('📋 Free plan confirmed');
       setUserPlan('free');
       setUsage({ remaining: 3, used: 0, limit: 3 });
+      // 無料プランでもSNS接続状況は確認（表示用）
+      checkSnsConnections();
     }
   };
 
-  // SNS接続状況確認
-  const checkSnsConnections = () => {
-    // Twitter接続確認
-    const twitterToken = localStorage.getItem('twitter_token');
-    const twitterUser = localStorage.getItem('twitter_username');
+  // 🔧 修正: SNS接続状況確認の改善
+  const checkSnsConnections = async () => {
+    console.log('🔍 Checking SNS connections...');
 
-    if (twitterToken && twitterUser) {
-      setTwitterConnected(true);
-      setTwitterUsername(twitterUser);
-      console.log('🐦 Twitter connected:', twitterUser);
+    const userId = getCurrentUserId();
+
+    try {
+      // Twitter接続状態確認
+      console.log('🐦 Checking Twitter connection...');
+      const twitterResponse = await fetch('/api/auth/twitter/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+
+      if (twitterResponse.ok) {
+        const twitterData = await twitterResponse.json();
+        console.log('🐦 Twitter status:', twitterData);
+
+        if (twitterData.connected) {
+          setTwitterConnected(true);
+          setTwitterUsername(twitterData.username);
+          // localStorageにも保存
+          localStorage.setItem('twitter_username', twitterData.username);
+          localStorage.setItem('twitter_connected', 'true');
+        } else {
+          setTwitterConnected(false);
+          setTwitterUsername('');
+        }
+      } else {
+        console.log('❌ Twitter status check failed');
+        // フォールバック: localStorageから確認
+        const localTwitterToken = localStorage.getItem('twitter_token');
+        const localTwitterUser = localStorage.getItem('twitter_username');
+        if (localTwitterToken && localTwitterUser) {
+          setTwitterConnected(true);
+          setTwitterUsername(localTwitterUser);
+          console.log('🔧 Twitter status from localStorage:', localTwitterUser);
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ Twitter connection check error:', error);
+      // フォールバック処理
+      const localTwitterToken = localStorage.getItem('twitter_token');
+      const localTwitterUser = localStorage.getItem('twitter_username');
+      if (localTwitterToken && localTwitterUser) {
+        setTwitterConnected(true);
+        setTwitterUsername(localTwitterUser);
+      }
     }
 
-    // Threads接続確認
-    const threadsToken = localStorage.getItem('threads_token');
-    if (threadsToken) {
-      setThreadsConnected(true);
-      console.log('📱 Threads connected');
+    try {
+      // Threads接続状態確認
+      console.log('📱 Checking Threads connection...');
+      const threadsResponse = await fetch('/api/auth/threads/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      });
+
+      if (threadsResponse.ok) {
+        const threadsData = await threadsResponse.json();
+        console.log('📱 Threads status:', threadsData);
+
+        if (threadsData.connected) {
+          setThreadsConnected(true);
+          setThreadsUsername(threadsData.username);
+          // localStorageにも保存
+          localStorage.setItem('threads_username', threadsData.username);
+          localStorage.setItem('threads_connected', 'true');
+        } else {
+          setThreadsConnected(false);
+          setThreadsUsername('');
+        }
+      } else {
+        console.log('❌ Threads status check failed');
+        // フォールバック: localStorageから確認
+        const localThreadsToken = localStorage.getItem('threads_token');
+        const localThreadsUser = localStorage.getItem('threads_username');
+        if (localThreadsToken) {
+          setThreadsConnected(true);
+          setThreadsUsername(localThreadsUser || 'Connected User');
+          console.log('🔧 Threads status from localStorage');
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ Threads connection check error:', error);
+      // フォールバック処理
+      const localThreadsToken = localStorage.getItem('threads_token');
+      if (localThreadsToken) {
+        setThreadsConnected(true);
+        setThreadsUsername(localStorage.getItem('threads_username') || 'Connected User');
+      }
     }
+
+    console.log('🎯 SNS connections checked:', {
+      twitter: { connected: twitterConnected, username: twitterUsername },
+      threads: { connected: threadsConnected, username: threadsUsername }
+    });
   };
 
-  // 初期化
+  // 🔧 修正: ユーザーID生成の統一
+  const getCurrentUserId = () => {
+    let userId = localStorage.getItem('userId');
+    if (!userId) {
+      userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem('userId', userId);
+    }
+    return userId;
+  };
+
+  // 🔧 修正: 初期化処理の改善
   useEffect(() => {
+    console.log('🚀 PostGenerator initializing...');
+
+    // プレミアム状態とSNS接続確認
     checkPremiumStatus();
 
-    // URLパラメータからStripe成功を検出
+    // URLパラメータからの状態検知
     const urlParams = new URLSearchParams(window.location.search);
-    const sessionId = urlParams.get('session_id');
 
+    // Stripe決済成功検知
+    const sessionId = urlParams.get('session_id');
     if (sessionId) {
       console.log('💳 Stripe session detected:', sessionId);
       manualUpgradeToPremium();
     }
 
-    // URLパラメータからTwitter OAuth完了を検出
+    // OAuth認証成功検知
+    const authSuccess = urlParams.get('auth_success');
+    if (authSuccess) {
+      console.log('🔐 OAuth success detected:', authSuccess);
+      setTimeout(() => {
+        checkSnsConnections();
+      }, 1000);
+    }
+
+    // Twitter OAuth完了検知
     const oauth_token = urlParams.get('oauth_token');
     const oauth_verifier = urlParams.get('oauth_verifier');
-
     if (oauth_token && oauth_verifier) {
       console.log('🐦 Twitter OAuth callback detected');
       setTimeout(() => {
         checkSnsConnections();
       }, 1000);
     }
+
+    // Threads認証完了検知
+    const threadsAuth = urlParams.get('threads_auth');
+    const threadsUsername = urlParams.get('username');
+    if (threadsAuth === 'success' && threadsUsername) {
+      console.log('📱 Threads auth success detected:', threadsUsername);
+      setThreadsConnected(true);
+      setThreadsUsername(threadsUsername);
+      localStorage.setItem('threads_username', threadsUsername);
+      localStorage.setItem('threads_connected', 'true');
+    }
+
+    // URLパラメータクリーンアップ
+    if (sessionId || authSuccess || oauth_token || threadsAuth) {
+      const url = new URL(window.location);
+      url.searchParams.delete('session_id');
+      url.searchParams.delete('auth_success');
+      url.searchParams.delete('oauth_token');
+      url.searchParams.delete('oauth_verifier');
+      url.searchParams.delete('threads_auth');
+      url.searchParams.delete('username');
+      window.history.replaceState({}, document.title, url.toString());
+    }
+
+  }, []);
+
+  // 🔧 修正: ウィンドウメッセージリスナー（OAuth完了通知）
+  useEffect(() => {
+    const handleMessage = (event) => {
+      console.log('📩 Window message received:', event.data);
+
+      if (event.data.type === 'TWITTER_AUTH_SUCCESS') {
+        console.log('🐦 Twitter auth success message received');
+        setTwitterConnected(true);
+        setTwitterUsername(event.data.username);
+        localStorage.setItem('twitter_username', event.data.username);
+        localStorage.setItem('twitter_connected', 'true');
+      }
+
+      if (event.data.type === 'THREADS_AUTH_SUCCESS') {
+        console.log('📱 Threads auth success message received');
+        setThreadsConnected(true);
+        setThreadsUsername(event.data.username);
+        localStorage.setItem('threads_username', event.data.username);
+        localStorage.setItem('threads_connected', 'true');
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
   // 手動プレミアム移行
@@ -461,10 +616,6 @@ const PostGenerator = () => {
     checkSnsConnections();
 
     console.log('✅ Manual premium upgrade completed');
-
-    const url = new URL(window.location);
-    url.searchParams.delete('session_id');
-    window.history.replaceState({}, document.title, url.toString());
   };
 
   // Twitter接続処理
@@ -473,14 +624,14 @@ const PostGenerator = () => {
       console.log('🐦 Starting Twitter OAuth...');
       setError('');
 
+      const userId = getCurrentUserId();
+
       const response = await fetch('/api/auth/twitter/authorize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          userId: 'twitter-oauth-user-' + Date.now()
-        })
+        body: JSON.stringify({ userId })
       });
 
       if (response.ok) {
@@ -500,36 +651,20 @@ const PostGenerator = () => {
     }
   };
 
-
-  // 手動Twitter接続設定（開発・テスト用）
-  const manualTwitterSetup = () => {
-    const username = window.prompt('Twitterのユーザーネームをテスト入力してください（@なし）:');
-    if (username) {
-      localStorage.setItem('twitter_token', 'test_token_' + Date.now());
-      localStorage.setItem('twitter_username', username);
-      setTwitterConnected(true);
-      setTwitterUsername(username);
-      setError('');
-      console.log('🔧 Manual Twitter setup completed:', username);
-      window.alert(`✅ Twitterアカウント @${username} をテスト接続しました！`);
-    }
-  };
-
-  // 🔧 修正: Threads接続処理の実装
+  // Threads接続処理
   const connectThreads = async () => {
     try {
       console.log('📱 Starting Threads OAuth...');
       setError('');
 
-      // Threads OAuth APIを呼び出し
+      const userId = getCurrentUserId();
+
       const response = await fetch('/api/auth/threads/authorize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          userId: 'threads-oauth-user-' + Date.now()
-        })
+        body: JSON.stringify({ userId })
       });
 
       console.log('📡 Threads auth response:', response.status);
@@ -554,9 +689,22 @@ const PostGenerator = () => {
     }
   };
 
+  // 手動Twitter接続設定（開発・テスト用）
+  const manualTwitterSetup = () => {
+    const username = window.prompt('Twitterのユーザーネームをテスト入力してください（@なし）:');
+    if (username) {
+      localStorage.setItem('twitter_token', 'test_token_' + Date.now());
+      localStorage.setItem('twitter_username', username);
+      localStorage.setItem('twitter_connected', 'true');
+      setTwitterConnected(true);
+      setTwitterUsername(username);
+      setError('');
+      console.log('🔧 Manual Twitter setup completed:', username);
+      window.alert(`✅ Twitterアカウント @${username} をテスト接続しました！`);
+    }
+  };
 
   // TwitterへSNS投稿
-  // 🔧 修正: TwitterへSNS投稿の改善
   const postToTwitter = async () => {
     if (!generatedPost) {
       setError('投稿する内容を先に生成してください');
@@ -574,11 +722,7 @@ const PostGenerator = () => {
     try {
       console.log('🐦 Posting to Twitter...');
 
-      // 🔧 修正: より正確なユーザーID生成
-      const userId = twitterUsername ||
-        localStorage.getItem('twitter_username') ||
-        localStorage.getItem('userId') ||
-        'numaken_jp'; // 🔧 フォールバック
+      const userId = getCurrentUserId();
 
       console.log('📤 Sending to Twitter API:', { userId, contentLength: generatedPost.length });
 
@@ -601,7 +745,7 @@ const PostGenerator = () => {
       if (!response.ok) {
         console.error('❌ Twitter post failed:', data);
 
-        // 🔧 修正: テストモード判定の改善
+        // テストモード判定
         if (data.test_mode || localStorage.getItem('twitter_token')?.includes('test_token')) {
           console.log('🔧 Test mode: simulating successful post');
           window.alert('✅ テストモード: Twitter投稿が成功しました！\n\n' + generatedPost.substring(0, 100) + '...');
@@ -613,7 +757,7 @@ const PostGenerator = () => {
 
       console.log('✅ Twitter post successful:', data);
 
-      // 🔧 修正: 成功メッセージの改善
+      // 成功メッセージ
       if (data.test_mode) {
         window.alert('✅ テストモード: Twitter投稿が成功しました！\n\n投稿内容: ' + data.content);
       } else {
@@ -628,8 +772,7 @@ const PostGenerator = () => {
     }
   };
 
-
-  // 🔧 修正: ThreadsへSNS投稿の実装
+  // ThreadsへSNS投稿
   const postToThreads = async () => {
     if (!generatedPost) {
       setError('投稿する内容を先に生成してください');
@@ -647,10 +790,7 @@ const PostGenerator = () => {
     try {
       console.log('📱 Posting to Threads...');
 
-      const userId = localStorage.getItem('threads_username') ||
-        localStorage.getItem('threads_user_id') ||
-        localStorage.getItem('userId') ||
-        'threads_user';
+      const userId = getCurrentUserId();
 
       console.log('📤 Sending to Threads API:', { userId, contentLength: generatedPost.length });
 
@@ -688,9 +828,7 @@ const PostGenerator = () => {
     } finally {
       setIsPostingToThreads(false);
     }
-
   };
-
 
   // 同時投稿機能
   const postToAllPlatforms = async () => {
@@ -721,7 +859,7 @@ const PostGenerator = () => {
 
     const results = [];
 
-    // 🔧 修正: 順次実行で詳細ログ
+    // 順次実行
     if (twitterConnected) {
       try {
         console.log('🐦 Starting Twitter post...');
@@ -746,7 +884,7 @@ const PostGenerator = () => {
       }
     }
 
-    // 🔧 修正: 結果サマリーの改善
+    // 結果サマリー
     const successful = results.filter(r => r.success);
     const failed = results.filter(r => !r.success);
 
@@ -762,7 +900,6 @@ const PostGenerator = () => {
     console.log('🎯 Simultaneous posting completed:', { successful: successful.length, failed: failed.length });
   };
 
-
   // プレミアムアップグレード処理
   const handleUpgrade = async () => {
     try {
@@ -775,7 +912,7 @@ const PostGenerator = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: 'upgrade-user-' + Date.now()
+          userId: getCurrentUserId()
         }),
       });
 
@@ -885,6 +1022,7 @@ const PostGenerator = () => {
         twitterConnected,
         threadsConnected,
         twitterUsername,
+        threadsUsername,
         localStorage: Object.fromEntries(
           Object.keys(localStorage).map(key => [key, localStorage.getItem(key)])
         )
@@ -896,6 +1034,11 @@ const PostGenerator = () => {
     };
     console.log('🔧 Debug functions available: window.debugSNSApp');
   }, [userPlan, usage, twitterConnected, threadsConnected]);
+
+  // 🔧 修正: SNS投稿ボタンの表示判定
+  const shouldShowSNSButtons = () => {
+    return userPlan === 'premium' && generatedPost && generatedPost.trim().length > 0;
+  };
 
   // アップグレードプロンプト
   const UpgradePrompt = () => {
@@ -1043,8 +1186,6 @@ const PostGenerator = () => {
                 PREMIUM MEMBER
               </div>
             )}
-
-
           </div>
 
           <p style={{ fontSize: '1.25rem', color: '#6b7280' }}>
@@ -1079,7 +1220,6 @@ const PostGenerator = () => {
                 <span style={{ fontWeight: '600', color: '#1f2937' }}>
                   {userPlan === 'premium' ? 'プレミアムプラン' : '無料プラン'}
                 </span>
-
               </div>
 
               <div style={{ textAlign: 'right' }}>
@@ -1135,7 +1275,6 @@ const PostGenerator = () => {
                 }}
                 rows={3}
               />
-
             </div>
 
             <div>
@@ -1317,8 +1456,8 @@ const PostGenerator = () => {
                   📋 クリップボードにコピー
                 </button>
 
-                {/* プレミアム限定：SNS投稿ボタン */}
-                {userPlan === 'premium' && (
+                {/* 🔧 修正: プレミアム限定SNS投稿ボタン（条件判定改善） */}
+                {shouldShowSNSButtons() && (
                   <>
                     {/* Twitter投稿 */}
                     {twitterConnected ? (
@@ -1493,7 +1632,7 @@ const PostGenerator = () => {
         {/* アップグレードプロンプト */}
         <UpgradePrompt />
 
-        {/* 🔧 新規: フッター統一設定ボタン */}
+        {/* フッター統一設定ボタン */}
         <div style={{
           marginTop: '2rem',
           textAlign: 'center',
@@ -1549,10 +1688,10 @@ const PostGenerator = () => {
           </p>
         </div>
 
-        {/* 🔧 修正: SubscriptionManagerの表示 */}
+        {/* SubscriptionManagerの表示 */}
         {showSubscriptionManager && (
           <SubscriptionManager
-            userId="current-user"
+            userId={getCurrentUserId()}
             onPlanChange={checkPremiumStatus}
             onClose={() => setShowSubscriptionManager(false)}
           />
