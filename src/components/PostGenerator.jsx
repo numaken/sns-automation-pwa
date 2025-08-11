@@ -1,6 +1,6 @@
-// 既存のPostGenerator.jsxに最小限の変更のみ適用
-// JavaScript機能は一切変更せず、className追加のみ
-// 
+// PostGenerator.jsx - 完全修正版（ボタンラベル明確化対応）
+// 🔧 修正: 実装ロードマップ Phase 2-A対応
+// [⚙️設定] → [⚙️アカウント設定] / [📄契約情報]
 
 import React, { useState, useEffect } from 'react';
 
@@ -220,7 +220,8 @@ const SubscriptionManager = ({ userId, onPlanChange, onClose }) => {
     <div style={styles.container}>
       <div style={styles.modal}>
         <div style={styles.header}>
-          <h3 style={styles.title}>サブスクリプション管理</h3>
+          {/* 🔧 修正: タイトルを明確化 */}
+          <h3 style={styles.title}>📄 アカウント設定</h3>
           <button onClick={onClose} style={styles.closeButton}>×</button>
         </div>
 
@@ -281,7 +282,7 @@ const SubscriptionManager = ({ userId, onPlanChange, onClose }) => {
               )}
 
               <div style={{ marginBottom: '1.5rem' }}>
-                <h5 style={{ marginBottom: '0.5rem', fontWeight: 600 }}>請求情報</h5>
+                <h5 style={{ marginBottom: '0.5rem', fontWeight: 600 }}>📄 契約情報</h5>
                 <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                   <div>料金: ¥980/月</div>
                   <div>開始日: {formatDate(subscription.subscription?.current_period_start)}</div>
@@ -374,7 +375,7 @@ const PostGenerator = () => {
   const [isPostingToTwitter, setIsPostingToTwitter] = useState(false);
   const [isPostingToThreads, setIsPostingToThreads] = useState(false);
 
-  // 🔧 修正: 設定ボタン状態管理
+  // 🔧 修正: アカウント設定ボタン状態管理
   const [showSubscriptionManager, setShowSubscriptionManager] = useState(false);
 
   // プレミアム確認
@@ -833,7 +834,7 @@ const PostGenerator = () => {
     window.alert(message);
     console.log('🎯 Simultaneous posting completed:', { successful: successful.length, failed: failed.length });
   };
-    
+
 
   // プレミアムアップグレード処理
   const handleUpgrade = async () => {
@@ -1093,8 +1094,8 @@ const PostGenerator = () => {
         <div
           className="unified-header"
           style={{ textAlign: 'center', marginBottom: '2rem' }}
-        >          
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}>
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}>
             <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#1f2937' }}>AI SNS自動化ツール</h1>
 
             {/* プレミアムバッジ */}
@@ -1117,7 +1118,7 @@ const PostGenerator = () => {
               </div>
             )}
 
-            {/* 🔧 修正: 設定ボタン（プレミアムのみ）の実装 */}
+            {/* 🔧 修正: アカウント設定ボタン（プレミアムのみ）の実装 */}
             {userPlan === 'premium' && (
               <button
                 onClick={() => setShowSubscriptionManager(true)}
@@ -1130,8 +1131,9 @@ const PostGenerator = () => {
                   cursor: 'pointer',
                   fontSize: '0.875rem'
                 }}
+                title="プラン詳細・契約情報を確認"
               >
-                ⚙️ 設定
+                ⚙️ アカウント設定
               </button>
             )}
           </div>
@@ -1168,6 +1170,25 @@ const PostGenerator = () => {
                 <span style={{ fontWeight: '600', color: '#1f2937' }}>
                   {userPlan === 'premium' ? 'プレミアムプラン' : '無料プラン'}
                 </span>
+                {/* 🔧 修正: 無料プランでも契約情報ボタンを表示（アップグレード用） */}
+                {userPlan === 'free' && (
+                  <button
+                    onClick={() => setShowSubscriptionManager(true)}
+                    style={{
+                      background: '#f97316',
+                      color: 'white',
+                      padding: '0.25rem 0.75rem',
+                      borderRadius: '0.375rem',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem',
+                      marginLeft: '0.5rem'
+                    }}
+                    title="プラン詳細を確認・アップグレード"
+                  >
+                    📄 契約情報
+                  </button>
+                )}
               </div>
 
               <div style={{ textAlign: 'right' }}>
