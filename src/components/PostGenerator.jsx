@@ -126,12 +126,15 @@ const PostGenerator = () => {
 
       console.log('🔗 Twitter auth URL:', twitterAuthUrl);
 
-      // まずAPIエンドポイントが存在するかテスト
-      const testResponse = await fetch(twitterAuthUrl, {
-        method: 'GET',
+      // 🔧 修正: POSTメソッドでAPIを呼び出し
+      const testResponse = await fetch('/api/auth/twitter/authorize', {
+        method: 'POST',
         headers: {
-          'Accept': 'application/json'
-        }
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: 'twitter-oauth-user-' + Date.now()
+        })
       });
 
       console.log('📡 Twitter auth test response:', testResponse.status);
