@@ -893,7 +893,6 @@ const PostGenerator = () => {
       checkStatus: checkPremiumStatus,
       checkSns: checkSnsConnections,
       manualTwitter: manualTwitterSetup,
-      manualThreads: manualThreadsSetup
     };
     console.log('🔧 Debug functions available: window.debugSNSApp');
   }, [userPlan, usage, twitterConnected, threadsConnected]);
