@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>決済完了 - SNS自動化ツール</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      text-align: center;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+      margin: 20px;
+    }
+
+    .success-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+
+    .title {
+      font-size: 28px;
+      font-weight: bold;
+      color: #1f2937;
+      margin-bottom: 16px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: #6b7280;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+
+    .premium-badge {
+      display: inline-flex;
+      align-items: center;
+      background: linear-gradient(45deg, #fbbf24, #f59e0b);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 25px;
+      font-weight: bold;
+      margin-bottom: 24px;
+      font-size: 18px;
+    }
+
+    .crown {
+      margin-right: 8px;
+    }
+
+    .feature-list {
+      text-align: left;
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 24px 0;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+      color: #374151;
+    }
+
+    .feature-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .check {
+      color: #10b981;
+      margin-right: 12px;
+      font-weight: bold;
+    }
+
+    .button {
+      background: linear-gradient(45deg, #3b82f6, #1d4ed8);
+      color: white;
+      border: none;
+      padding: 16px 32px;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4);
+    }
+
+    .session-info {
+      background: #f3f4f6;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 20px 0;
+      font-family: monospace;
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .loading {
+      display: none;
+      color: #6b7280;
+      margin: 20px 0;
+    }
+
+    .error {
+      display: none;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+      padding: 16px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="success-icon">🎉</div>
+    <h1 class="title">決済が完了しました！</h1>
+    <p class="subtitle">
+      SNS自動化ツール プレミアムプランへようこそ！<br>
+      プレミアム機能が利用できるようになりました。
+    </p>
+
+    <div class="premium-badge">
+      <span class="crown">👑</span>
+      PREMIUM MEMBER
+    </div>
+
+    <div class="feature-list">
+      <div class="feature-item">
+        <span class="check">✅</span>
+        無制限AI投稿生成
+      </div>
+      <div class="feature-item">
+        <span class="check">✅</span>
+        Twitter/Threads自動投稿
+      </div>
+      <div class="feature-item">
+        <span class="check">✅</span>
+        高速生成（専用APIキー）
+      </div>
+      <div class="feature-item">
+        <span class="check">✅</span>
+        広告なしのクリーンUI
+      </div>
+      <div class="feature-item">
+        <span class="check">✅</span>
+        優先サポート
+      </div>
+    </div>
+
+    <div id="sessionInfo" class="session-info" style="display: none;">
+      セッションID: <span id="sessionId">取得中...</span>
+    </div>
+
+    <div id="loading" class="loading">
+      プレミアムプランに移行中... ⏳
+    </div>
+
+    <div id="error" class="error">
+      自動移行に失敗しました。手動で移行を完了してください。
+    </div>
+
+    <a href="/" class="button" id="returnButton">
+      ツールを使用開始
+    </a>
+  </div>
+
+  <script>
+    // URLパラメータからセッションIDを取得
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+
+    if (sessionId) {
+      document.getElementById('sessionInfo').style.display = 'block';
+      document.getElementById('sessionId').textContent = sessionId;
+
+      // プレミアムプランに自動移行
+      document.getElementById('loading').style.display = 'block';
+
+      try {
+        // プレミアムプラン情報をローカルストレージに保存
+        localStorage.setItem('userPlan', 'premium');
+        localStorage.setItem('subscriptionStatus', 'active');
+        localStorage.setItem('stripeSessionId', sessionId);
+        localStorage.setItem('premiumActivatedAt', new Date().toISOString());
+
+        // 無料プランの使用量制限をクリア
+        localStorage.removeItem('dailyUsage');
+
+        console.log('✅ プレミアムプランに自動移行完了');
+        console.log('セッションID:', sessionId);
+
+        setTimeout(() => {
+          document.getElementById('loading').style.display = 'none';
+
+          // 成功メッセージを更新
+          document.querySelector('.subtitle').innerHTML =
+            'プレミアムプランへの移行が完了しました！<br>無制限でSNS自動化をお楽しみください。';
+
+          // ボタンテキスト更新
+          document.getElementById('returnButton').textContent = '✨ プレミアム機能を使う';
+        }, 2000);
+
+      } catch (error) {
+        console.error('❌ 自動移行エラー:', error);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error').style.display = 'block';
+
+        // 手動移行コードを表示
+        document.getElementById('error').innerHTML = `
+                    自動移行に失敗しました。以下のコードをブラウザのコンソール（F12）で実行してください：<br><br>
+                    <code style="background: #f3f4f6; padding: 8px; border-radius: 4px; display: block; margin: 8px 0;">
+                        localStorage.setItem('userPlan', 'premium');<br>
+                        localStorage.setItem('subscriptionStatus', 'active');<br>
+                        localStorage.setItem('stripeSessionId', '${sessionId}');<br>
+                        window.location.href = '/';
+                    </code>
+                `;
+      }
+    } else {
+      // セッションIDがない場合のフォールバック
+      document.querySelector('.subtitle').innerHTML =
+        'セッション情報が見つかりませんが、決済は完了しています。<br>プレミアム機能をお楽しみください。';
+    }
+
+    // デバッグ情報
+    console.log('🔍 決済成功ページ情報:', {
+      sessionId: sessionId,
+      currentPlan: localStorage.getItem('userPlan'),
+      subscriptionStatus: localStorage.getItem('subscriptionStatus'),
+      timestamp: new Date().toISOString()
+    });
+  </script>
+</body>
+
+</html>

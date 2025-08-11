@@ -1,100 +1,118 @@
-// /api/create-checkout-session.js (修正版)
-// 決済完了後の自動プレミアム移行対応
+// api/create-checkout-session.js - 修正版
+// 引き継ぎ書類に基づく500エラー対応
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 export default async function handler(req, res) {
+  // CORS対応
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { userId } = req.body;
+    // 環境変数チェック
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('❌ STRIPE_SECRET_KEY not found');
+      return res.status(500).json({
+        error: 'Server configuration error',
+        details: 'Stripe not configured'
+      });
+    }
 
-    console.log('🚀 Creating checkout session for userId:', userId);
+    console.log('✅ Stripe checkout session creation started');
 
-    // ユーザーIDの生成（未指定の場合）
-    const actualUserId = userId || 'checkout-user-' + Date.now();
+    const {
+      customerEmail,
+      userId,
+      planType = 'premium'
+    } = req.body;
+
+    // ユーザーID生成（未提供の場合）
+    const sessionUserId = userId || `user_${Date.now()}`;
+
+    // 事前定義された価格設定
+    const priceData = {
+      currency: 'jpy',
+      product_data: {
+        name: 'SNS自動化ツール プレミアムプラン',
+        description: '無制限AI投稿生成 + OAuth自動投稿機能',
+      },
+      unit_amount: 98000, // ¥980
+      recurring: {
+        interval: 'month',
+      },
+    };
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
-          price_data: {
-            currency: 'jpy',
-            product_data: {
-              name: 'AI SNS自動化ツール - プレミアムプラン',
-              description: '無制限AI投稿生成 + SNS自動投稿 + 統計機能',
-              images: ['https://sns-automation-pwa.vercel.app/icon-512x512.png'],
-            },
-            unit_amount: 98000, // ¥980 in cents
-            recurring: {
-              interval: 'month',
-            },
-          },
+          price_data: priceData,
           quantity: 1,
         },
       ],
       mode: 'subscription',
-
-      // 決済完了後のリダイレクト先（修正版）
-      success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}&user_id=${actualUserId}`,
-      cancel_url: `${req.headers.origin}/?canceled=true`,
-
-      // メタデータでユーザー情報を保存
+      success_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://sns-automation-pwa.vercel.app'}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://sns-automation-pwa.vercel.app'}/cancel`,
+      customer_email: customerEmail,
+      client_reference_id: sessionUserId,
       metadata: {
-        userId: actualUserId,
-        planType: 'premium',
-        activatedAt: new Date().toISOString(),
+        userId: sessionUserId,
+        planType: planType,
+        source: 'sns_automation_pwa'
       },
-
-      // 顧客情報
-      customer_creation: 'always',
-
-      // 請求先住所の収集（日本向け）
-      billing_address_collection: 'required',
-
-      // 税金設定（日本の消費税対応）
+      // 自動税金計算（必要に応じて）
       automatic_tax: {
-        enabled: false, // 手動で税金を設定する場合
+        enabled: false,
       },
-
-      // 決済方法の設定
-      payment_intent_data: {
-        metadata: {
-          userId: actualUserId,
-          planType: 'premium',
-        },
-      },
-
-      // サブスクリプション設定
-      subscription_data: {
-        metadata: {
-          userId: actualUserId,
-          planType: 'premium',
-          activatedAt: new Date().toISOString(),
-        },
-      },
+      // 請求先住所収集
+      billing_address_collection: 'auto',
     });
 
-    console.log('✅ Checkout session created:', {
-      sessionId: session.id,
-      userId: actualUserId,
-      successUrl: session.success_url,
-    });
+    console.log('✅ Checkout session created:', session.id);
 
     return res.status(200).json({
-      url: session.url,
       sessionId: session.id,
-      userId: actualUserId,
+      url: session.url
     });
 
   } catch (error) {
-    console.error('❌ Checkout session creation error:', error);
-
-    return res.status(500).json({
-      error: 'セッションの作成に失敗しました',
-      detail: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    console.error('❌ Stripe checkout error:', {
+      message: error.message,
+      type: error.type,
+      code: error.code,
+      param: error.param
     });
+
+    // エラーの種類に応じた適切なレスポンス
+    if (error.type === 'StripeCardError') {
+      return res.status(400).json({
+        error: 'カード情報に問題があります',
+        details: error.message
+      });
+    } else if (error.type === 'StripeInvalidRequestError') {
+      return res.status(400).json({
+        error: 'リクエストに問題があります',
+        details: error.message
+      });
+    } else if (error.type === 'StripeAPIError') {
+      return res.status(500).json({
+        error: 'サーバーエラーが発生しました',
+        details: 'しばらく後に再試行してください'
+      });
+    } else {
+      return res.status(500).json({
+        error: 'システムエラーが発生しました',
+        details: error.message
+      });
+    }
   }
 }
