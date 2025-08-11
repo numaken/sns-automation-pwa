@@ -612,6 +612,7 @@ const PostGenerator = () => {
   };
 
   // TwitterへSNS投稿
+  // 🔧 修正: TwitterへSNS投稿の改善
   const postToTwitter = async () => {
     if (!generatedPost) {
       setError('投稿する内容を先に生成してください');
@@ -629,6 +630,14 @@ const PostGenerator = () => {
     try {
       console.log('🐦 Posting to Twitter...');
 
+      // 🔧 修正: より正確なユーザーID生成
+      const userId = twitterUsername ||
+        localStorage.getItem('twitter_username') ||
+        localStorage.getItem('userId') ||
+        'numaken_jp'; // 🔧 フォールバック
+
+      console.log('📤 Sending to Twitter API:', { userId, contentLength: generatedPost.length });
+
       const response = await fetch('/api/post-to-twitter', {
         method: 'POST',
         headers: {
@@ -636,29 +645,36 @@ const PostGenerator = () => {
         },
         body: JSON.stringify({
           content: generatedPost,
-          userId: twitterUsername || 'twitter-user-' + Date.now()
+          userId: userId
         }),
       });
 
       console.log('📡 Twitter post response:', response.status);
 
+      const data = await response.json();
+      console.log('📥 Twitter post response data:', data);
+
       if (!response.ok) {
-        const data = await response.json();
         console.error('❌ Twitter post failed:', data);
 
-        if (localStorage.getItem('twitter_token')?.includes('test_token')) {
+        // 🔧 修正: テストモード判定の改善
+        if (data.test_mode || localStorage.getItem('twitter_token')?.includes('test_token')) {
           console.log('🔧 Test mode: simulating successful post');
-          window.alert('✅ テストモード: Twitter投稿が成功しました！\n\n' + generatedPost);
+          window.alert('✅ テストモード: Twitter投稿が成功しました！\n\n' + generatedPost.substring(0, 100) + '...');
           return;
         }
 
         throw new Error(data.error || 'Twitter投稿に失敗しました');
       }
 
-      const result = await response.json();
-      console.log('✅ Twitter post successful:', result);
+      console.log('✅ Twitter post successful:', data);
 
-      window.alert('✅ Twitterに投稿しました！');
+      // 🔧 修正: 成功メッセージの改善
+      if (data.test_mode) {
+        window.alert('✅ テストモード: Twitter投稿が成功しました！\n\n投稿内容: ' + data.content);
+      } else {
+        window.alert('✅ Twitterに投稿しました！\n\n投稿ID: ' + data.post_id);
+      }
 
     } catch (error) {
       console.error('❌ Twitter post error:', error);
@@ -668,6 +684,8 @@ const PostGenerator = () => {
     }
   };
 
+
+  // 🔧 修正: ThreadsへSNS投稿の実装
   // 🔧 修正: ThreadsへSNS投稿の実装
   const postToThreads = async () => {
     if (!generatedPost) {
@@ -686,6 +704,13 @@ const PostGenerator = () => {
     try {
       console.log('📱 Posting to Threads...');
 
+      // 🔧 修正: より正確なユーザーID生成
+      const userId = localStorage.getItem('threads_username') ||
+        localStorage.getItem('userId') ||
+        'numaken_threads'; // 🔧 フォールバック
+
+      console.log('📤 Sending to Threads API:', { userId, contentLength: generatedPost.length });
+
       const response = await fetch('/api/post-to-threads', {
         method: 'POST',
         headers: {
@@ -693,30 +718,36 @@ const PostGenerator = () => {
         },
         body: JSON.stringify({
           content: generatedPost,
-          userId: 'threads-user-' + Date.now()
+          userId: userId
         }),
       });
 
       console.log('📡 Threads post response:', response.status);
 
+      const data = await response.json();
+      console.log('📥 Threads post response data:', data);
+
       if (!response.ok) {
-        const data = await response.json();
         console.error('❌ Threads post failed:', data);
 
-        // テスト環境の場合の代替処理
-        if (localStorage.getItem('threads_token')?.includes('test_token')) {
+        // 🔧 修正: テストモード判定の改善
+        if (data.test_mode || localStorage.getItem('threads_token')?.includes('test_token')) {
           console.log('🔧 Test mode: simulating successful post');
-          window.alert('✅ テストモード: Threads投稿が成功しました！\n\n' + generatedPost);
+          window.alert('✅ テストモード: Threads投稿が成功しました！\n\n' + generatedPost.substring(0, 100) + '...');
           return;
         }
 
         throw new Error(data.error || 'Threads投稿に失敗しました');
       }
 
-      const result = await response.json();
-      console.log('✅ Threads post successful:', result);
+      console.log('✅ Threads post successful:', data);
 
-      window.alert('✅ Threadsに投稿しました！');
+      // 🔧 修正: 成功メッセージの改善
+      if (data.test_mode) {
+        window.alert('✅ テストモード: Threads投稿が成功しました！\n\n投稿内容: ' + data.content);
+      } else {
+        window.alert('✅ Threadsに投稿しました！\n\n投稿ID: ' + data.post_id);
+      }
 
     } catch (error) {
       console.error('❌ Threads post error:', error);
@@ -725,6 +756,7 @@ const PostGenerator = () => {
       setIsPostingToThreads(false);
     }
   };
+
 
   // 同時投稿機能
   const postToAllPlatforms = async () => {
@@ -751,25 +783,51 @@ const PostGenerator = () => {
     if (!confirmPost) return;
 
     setError('');
+    console.log('🔄 Starting simultaneous posting to:', connectedPlatforms);
 
-    const promises = [];
+    const results = [];
 
+    // 🔧 修正: 順次実行で詳細ログ
     if (twitterConnected) {
-      promises.push(postToTwitter());
+      try {
+        console.log('🐦 Starting Twitter post...');
+        await postToTwitter();
+        results.push({ platform: 'Twitter', success: true });
+        console.log('✅ Twitter post completed');
+      } catch (error) {
+        console.error('❌ Twitter post failed:', error);
+        results.push({ platform: 'Twitter', success: false, error: error.message });
+      }
     }
 
     if (threadsConnected) {
-      promises.push(postToThreads());
+      try {
+        console.log('📱 Starting Threads post...');
+        await postToThreads();
+        results.push({ platform: 'Threads', success: true });
+        console.log('✅ Threads post completed');
+      } catch (error) {
+        console.error('❌ Threads post failed:', error);
+        results.push({ platform: 'Threads', success: false, error: error.message });
+      }
     }
 
-    try {
-      await Promise.all(promises);
-      window.alert(`✅ ${connectedPlatforms.join(' と ')}に同時投稿しました！`);
-    } catch (error) {
-      console.error('❌ Bulk post error:', error);
-      setError('同時投稿でエラーが発生しました: ' + error.message);
+    // 🔧 修正: 結果サマリーの改善
+    const successful = results.filter(r => r.success);
+    const failed = results.filter(r => !r.success);
+
+    let message = '🔄 同時投稿結果:\n\n';
+    if (successful.length > 0) {
+      message += `✅ 投稿成功: ${successful.map(r => r.platform).join(', ')}\n`;
     }
+    if (failed.length > 0) {
+      message += `❌ 投稿失敗: ${failed.map(r => `${r.platform} (${r.error})`).join(', ')}`;
+    }
+
+    window.alert(message);
+    console.log('🎯 Simultaneous posting completed:', { successful: successful.length, failed: failed.length });
   };
+    
 
   // プレミアムアップグレード処理
   const handleUpgrade = async () => {
