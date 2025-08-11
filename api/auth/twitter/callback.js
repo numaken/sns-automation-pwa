@@ -55,18 +55,18 @@ async function setKVValue(key, value, ttlSeconds = null) {
 }
 
 export default async function handler(req, res) {
-  console.log('=== Twitter OAuth Callback START ===');
+  console.log('=== Twitter OAuth Callback START (FIXED) ===');
   console.log('Method:', req.method);
   console.log('Query:', req.query);
-  console.log('Headers:', req.headers);
 
   const { code, state, error } = req.query;
 
   // デバッグモード確認
   if (req.query.debug === 'version') {
     return res.json({
-      version: 'Twitter OAuth Callback v2.0 - 完全デバッグ版',
+      version: 'Twitter OAuth Callback v3.0 - UserID問題修正版',
       timestamp: new Date().toISOString(),
+      fixApplied: 'Simplified PKCE search using state-only key',
       environment: {
         hasKvUrl: !!process.env.KV_REST_API_URL,
         hasKvToken: !!process.env.KV_REST_API_TOKEN,
@@ -76,17 +76,15 @@ export default async function handler(req, res) {
     });
   }
 
-  // OAuth認証エラーのチェック - 強化版
+  // OAuth認証エラーのチェック
   if (error) {
     console.error('OAuth error received:', error);
 
-    // ユーザーによるキャンセルの場合の特別処理
     if (error === 'access_denied') {
       console.log('User cancelled Twitter OAuth');
       return res.redirect('/?error=twitter_cancelled&message=' + encodeURIComponent('Twitter認証がキャンセルされました'));
     }
 
-    // その他のエラー
     return res.status(400).json({
       error: 'OAuth認証でエラーが発生しました',
       details: error,
@@ -102,82 +100,31 @@ export default async function handler(req, res) {
       error: 'Missing code or state',
       received: { code: !!code, state: !!state },
       debug: 'Required OAuth parameters missing',
-      version: 'v2.0-debug'
+      version: 'v3.0-fixed'
     });
   }
 
-  console.log('OAuth callback received:', { code: code.substring(0, 20) + '...', state });
-
   try {
-    // 複数のuserIdパターンでPKCEデータを検索
-    const possibleUserIds = [
-      'final-oauth-test',  // 新追加：最新テストユーザー
-      'ttl-fix-test',
-      'final-test',
-      'kv-test-debug',
-      'debug-test-user',
-      'callback-test',
-      'test-user',
-      'test'
-    ];
+    // 🔧 修正: シンプルなPKCEデータ検索（stateのみ使用）
+    console.log('=== PKCE Data Search START (SIMPLIFIED) ===');
 
+    const kvKey = `twitter_oauth_pkce:${state}`;
+    console.log(`Searching with simplified key: ${kvKey}`);
+
+    const data = await getKVValue(kvKey);
     let pkceData = null;
-    let foundKey = null;
 
-    console.log('=== PKCE Data Search START ===');
-
-    // 各userIdパターンで検索
-    for (const userId of possibleUserIds) {
-      const kvKey = `twitter_oauth_pkce:${userId}:${state}`;
-      console.log(`Trying KV key: ${kvKey}`);
-
-      const data = await getKVValue(kvKey);
-      if (data) {
-        console.log(`✅ PKCE data found with userId: ${userId}`);
-        pkceData = JSON.parse(data);
-        foundKey = kvKey;
-        break;
-      } else {
-        console.log(`❌ No data found for userId: ${userId}`);
-      }
-    }
-
-    // 直接stateでも検索
-    if (!pkceData) {
-      const directKey = `twitter_oauth_pkce:${state}`;
-      console.log(`Trying direct state key: ${directKey}`);
-      const data = await getKVValue(directKey);
-      if (data) {
-        console.log(`✅ PKCE data found with direct state key`);
-        pkceData = JSON.parse(data);
-        foundKey = directKey;
-      }
-    }
-
-    // パターンなしでstate前後を検索
-    if (!pkceData) {
-      const patterns = [
-        `twitter_oauth_pkce:*:${state}`,
-        `*:${state}`,
-        state
-      ];
-
-      for (const pattern of patterns) {
-        console.log(`Trying pattern: ${pattern}`);
-        const data = await getKVValue(pattern);
-        if (data) {
-          console.log(`✅ PKCE data found with pattern: ${pattern}`);
-          pkceData = JSON.parse(data);
-          foundKey = pattern;
-          break;
-        }
-      }
+    if (data) {
+      console.log(`✅ PKCE data found with state-only key`);
+      pkceData = JSON.parse(data);
+    } else {
+      console.log(`❌ No PKCE data found for state: ${state}`);
     }
 
     console.log('=== PKCE Data Search END ===');
 
     if (!pkceData) {
-      console.error('PKCE data not found after exhaustive search');
+      console.error('PKCE data not found with simplified search');
 
       // KV接続テスト
       const testKey = 'callback_test_' + Date.now();
@@ -188,17 +135,24 @@ export default async function handler(req, res) {
       return res.status(400).json({
         error: 'Invalid or expired state',
         state: state,
-        debug: 'PKCE data not found after exhaustive search',
-        searchAttempts: possibleUserIds.length + 3,
+        debug: 'PKCE data not found - simplified search used',
+        searchMethod: 'state-only key',
+        kvKey: kvKey,
         kvConnectionTest: {
           save: saveResult,
           read: readResult === testValue
         },
+        fixApplied: true,
         timestamp: new Date().toISOString()
       });
     }
 
-    console.log('Found PKCE data:', { foundKey, codeVerifier: pkceData.codeVerifier?.substring(0, 10) + '...' });
+    console.log('Found PKCE data:', {
+      kvKey,
+      userId: pkceData.userId,
+      codeVerifier: pkceData.codeVerifier?.substring(0, 10) + '...',
+      timestamp: pkceData.timestamp
+    });
 
     // アクセストークンの取得
     console.log('=== Token Exchange START ===');
@@ -291,7 +245,6 @@ export default async function handler(req, res) {
     console.log('Token saved:', { key: tokenKey, success: tokenSaved });
 
     // PKCE データを削除（セキュリティのため）
-    // Note: KV REST APIでDELETEコマンドを実行
     try {
       await fetch(`${process.env.KV_REST_API_URL}`, {
         method: 'POST',
@@ -299,14 +252,15 @@ export default async function handler(req, res) {
           'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(['DEL', foundKey]),
+        body: JSON.stringify(['DEL', kvKey]),
       });
-      console.log('PKCE data cleaned up');
+      console.log('PKCE data cleaned up:', kvKey);
     } catch (error) {
       console.log('PKCE cleanup failed (non-critical):', error);
     }
 
-    console.log('=== Twitter OAuth Callback SUCCESS ===');
+    console.log('=== Twitter OAuth Callback SUCCESS (FIXED) ===');
+
 
     // 成功レスポンス（HTML）
     const successHtml = `
@@ -320,6 +274,7 @@ export default async function handler(req, res) {
         .success { background: rgba(255,255,255,0.1); padding: 30px; border-radius: 10px; max-width: 400px; margin: 0 auto; }
         .username { font-size: 24px; font-weight: bold; margin: 20px 0; }
         .message { margin: 20px 0; }
+        .fix-info { background: rgba(0,255,0,0.1); padding: 15px; border-radius: 5px; margin: 15px 0; font-size: 14px; }
         button { background: white; color: #1da1f2; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px; }
         .auto-close { font-size: 12px; opacity: 0.8; margin-top: 20px; }
     </style>
@@ -329,34 +284,33 @@ export default async function handler(req, res) {
         <h1>🎉 認証完了！</h1>
         <div class="username">@${userData.data.username}</div>
         <div class="message">として接続されました</div>
+        <div class="fix-info">✅ UserID問題修正済み - 安定動作中</div>
         <button onclick="closeWindow()">ウィンドウを閉じる</button>
         <button onclick="window.location.href='https://sns-automation-pwa.vercel.app'">メインページに戻る</button>
         <div class="auto-close">このウィンドウは10秒後に自動で閉じます</div>
         <script>
             function closeWindow() {
-              // 複数の方法でウィンドウを閉じる
               try {
-                // 親ウィンドウに完了を通知してから閉じる
                 if (window.opener && !window.opener.closed) {
                   window.opener.postMessage({
                     type: 'twitter_auth_complete',
                     success: true,
-                    username: '${userData.data.username}'
+                    username: '${userData.data.username}',
+                    fixed: true
                   }, '*');
                 }
                 window.close();
               } catch (e) {
-                // window.close()が失敗した場合
                 try {
                   window.opener = null;
                   window.open('', '_self');
                   window.close();
                 } catch (e2) {
-                  // 最終手段：メインページにリダイレクト
-                  window.location.href = 'https://sns-automation-pwa.vercel.app?twitter_auth=success&username=${userData.data.username}';
+                  window.location.href = 'https://sns-automation-pwa.vercel.app?twitter_auth=success&username=${userData.data.username}&fixed=true';
                 }
               }
             }            
+            
             // 親ウィンドウに成功を通知
             if (window.opener) {
                 try {
@@ -365,14 +319,15 @@ export default async function handler(req, res) {
                         user: {
                             id: '${userData.data.id}',
                             username: '${userData.data.username}'
-                        }
+                        },
+                        fixed: true
                     }, '*');
                 } catch (e) {
                     console.log('Parent window notification failed:', e);
                 }
             }
             
-            // 10秒後に自動で閉じる（時間延長）
+            // 10秒後に自動で閉じる
             setTimeout(() => {
                 closeWindow();
             }, 10000);
@@ -389,7 +344,8 @@ export default async function handler(req, res) {
     return res.status(500).json({
       error: 'サーバーエラーが発生しました',
       message: error.message,
-      debug: 'Internal server error during OAuth callback'
+      debug: 'Internal server error during OAuth callback',
+      version: 'v3.0-fixed'
     });
   }
 }
