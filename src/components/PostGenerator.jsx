@@ -2,7 +2,7 @@
 // 既存のPostGenerator.jsxに最小限の変更のみ適用
 // JavaScript機能は一切変更せず、className追加のみ
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 // 🔧 SubscriptionManagerコンポーネントを直接統合
 const SubscriptionManager = ({ userId, onPlanChange, onClose }) => {
