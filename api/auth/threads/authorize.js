@@ -1,18 +1,5 @@
-// Threads OAuth - 認証開始（環境変数対応版）
+// Threads OAuth認証開始API
 import crypto from 'crypto';
-
-// KVにデータを保存
-async function setKVValue(key, value, ttl = 3600) {
-  const response = await fetch(`${process.env.KV_REST_API_URL}`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(['SETEX', key, ttl, value]),
-  });
-  return response.ok;
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -23,61 +10,77 @@ export default async function handler(req, res) {
     const { userId } = req.body;
 
     if (!userId) {
-      return res.status(400).json({ error: 'User ID is required' });
+      return res.status(400).json({ error: 'ユーザーIDが必要です' });
     }
 
-    // Threads App ID確認
-    const clientId = process.env.THREADS_APP_ID;
-    if (!clientId || clientId === 'your_threads_app_id') {
-      return res.status(500).json({
-        error: 'Threads App ID not configured',
-        code: 'MISSING_APP_ID'
-      });
-    }
+    // PKCEパラメータの生成
+    const codeVerifier = crypto.randomBytes(32).toString('base64url');
+    const codeChallenge = crypto
+      .createHash('sha256')
+      .update(codeVerifier)
+      .digest('base64url');
 
-    // redirect_uri設定（環境変数優先）
-    const redirectUri = process.env.THREADS_REDIRECT_URI ||
-      `https://${req.headers.host}/api/auth/threads/callback`;
+    // 認証セッションデータ
+    const authData = {
+      userId,
+      codeVerifier,
+      codeChallenge,
+      timestamp: Date.now()
+    };
 
-    console.log('Using redirect_uri:', redirectUri); // デバッグログ
+    // KVストレージに保存（30分TTL）
+    const sessionKey = `threads_oauth_pkce:${userId}`;
+    await setKVValue(sessionKey, JSON.stringify(authData), 1800); // 30分
 
-    // state生成（CSRF対策）
-    const state = crypto.randomBytes(16).toString('hex');
+    // Threads OAuth認証URL
+    const threadsClientId = process.env.THREADS_APP_ID;
+    const redirectUri = `${process.env.VERCEL_URL || 'https://sns-automation-pwa.vercel.app'}/api/auth/threads/callback`;
 
-    // OAuth認証URLパラメータ
-    const params = new URLSearchParams({
-      client_id: clientId,
+    const authParams = new URLSearchParams({
+      client_id: threadsClientId,
       redirect_uri: redirectUri,
       scope: 'threads_basic,threads_content_publish',
       response_type: 'code',
-      state: state
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256',
+      state: userId
     });
 
-    // 認証URL構築
-    const authUrl = `https://threads.net/oauth/authorize?${params.toString()}`;
+    const authUrl = `https://threads.net/oauth/authorize?${authParams.toString()}`;
 
-    // state情報をKVに保存（セキュリティ用）
-    const stateKey = `threads_oauth_state:${userId}:${state}`;
-    const stateData = JSON.stringify({
-      userId,
-      redirectUri,
-      timestamp: Date.now()
-    });
-
-    await setKVValue(stateKey, stateData, 3600); // 1時間有効
+    console.log('Threads OAuth session created:', { userId, sessionKey });
 
     return res.status(200).json({
-      success: true,
       authUrl,
-      state,
-      message: 'Threads認証を開始してください'
+      sessionKey,
+      message: 'Threads認証URLを生成しました'
     });
 
   } catch (error) {
     console.error('Threads OAuth authorize error:', error);
     return res.status(500).json({
-      error: 'OAuth認証の開始に失敗しました',
-      code: 'OAUTH_START_ERROR'
+      error: 'Threads認証の開始に失敗しました',
+      details: error.message
     });
+  }
+}
+
+// KVストレージヘルパー関数
+async function setKVValue(key, value, ttl = null) {
+  const command = ttl
+    ? ['SETEX', key, ttl, value.toString()]
+    : ['SET', key, value.toString()];
+
+  const response = await fetch(`${process.env.KV_REST_API_URL}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(command),
+  });
+
+  if (!response.ok) {
+    throw new Error(`KV set error: ${response.status}`);
   }
 }

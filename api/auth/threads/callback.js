@@ -1,6 +1,176 @@
-// Threads OAuth - 認証完了コールバック
+// Threads OAuth認証完了API
+export default async function handler(req, res) {
+  const { code, state } = req.query;
 
-// KVからデータを取得
+  if (!code || !state) {
+    return res.status(400).json({ error: '認証コードまたは状態が無効です' });
+  }
+
+  try {
+    const userId = state;
+
+    // PKCEデータの取得
+    const sessionKey = `threads_oauth_pkce:${userId}`;
+    const authDataStr = await getKVValue(sessionKey);
+
+    if (!authDataStr) {
+      console.error('Threads PKCE session not found:', sessionKey);
+      return res.status(400).json({
+        error: 'セッションが見つかりません。再度認証を開始してください。',
+        sessionKey
+      });
+    }
+
+    const authData = JSON.parse(authDataStr);
+    console.log('Threads PKCE session found:', { userId, sessionKey });
+
+    // アクセストークンの取得
+    const tokenResponse = await fetch('https://graph.threads.net/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: process.env.THREADS_APP_ID,
+        client_secret: process.env.THREADS_APP_SECRET,
+        grant_type: 'authorization_code',
+        redirect_uri: `${process.env.VERCEL_URL || 'https://sns-automation-pwa.vercel.app'}/api/auth/threads/callback`,
+        code: code,
+        code_verifier: authData.codeVerifier
+      })
+    });
+
+    const tokenData = await tokenResponse.json();
+
+    if (!tokenResponse.ok) {
+      console.error('Threads token exchange failed:', tokenData);
+      return res.status(400).json({
+        error: 'トークンの取得に失敗しました',
+        details: tokenData.error_description
+      });
+    }
+
+    // ユーザー情報の取得
+    const userResponse = await fetch(`https://graph.threads.net/v1.0/me?fields=id,username&access_token=${tokenData.access_token}`);
+    const userData = await userResponse.json();
+
+    if (!userResponse.ok) {
+      console.error('Threads user info failed:', userData);
+      return res.status(400).json({
+        error: 'ユーザー情報の取得に失敗しました'
+      });
+    }
+
+    // トークンの保存（30日間）
+    const tokenKey = `threads_token:${userId}`;
+    await setKVValue(tokenKey, tokenData.access_token, 86400 * 30);
+
+    // ユーザー情報の保存
+    const userInfoKey = `threads_user:${userId}`;
+    await setKVValue(userInfoKey, JSON.stringify({
+      threadsId: userData.id,
+      username: userData.username,
+      connectedAt: new Date().toISOString()
+    }), 86400 * 30);
+
+    // PKCEセッションの削除
+    await deleteKVValue(sessionKey);
+
+    console.log('Threads OAuth completed:', { userId, username: userData.username });
+
+    // 成功ページのHTML
+    const successHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Threads接続完了</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+            .container { max-width: 400px; margin: 50px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
+            .success { color: #16a34a; font-size: 48px; margin-bottom: 20px; }
+            h1 { color: #333; margin-bottom: 10px; }
+            p { color: #666; margin-bottom: 20px; }
+            .username { background: #f3f4f6; padding: 10px; border-radius: 5px; font-family: monospace; color: #333; }
+            .button { background: #8b5cf6; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; margin-top: 20px; }
+            .button:hover { background: #7c3aed; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="success">🧵</div>
+            <h1>Threads接続完了！</h1>
+            <p><strong>@${userData.username}</strong> として接続されました</p>
+            <div class="username">@${userData.username}</div>
+            <p>これでThreadsに自動投稿できるようになりました。</p>
+            <button class="button" onclick="window.close(); window.opener?.location.reload();">
+                アプリに戻る
+            </button>
+        </div>
+        <script>
+            // 親ウィンドウにメッセージを送信
+            if (window.opener) {
+                window.opener.postMessage({
+                    type: 'THREADS_AUTH_SUCCESS',
+                    username: '${userData.username}',
+                    userId: '${userId}'
+                }, '*');
+            }
+            
+            // 3秒後に自動でウィンドウを閉じる
+            setTimeout(() => {
+                if (window.opener) {
+                    window.close();
+                }
+            }, 3000);
+        </script>
+    </body>
+    </html>
+    `;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(200).send(successHtml);
+
+  } catch (error) {
+    console.error('Threads OAuth callback error:', error);
+
+    const errorHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Threads接続エラー</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+            .container { max-width: 400px; margin: 50px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
+            .error { color: #dc2626; font-size: 48px; margin-bottom: 20px; }
+            h1 { color: #333; margin-bottom: 10px; }
+            p { color: #666; margin-bottom: 20px; }
+            .button { background: #6b7280; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; }
+            .button:hover { background: #4b5563; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="error">❌</div>
+            <h1>Threads接続エラー</h1>
+            <p>認証に失敗しました。再度お試しください。</p>
+            <button class="button" onclick="window.close();">
+                閉じる
+            </button>
+        </div>
+    </body>
+    </html>
+    `;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(500).send(errorHtml);
+  }
+}
+
+// KVストレージヘルパー関数
 async function getKVValue(key) {
   const response = await fetch(`${process.env.KV_REST_API_URL}`, {
     method: 'POST',
@@ -11,21 +181,16 @@ async function getKVValue(key) {
     body: JSON.stringify(['GET', key]),
   });
 
-  if (!response.ok) {
-    throw new Error(`KV get error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.result ? JSON.parse(data.result) : null;
+  const result = await response.json();
+  return result.result;
 }
 
-// KVにデータを保存
 async function setKVValue(key, value, ttl = null) {
   const command = ttl
-    ? ['SETEX', key, ttl, JSON.stringify(value)]
-    : ['SET', key, JSON.stringify(value)];
+    ? ['SETEX', key, ttl, value.toString()]
+    : ['SET', key, value.toString()];
 
-  const response = await fetch(`${process.env.KV_REST_API_URL}`, {
+  await fetch(`${process.env.KV_REST_API_URL}`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
@@ -33,15 +198,10 @@ async function setKVValue(key, value, ttl = null) {
     },
     body: JSON.stringify(command),
   });
-
-  if (!response.ok) {
-    throw new Error(`KV set error: ${response.status}`);
-  }
 }
 
-// KVからキーを削除
 async function deleteKVValue(key) {
-  const response = await fetch(`${process.env.KV_REST_API_URL}`, {
+  await fetch(`${process.env.KV_REST_API_URL}`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
@@ -49,118 +209,4 @@ async function deleteKVValue(key) {
     },
     body: JSON.stringify(['DEL', key]),
   });
-
-  if (!response.ok) {
-    throw new Error(`KV delete error: ${response.status}`);
-  }
-}
-
-export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  try {
-    const { code, state, error: oauthError } = req.query;
-
-    // OAuth エラーチェック
-    if (oauthError) {
-      console.error('OAuth error:', oauthError);
-      return res.redirect(`${process.env.VERCEL_URL || 'https://sns-automation-pwa.vercel.app'}/?error=oauth_denied`);
-    }
-
-    if (!code || !state) {
-      return res.status(400).json({ error: 'Authorization code and state are required' });
-    }
-
-    // セッション情報を取得
-    const sessionData = await getKVValue(`oauth_session:${state}`);
-    if (!sessionData) {
-      return res.status(400).json({ error: 'Invalid or expired OAuth session' });
-    }
-
-    // アクセストークンを取得
-    const tokenParams = new URLSearchParams({
-      client_id: process.env.THREADS_APP_ID,
-      client_secret: process.env.THREADS_APP_SECRET,
-      grant_type: 'authorization_code',
-      redirect_uri: `${process.env.VERCEL_URL || 'https://sns-automation-pwa.vercel.app'}/api/auth/threads/callback`,
-      code: code
-    });
-
-    const tokenResponse = await fetch('https://graph.threads.net/oauth/access_token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: tokenParams.toString()
-    });
-
-    if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.text();
-      console.error('Token exchange error:', errorData);
-      return res.redirect(`${process.env.VERCEL_URL || 'https://sns-automation-pwa.vercel.app'}/?error=token_exchange_failed`);
-    }
-
-    const tokenData = await tokenResponse.json();
-
-    // 長期アクセストークンを取得（短期トークンを長期トークンに交換）
-    const longTokenParams = new URLSearchParams({
-      grant_type: 'th_exchange_token',
-      client_secret: process.env.THREADS_APP_SECRET,
-      access_token: tokenData.access_token
-    });
-
-    const longTokenResponse = await fetch('https://graph.threads.net/access_token', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
-    });
-
-    let finalToken = tokenData.access_token;
-    let expiresIn = tokenData.expires_in || 3600; // デフォルト1時間
-
-    if (longTokenResponse.ok) {
-      const longTokenData = await longTokenResponse.json();
-      finalToken = longTokenData.access_token;
-      expiresIn = longTokenData.expires_in || 5184000; // 60日
-    }
-
-    // ユーザー情報を取得
-    const userResponse = await fetch(`https://graph.threads.net/me?fields=id,username,threads_profile_picture_url&access_token=${finalToken}`);
-
-    if (!userResponse.ok) {
-      console.error('User info fetch error:', userResponse.status);
-      return res.redirect(`${process.env.VERCEL_URL || 'https://sns-automation-pwa.vercel.app'}/?error=user_fetch_failed`);
-    }
-
-    const userData = await userResponse.json();
-
-    // トークン情報をKVに保存
-    const tokenInfo = {
-      accessToken: finalToken,
-      expiresAt: new Date(Date.now() + (expiresIn * 1000)).toISOString(),
-      tokenType: 'Bearer',
-      threadsUserId: userData.id,
-      threadsUsername: userData.username,
-      profilePictureUrl: userData.threads_profile_picture_url,
-      connectedAt: new Date().toISOString()
-    };
-
-    // ユーザーのThreadsトークンを保存
-    await setKVValue(`threads_token:${sessionData.userId}`, tokenInfo);
-
-    // セッション情報を削除
-    await deleteKVValue(`oauth_session:${state}`);
-
-    // 成功ページにリダイレクト
-    const successUrl = `${process.env.VERCEL_URL || 'https://sns-automation-pwa.vercel.app'}/?threads_connected=success&username=${userData.username}`;
-
-    return res.redirect(successUrl);
-
-  } catch (error) {
-    console.error('Threads OAuth callback error:', error);
-    return res.redirect(`${process.env.VERCEL_URL || 'https://sns-automation-pwa.vercel.app'}/?error=oauth_callback_failed`);
-  }
 }
