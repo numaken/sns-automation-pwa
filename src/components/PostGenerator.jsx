@@ -473,7 +473,7 @@ const PostGenerator = () => {
       console.log('🐦 Starting Twitter OAuth...');
       setError('');
 
-      const testResponse = await fetch('/api/auth/twitter/authorize', {
+      const response = await fetch('/api/auth/twitter/authorize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -483,46 +483,23 @@ const PostGenerator = () => {
         })
       });
 
-      console.log('📡 Twitter auth test response:', testResponse.status);
-
-      if (testResponse.ok) {
-        const data = await testResponse.json();
-        console.log('📥 Twitter auth data:', data);
-
+      if (response.ok) {
+        const data = await response.json();
         if (data.authUrl || data.url) {
           window.location.href = data.authUrl || data.url;
         } else {
           throw new Error('認証URLが取得できませんでした');
         }
       } else {
-        console.warn('⚠️ Twitter OAuth API not available, using manual setup');
-        setError('Twitter OAuth APIが設定されていません。');
-
-        const manualSetup = window.confirm(
-          'Twitter OAuth APIが設定されていません。\n' +
-          '手動でTwitter接続をテストしますか？\n' +
-          '（これは開発・テスト用です）'
-        );
-
-        if (manualSetup) {
-          manualTwitterSetup();
-        }
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Twitter OAuth APIエラー');
       }
     } catch (error) {
       console.error('❌ Twitter connection error:', error);
-      setError('Twitter接続でエラーが発生しました: ' + error.message);
-
-      const manualSetup = window.confirm(
-        'Twitter接続に失敗しました。\n' +
-        '手動でTwitter接続をテストしますか？\n' +
-        '（これは開発・テスト用です）'
-      );
-
-      if (manualSetup) {
-        manualTwitterSetup();
-      }
+      setError('Twitter接続でエラーが発生しました。設定を確認してください。');
     }
   };
+
 
   // 手動Twitter接続設定（開発・テスト用）
   const manualTwitterSetup = () => {
@@ -544,27 +521,8 @@ const PostGenerator = () => {
       console.log('📱 Starting Threads OAuth...');
       setError('');
 
-      // 環境変数チェック
-      const hasThreadsConfig = process.env.THREADS_APP_ID || process.env.REACT_APP_THREADS_APP_ID;
-
-      if (!hasThreadsConfig) {
-        // 環境変数が設定されていない場合
-        setError('Threads API設定が見つかりません。');
-
-        const manualSetup = window.confirm(
-          'Threads API設定が見つかりません。\n' +
-          '手動でThreads接続をテストしますか？\n' +
-          '（これは開発・テスト用です）'
-        );
-
-        if (manualSetup) {
-          manualThreadsSetup();
-        }
-        return;
-      }
-
       // Threads OAuth APIを呼び出し
-      const testResponse = await fetch('/api/auth/threads/authorize', {
+      const response = await fetch('/api/auth/threads/authorize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -574,10 +532,10 @@ const PostGenerator = () => {
         })
       });
 
-      console.log('📡 Threads auth test response:', testResponse.status);
+      console.log('📡 Threads auth response:', response.status);
 
-      if (testResponse.ok) {
-        const data = await testResponse.json();
+      if (response.ok) {
+        const data = await response.json();
         console.log('📥 Threads auth data:', data);
 
         if (data.authUrl) {
@@ -586,37 +544,16 @@ const PostGenerator = () => {
           throw new Error('認証URLが取得できませんでした');
         }
       } else {
-        throw new Error('Threads OAuth APIエラー');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Threads OAuth APIエラー');
       }
 
     } catch (error) {
       console.error('❌ Threads connection error:', error);
-      setError('Threads接続でエラーが発生しました: ' + error.message);
-
-      const manualSetup = window.confirm(
-        'Threads接続に失敗しました。\n' +
-        '手動でThreads接続をテストしますか？\n' +
-        '（これは開発・テスト用です）'
-      );
-
-      if (manualSetup) {
-        manualThreadsSetup();
-      }
+      setError('Threads接続でエラーが発生しました。設定を確認してください。');
     }
   };
 
-  // 🔧 新規: 手動Threads接続設定（開発・テスト用）
-  const manualThreadsSetup = () => {
-    const username = window.prompt('Threadsのユーザーネームをテスト入力してください（@なし）:');
-    if (username) {
-      localStorage.setItem('threads_token', 'test_token_' + Date.now());
-      localStorage.setItem('threads_username', username);
-      setThreadsConnected(true);
-      setError('');
-      console.log('🔧 Manual Threads setup completed:', username);
-      window.alert(`✅ Threadsアカウント @${username} をテスト接続しました！`);
-    }
-  };
 
   // TwitterへSNS投稿
   // 🔧 修正: TwitterへSNS投稿の改善
@@ -693,7 +630,6 @@ const PostGenerator = () => {
 
 
   // 🔧 修正: ThreadsへSNS投稿の実装
-  // 🔧 修正: ThreadsへSNS投稿の実装
   const postToThreads = async () => {
     if (!generatedPost) {
       setError('投稿する内容を先に生成してください');
@@ -711,10 +647,10 @@ const PostGenerator = () => {
     try {
       console.log('📱 Posting to Threads...');
 
-      // 🔧 修正: より正確なユーザーID生成
       const userId = localStorage.getItem('threads_username') ||
+        localStorage.getItem('threads_user_id') ||
         localStorage.getItem('userId') ||
-        'numaken_threads'; // 🔧 フォールバック
+        'threads_user';
 
       console.log('📤 Sending to Threads API:', { userId, contentLength: generatedPost.length });
 
@@ -731,37 +667,28 @@ const PostGenerator = () => {
 
       console.log('📡 Threads post response:', response.status);
 
-      const data = await response.json();
-      console.log('📥 Threads post response data:', data);
-
       if (!response.ok) {
-        console.error('❌ Threads post failed:', data);
-
-        // 🔧 修正: テストモード判定の改善
-        if (data.test_mode || localStorage.getItem('threads_token')?.includes('test_token')) {
-          console.log('🔧 Test mode: simulating successful post');
-          window.alert('✅ テストモード: Threads投稿が成功しました！\n\n' + generatedPost.substring(0, 100) + '...');
-          return;
-        }
-
-        throw new Error(data.error || 'Threads投稿に失敗しました');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Threads投稿に失敗しました');
       }
 
+      const data = await response.json();
       console.log('✅ Threads post successful:', data);
 
-      // 🔧 修正: 成功メッセージの改善
-      if (data.test_mode) {
-        window.alert('✅ テストモード: Threads投稿が成功しました！\n\n投稿内容: ' + data.content);
+      // 成功メッセージ
+      if (data.post_id) {
+        window.alert(`✅ Threadsに投稿しました！\n\n投稿ID: ${data.post_id}`);
       } else {
-        window.alert('✅ Threadsに投稿しました！\n\n投稿ID: ' + data.post_id);
+        window.alert('✅ Threadsに投稿しました！');
       }
 
     } catch (error) {
       console.error('❌ Threads post error:', error);
-      setError('Threads投稿でエラーが発生しました: ' + error.message);
+      setError(`Threads投稿でエラーが発生しました: ${error.message}`);
     } finally {
       setIsPostingToThreads(false);
     }
+
   };
 
 
@@ -1305,28 +1232,6 @@ const PostGenerator = () => {
                     }}
                   >
                     🔧 テストでTwitter接続
-                  </button>
-                </div>
-              )}
-
-              {/* Threads接続エラー時の対処法表示 */}
-              {error.includes('Threads') && (
-                <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#dc2626' }}>
-                  <p>開発・テスト用オプション：</p>
-                  <button
-                    onClick={manualThreadsSetup}
-                    style={{
-                      background: '#000',
-                      color: 'white',
-                      padding: '0.5rem 1rem',
-                      borderRadius: '0.25rem',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                      marginRight: '0.5rem'
-                    }}
-                  >
-                    🔧 テストでThreads接続
                   </button>
                 </div>
               )}
