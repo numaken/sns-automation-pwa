@@ -55,26 +55,33 @@ export default async function handler(req, res) {
       payment_method_types: ['card'],
       line_items: [
         {
-          price_data: priceData,
+          price_data: {
+            currency: 'jpy',
+            product_data: {
+              name: 'SNS自動化ツール プレミアムプラン',
+              description: '無制限AI投稿生成 + OAuth自動投稿機能',
+            },
+            unit_amount: 98000, // ¥980
+            recurring: {
+              interval: 'month',
+            },
+          },
           quantity: 1,
         },
       ],
       mode: 'subscription',
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
+
+      // 🎯 重要: Next.jsページへのリダイレクト設定
+      success_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://sns-automation-pwa.vercel.app'}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://sns-automation-pwa.vercel.app'}/cancel`,
+
       customer_email: customerEmail,
-      client_reference_id: sessionUserId,
+      client_reference_id: userId,
       metadata: {
-        userId: sessionUserId,
-        planType: planType,
+        userId: userId,
+        planType: 'premium',
         source: 'sns_automation_pwa'
-      },
-      // 自動税金計算（必要に応じて）
-      automatic_tax: {
-        enabled: false,
-      },
-      // 請求先住所収集
-      billing_address_collection: 'auto',
+      }
     });
 
     console.log('✅ Checkout session created:', session.id);
