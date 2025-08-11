@@ -80,6 +80,18 @@ const PostGenerator = () => {
       console.log('💳 Stripe session detected:', sessionId);
       manualUpgradeToPremium();
     }
+
+    // URLパラメータからTwitter OAuth完了を検出
+    const oauth_token = urlParams.get('oauth_token');
+    const oauth_verifier = urlParams.get('oauth_verifier');
+
+    if (oauth_token && oauth_verifier) {
+      console.log('🐦 Twitter OAuth callback detected');
+      // Twitter認証完了の可能性があるのでSNS接続状況を再確認
+      setTimeout(() => {
+        checkSnsConnections();
+      }, 1000);
+    }
   }, []);
 
   // 🔧 修正: 手動プレミアム移行の改善
@@ -103,26 +115,81 @@ const PostGenerator = () => {
     window.history.replaceState({}, document.title, url.toString());
   };
 
-  // Twitter接続処理
+  // 🔧 修正: Twitter接続処理の改善
   const connectTwitter = async () => {
     try {
       console.log('🐦 Starting Twitter OAuth...');
+      setError('');
 
-      const response = await fetch('/api/auth/twitter/authorize', {
+      // 直接OAuth認証ページに遷移（簡易版）
+      const twitterAuthUrl = `/api/auth/twitter/authorize?t=${Date.now()}`;
+
+      console.log('🔗 Twitter auth URL:', twitterAuthUrl);
+
+      // まずAPIエンドポイントが存在するかテスト
+      const testResponse = await fetch(twitterAuthUrl, {
         method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
       });
 
-      const data = await response.json();
+      console.log('📡 Twitter auth test response:', testResponse.status);
 
-      if (data.authUrl) {
-        // OAuth認証ページにリダイレクト
-        window.location.href = data.authUrl;
+      if (testResponse.ok) {
+        const data = await testResponse.json();
+        console.log('📥 Twitter auth data:', data);
+
+        if (data.authUrl || data.url) {
+          // OAuth認証ページにリダイレクト
+          window.location.href = data.authUrl || data.url;
+        } else {
+          throw new Error('認証URLが取得できませんでした');
+        }
       } else {
-        throw new Error('認証URLの取得に失敗しました');
+        // API エンドポイントが無い場合の代替手段
+        console.warn('⚠️ Twitter OAuth API not available, using manual setup');
+        setError('Twitter OAuth APIが設定されていません。管理者にお問い合わせください。');
+
+        // 手動設定オプションを表示
+        const manualSetup = confirm(
+          'Twitter OAuth APIが設定されていません。\n' +
+          '手動でTwitter接続をテストしますか？\n' +
+          '（これは開発・テスト用です）'
+        );
+
+        if (manualSetup) {
+          manualTwitterSetup();
+        }
       }
     } catch (error) {
       console.error('❌ Twitter connection error:', error);
       setError('Twitter接続でエラーが発生しました: ' + error.message);
+
+      // 開発者向けの代替オプション
+      const manualSetup = confirm(
+        'Twitter接続に失敗しました。\n' +
+        '手動でTwitter接続をテストしますか？\n' +
+        '（これは開発・テスト用です）'
+      );
+
+      if (manualSetup) {
+        manualTwitterSetup();
+      }
+    }
+  };
+
+  // 🔧 新規: 手動Twitter接続設定（開発・テスト用）
+  const manualTwitterSetup = () => {
+    const username = prompt('Twitterのユーザーネームをテスト入力してください（@なし）:');
+    if (username) {
+      localStorage.setItem('twitter_token', 'test_token_' + Date.now());
+      localStorage.setItem('twitter_username', username);
+      setTwitterConnected(true);
+      setTwitterUsername(username);
+      setError('');
+      console.log('🔧 Manual Twitter setup completed:', username);
+      alert(`✅ Twitterアカウント @${username} をテスト接続しました！`);
     }
   };
 
@@ -131,14 +198,14 @@ const PostGenerator = () => {
     try {
       console.log('📱 Starting Threads OAuth...');
       // Threads OAuth実装予定
-      setError('Threads連携は準備中です。しばらくお待ちください。');
+      setError('Threads連携は開発中です。しばらくお待ちください。');
     } catch (error) {
       console.error('❌ Threads connection error:', error);
       setError('Threads接続でエラーが発生しました: ' + error.message);
     }
   };
 
-  // TwitterへSNS投稿
+  // 🔧 修正: TwitterへSNS投稿の改善
   const postToTwitter = async () => {
     if (!generatedPost) {
       setError('投稿する内容を先に生成してください');
@@ -156,6 +223,7 @@ const PostGenerator = () => {
     try {
       console.log('🐦 Posting to Twitter...');
 
+      // Twitter投稿API呼び出し
       const response = await fetch('/api/post-to-twitter', {
         method: 'POST',
         headers: {
@@ -163,12 +231,23 @@ const PostGenerator = () => {
         },
         body: JSON.stringify({
           content: generatedPost,
-          userId: 'twitter-user-' + Date.now()
+          userId: twitterUsername || 'twitter-user-' + Date.now()
         }),
       });
 
+      console.log('📡 Twitter post response:', response.status);
+
       if (!response.ok) {
         const data = await response.json();
+        console.error('❌ Twitter post failed:', data);
+
+        // テスト環境の場合の代替処理
+        if (localStorage.getItem('twitter_token')?.includes('test_token')) {
+          console.log('🔧 Test mode: simulating successful post');
+          alert('✅ テストモード: Twitter投稿が成功しました！\n\n' + generatedPost);
+          return;
+        }
+
         throw new Error(data.error || 'Twitter投稿に失敗しました');
       }
 
@@ -199,12 +278,97 @@ const PostGenerator = () => {
     try {
       console.log('📱 Posting to Threads...');
       // Threads投稿API実装予定
-      setError('Threads投稿は準備中です。しばらくお待ちください。');
+      setTimeout(() => {
+        alert('📱 Threads投稿機能は開発中です');
+        setIsPostingToThreads(false);
+      }, 1000);
     } catch (error) {
       console.error('❌ Threads post error:', error);
       setError('Threads投稿でエラーが発生しました: ' + error.message);
-    } finally {
       setIsPostingToThreads(false);
+    }
+  };
+
+  // 🔧 新規: 同時投稿機能
+  const postToAllPlatforms = async () => {
+    if (!generatedPost) {
+      setError('投稿する内容を先に生成してください');
+      return;
+    }
+
+    const connectedPlatforms = [];
+    if (twitterConnected) connectedPlatforms.push('Twitter');
+    if (threadsConnected) connectedPlatforms.push('Threads');
+
+    if (connectedPlatforms.length === 0) {
+      setError('投稿先のプラットフォームを先に接続してください');
+      return;
+    }
+
+    const confirmPost = confirm(
+      `以下のプラットフォームに同時投稿しますか？\n\n` +
+      `📝 投稿内容:\n${generatedPost.substring(0, 100)}${generatedPost.length > 100 ? '...' : ''}\n\n` +
+      `📱 投稿先: ${connectedPlatforms.join(', ')}`
+    );
+
+    if (!confirmPost) return;
+
+    setError('');
+
+    // 並行投稿実行
+    const promises = [];
+
+    if (twitterConnected) {
+      promises.push(
+        (async () => {
+          try {
+            setIsPostingToTwitter(true);
+            await postToTwitter();
+            return { platform: 'Twitter', success: true };
+          } catch (error) {
+            return { platform: 'Twitter', success: false, error: error.message };
+          } finally {
+            setIsPostingToTwitter(false);
+          }
+        })()
+      );
+    }
+
+    if (threadsConnected) {
+      promises.push(
+        (async () => {
+          try {
+            setIsPostingToThreads(true);
+            await postToThreads();
+            return { platform: 'Threads', success: true };
+          } catch (error) {
+            return { platform: 'Threads', success: false, error: error.message };
+          } finally {
+            setIsPostingToThreads(false);
+          }
+        })()
+      );
+    }
+
+    try {
+      const results = await Promise.all(promises);
+
+      const successful = results.filter(r => r.success);
+      const failed = results.filter(r => !r.success);
+
+      let message = '';
+      if (successful.length > 0) {
+        message += `✅ 投稿成功: ${successful.map(r => r.platform).join(', ')}\n`;
+      }
+      if (failed.length > 0) {
+        message += `❌ 投稿失敗: ${failed.map(r => `${r.platform} (${r.error})`).join(', ')}`;
+      }
+
+      alert(message);
+
+    } catch (error) {
+      console.error('❌ Bulk post error:', error);
+      setError('同時投稿でエラーが発生しました: ' + error.message);
     }
   };
 
@@ -335,13 +499,15 @@ const PostGenerator = () => {
           usage,
           twitterConnected,
           threadsConnected,
+          twitterUsername,
           localStorage: Object.fromEntries(
             Object.keys(localStorage).map(key => [key, localStorage.getItem(key)])
           )
         }),
         manualUpgrade: manualUpgradeToPremium,
         checkStatus: checkPremiumStatus,
-        checkSns: checkSnsConnections
+        checkSns: checkSnsConnections,
+        manualTwitter: manualTwitterSetup
       };
       console.log('🔧 Debug functions available: window.debugSNSApp');
     }
@@ -407,6 +573,7 @@ const PostGenerator = () => {
                 <li>🚀 高速生成（専用APIキー）</li>
                 <li>🐦 Twitter自動投稿</li>
                 <li>📱 Threads自動投稿</li>
+                <li>🔄 同時投稿機能</li>
                 <li>👑 広告なしのクリーンUI</li>
               </ul>
             </div>
@@ -549,6 +716,16 @@ const PostGenerator = () => {
                 {quality && <span style={{ marginLeft: '1rem' }}>品質: {quality}点</span>}
               </div>
             )}
+
+            {/* SNS接続状況（プレミアムのみ） */}
+            {userPlan === 'premium' && (
+              <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                <span>SNS接続: </span>
+                {twitterConnected && <span style={{ color: '#1d9bf0' }}>🐦 @{twitterUsername} </span>}
+                {threadsConnected && <span style={{ color: '#000' }}>📱 Threads </span>}
+                {!twitterConnected && !threadsConnected && <span>未接続</span>}
+              </div>
+            )}
           </div>
 
           {/* 入力フォーム */}
@@ -648,6 +825,28 @@ const PostGenerator = () => {
               borderRadius: '0.5rem'
             }}>
               <p style={{ color: '#dc2626', margin: 0 }}>⚠️ {error}</p>
+
+              {/* 🔧 修正: Twitter接続エラー時の対処法表示 */}
+              {error.includes('Twitter') && error.includes('OAuth') && (
+                <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#dc2626' }}>
+                  <p>開発・テスト用オプション：</p>
+                  <button
+                    onClick={manualTwitterSetup}
+                    style={{
+                      background: '#1d9bf0',
+                      color: 'white',
+                      padding: '0.5rem 1rem',
+                      borderRadius: '0.25rem',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      marginRight: '0.5rem'
+                    }}
+                  >
+                    🔧 テストでTwitter接続
+                  </button>
+                </div>
+              )}
 
               {/* 🔧 修正: Stripe決済エラー時の対処法表示 */}
               {error.includes('アップグレード') && (
@@ -801,6 +1000,31 @@ const PostGenerator = () => {
                         📱 Threadsを接続
                       </button>
                     )}
+
+                    {/* 🔧 修正: 同時投稿ボタンの復活 */}
+                    {(twitterConnected || threadsConnected) && (
+                      <button
+                        onClick={postToAllPlatforms}
+                        disabled={isPostingToTwitter || isPostingToThreads}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: (isPostingToTwitter || isPostingToThreads)
+                            ? '#9ca3af'
+                            : 'linear-gradient(to right, #7c3aed, #ec4899)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '0.5rem',
+                          cursor: (isPostingToTwitter || isPostingToThreads) ? 'not-allowed' : 'pointer',
+                          fontSize: '0.875rem',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        {(isPostingToTwitter || isPostingToThreads)
+                          ? '投稿中...'
+                          : '🔄 同時投稿'
+                        }
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -815,7 +1039,7 @@ const PostGenerator = () => {
                   border: '1px solid #fbbf24'
                 }}>
                   <p style={{ color: '#92400e', fontSize: '0.875rem', margin: 0 }}>
-                    💎 プレミアムプランなら、この投稿をTwitterやThreadsに自動投稿できます！
+                    💎 プレミアムプランなら、この投稿をTwitterやThreadsに自動投稿＋同時投稿できます！
                   </p>
                 </div>
               )}
@@ -852,7 +1076,7 @@ const PostGenerator = () => {
               <div>⚡ 無制限AI生成</div>
               <div>🐦 Twitter自動投稿</div>
               <div>📱 Threads自動投稿</div>
-              <div>🚀 高速処理</div>
+              <div>🔄 同時投稿機能</div>
             </div>
 
             <button
