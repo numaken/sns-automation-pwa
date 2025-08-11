@@ -152,7 +152,7 @@ const PostGenerator = () => {
         setError('Twitter OAuth APIが設定されていません。管理者にお問い合わせください。');
 
         // 手動設定オプションを表示
-        const manualSetup = confirm(
+        const manualSetup = window.confirm(
           'Twitter OAuth APIが設定されていません。\n' +
           '手動でTwitter接続をテストしますか？\n' +
           '（これは開発・テスト用です）'
@@ -167,7 +167,7 @@ const PostGenerator = () => {
       setError('Twitter接続でエラーが発生しました: ' + error.message);
 
       // 開発者向けの代替オプション
-      const manualSetup = confirm(
+      const manualSetup = window.confirm(
         'Twitter接続に失敗しました。\n' +
         '手動でTwitter接続をテストしますか？\n' +
         '（これは開発・テスト用です）'
@@ -181,7 +181,7 @@ const PostGenerator = () => {
 
   // 🔧 新規: 手動Twitter接続設定（開発・テスト用）
   const manualTwitterSetup = () => {
-    const username = prompt('Twitterのユーザーネームをテスト入力してください（@なし）:');
+    const username = window.prompt('Twitterのユーザーネームをテスト入力してください（@なし）:');
     if (username) {
       localStorage.setItem('twitter_token', 'test_token_' + Date.now());
       localStorage.setItem('twitter_username', username);
@@ -189,7 +189,7 @@ const PostGenerator = () => {
       setTwitterUsername(username);
       setError('');
       console.log('🔧 Manual Twitter setup completed:', username);
-      alert(`✅ Twitterアカウント @${username} をテスト接続しました！`);
+      window.alert(`✅ Twitterアカウント @${username} をテスト接続しました！`);
     }
   };
 
@@ -244,7 +244,7 @@ const PostGenerator = () => {
         // テスト環境の場合の代替処理
         if (localStorage.getItem('twitter_token')?.includes('test_token')) {
           console.log('🔧 Test mode: simulating successful post');
-          alert('✅ テストモード: Twitter投稿が成功しました！\n\n' + generatedPost);
+          window.alert('✅ テストモード: Twitter投稿が成功しました！\n\n' + generatedPost);
           return;
         }
 
@@ -255,7 +255,7 @@ const PostGenerator = () => {
       console.log('✅ Twitter post successful:', result);
 
       // 成功通知
-      alert('✅ Twitterに投稿しました！');
+      window.alert('✅ Twitterに投稿しました！');
 
     } catch (error) {
       console.error('❌ Twitter post error:', error);
@@ -279,7 +279,7 @@ const PostGenerator = () => {
       console.log('📱 Posting to Threads...');
       // Threads投稿API実装予定
       setTimeout(() => {
-        alert('📱 Threads投稿機能は開発中です');
+        window.alert('📱 Threads投稿機能は開発中です');
         setIsPostingToThreads(false);
       }, 1000);
     } catch (error) {
@@ -305,7 +305,7 @@ const PostGenerator = () => {
       return;
     }
 
-    const confirmPost = confirm(
+    const confirmPost = window.confirm(
       `以下のプラットフォームに同時投稿しますか？\n\n` +
       `📝 投稿内容:\n${generatedPost.substring(0, 100)}${generatedPost.length > 100 ? '...' : ''}\n\n` +
       `📱 投稿先: ${connectedPlatforms.join(', ')}`
@@ -364,7 +364,7 @@ const PostGenerator = () => {
         message += `❌ 投稿失敗: ${failed.map(r => `${r.platform} (${r.error})`).join(', ')}`;
       }
 
-      alert(message);
+      window.alert(message);
 
     } catch (error) {
       console.error('❌ Bulk post error:', error);
