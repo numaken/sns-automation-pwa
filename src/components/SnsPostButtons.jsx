@@ -104,8 +104,8 @@ const OAuthHelpers = {
 const SnsPostButtons = ({ generatedPost, userPlan = 'free' }) => {
   const [userId] = useState(() => OAuthHelpers.generateUserId());
   const [connections, setConnections] = useState({
-    twitter: { connected: false, loading: true },
-    threads: { connected: false, loading: true }
+    twitter: { connected: false, loading: true, error: null },
+    threads: { connected: false, loading: true, error: null }
   });
   const [posting, setPosting] = useState({
     twitter: false,
@@ -116,10 +116,32 @@ const SnsPostButtons = ({ generatedPost, userPlan = 'free' }) => {
     threads: null
   });
 
-  // コンポーネント初期化時にOAuth接続状態をチェック
+  // コンポーネント初期化時にOAuth接続状態をチェック - 強化版
   useEffect(() => {
-    checkAllConnections();
-  }, []);
+    const initializeComponent = async () => {
+      console.log('SnsPostButtons初期化開始', { userPlan, userId });
+
+      // プレミアムユーザーの場合は即座にボタン表示
+      if (userPlan === 'premium') {
+        setShowButtons(true);
+      }
+
+      // 接続状態確認（非同期）
+      await checkAllConnections();
+
+      // 接続済みサービスがある場合はボタン表示
+      // （無料ユーザーでも接続済みなら表示）
+    };
+
+    initializeComponent();
+  }, [userPlan]); // userPlanの変更も監視
+
+  // 🔧 追加: プレミアムプラン変更の監視
+  useEffect(() => {
+    if (userPlan === 'premium') {
+      setShowButtons(true);
+    }
+  }, [userPlan]);
 
   const checkAllConnections = async () => {
     setConnections(prev => ({
@@ -133,7 +155,8 @@ const SnsPostButtons = ({ generatedPost, userPlan = 'free' }) => {
         OAuthHelpers.checkOAuthConnection('threads', userId)
       ]);
 
-      setConnections({
+
+      const newConnections = {
         twitter: {
           connected: twitterStatus.status === 'fulfilled' ? twitterStatus.value.connected : false,
           loading: false,
@@ -146,7 +169,22 @@ const SnsPostButtons = ({ generatedPost, userPlan = 'free' }) => {
           username: threadsStatus.status === 'fulfilled' ? threadsStatus.value.username : null,
           error: threadsStatus.status === 'rejected' ? threadsStatus.reason.message : null
         }
+      };
+
+      setConnections(newConnections);
+
+      // 🔧 追加: 接続済みサービスがある場合はボタン表示
+      const hasAnyConnection = newConnections.twitter.connected || newConnections.threads.connected;
+      if (hasAnyConnection || userPlan === 'premium') {
+        setShowButtons(true);
+      }
+
+      console.log('接続状態更新完了', {
+        hasAnyConnection,
+        userPlan,
+        showButtons: hasAnyConnection || userPlan === 'premium'
       });
+
     } catch (error) {
       console.error('Connection check failed:', error);
       setConnections({
@@ -333,6 +371,29 @@ const SnsPostButtons = ({ generatedPost, userPlan = 'free' }) => {
     );
   };
 
+  // 🔧 表示条件の追加
+  if (!showButtons && userPlan !== 'premium') {
+    return (
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">SNS投稿</h3>
+        <div className="text-center py-8 space-y-4">
+          <p className="text-gray-500">SNS投稿機能を利用するには：</p>
+          <div className="space-y-2 text-sm text-gray-600">
+            <p>1. プレミアムプランにアップグレード</p>
+            <p>または</p>
+            <p>2. SNSアカウントを接続</p>
+          </div>
+          <button
+            onClick={checkAllConnections}
+            className="text-blue-600 hover:text-blue-800 text-sm"
+          >
+            接続状態を確認
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -345,6 +406,15 @@ const SnsPostButtons = ({ generatedPost, userPlan = 'free' }) => {
           <span>接続状態を更新</span>
         </button>
       </div>
+
+      {/* 🔧 プレミアムユーザー向けメッセージ追加 */}
+      {userPlan === 'premium' && (
+        <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-3">
+          <p className="text-sm text-purple-800 font-medium">
+            ✨ プレミアム会員：SNS投稿機能をご利用いただけます
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <PlatformButton
@@ -368,7 +438,7 @@ const SnsPostButtons = ({ generatedPost, userPlan = 'free' }) => {
         </p>
       )}
     </div>
-  );
+  );  
 };
 
 export default SnsPostButtons;

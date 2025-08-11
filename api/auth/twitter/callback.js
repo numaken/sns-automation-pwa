@@ -76,13 +76,22 @@ export default async function handler(req, res) {
     });
   }
 
-  // OAuth認証エラーのチェック
+  // OAuth認証エラーのチェック - 強化版
   if (error) {
     console.error('OAuth error received:', error);
+
+    // ユーザーによるキャンセルの場合の特別処理
+    if (error === 'access_denied') {
+      console.log('User cancelled Twitter OAuth');
+      return res.redirect('/?error=twitter_cancelled&message=' + encodeURIComponent('Twitter認証がキャンセルされました'));
+    }
+
+    // その他のエラー
     return res.status(400).json({
       error: 'OAuth認証でエラーが発生しました',
       details: error,
-      debug: 'OAuth provider returned error'
+      debug: 'OAuth provider returned error',
+      error_type: error
     });
   }
 
@@ -325,22 +334,29 @@ export default async function handler(req, res) {
         <div class="auto-close">このウィンドウは10秒後に自動で閉じます</div>
         <script>
             function closeWindow() {
-                // 複数の方法でウィンドウを閉じる
-                try {
-                    window.close();
-                } catch (e) {
-                    // window.close()が失敗した場合
-                    try {
-                        window.opener = null;
-                        window.open('', '_self');
-                        window.close();
-                    } catch (e2) {
-                        // 最終手段：メインページにリダイレクト
-                        window.location.href = 'https://sns-automation-pwa.vercel.app';
-                    }
+              // 複数の方法でウィンドウを閉じる
+              try {
+                // 親ウィンドウに完了を通知してから閉じる
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage({
+                    type: 'twitter_auth_complete',
+                    success: true,
+                    username: '${userData.data.username}'
+                  }, '*');
                 }
-            }
-            
+                window.close();
+              } catch (e) {
+                // window.close()が失敗した場合
+                try {
+                  window.opener = null;
+                  window.open('', '_self');
+                  window.close();
+                } catch (e2) {
+                  // 最終手段：メインページにリダイレクト
+                  window.location.href = 'https://sns-automation-pwa.vercel.app?twitter_auth=success&username=${userData.data.username}';
+                }
+              }
+            }            
             // 親ウィンドウに成功を通知
             if (window.opener) {
                 try {
