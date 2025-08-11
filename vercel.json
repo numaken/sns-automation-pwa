@@ -1,35 +1,28 @@
 {
   "functions": {
+    "api/generate-post-shared.js": {
+      "maxDuration": 30
+    },
     "api/generate-post.js": {
       "maxDuration": 30
-    }
-  },
-  "build": {
-    "env": {
-      "REACT_APP_API_URL": "https://sns-automation-pwa.vercel.app"
+    },
+    "api/create-checkout-session.js": {
+      "maxDuration": 30
     }
   },
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/success",
+      "destination": "/success.html"
     }
   ],
   "headers": [
     {
-      "source": "/api/(.*)",
+      "source": "/success.html",
       "headers": [
         {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, DELETE, OPTIONS"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization"
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
         }
       ]
     }

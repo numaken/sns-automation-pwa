@@ -1,0 +1,82 @@
+/* styles/globals.css に追加するCSS */
+
+@keyframes bounce {
+
+  0%,
+  20%,
+  53%,
+  80%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  40%,
+  43% {
+    transform: translate3d(0, -15px, 0);
+  }
+
+  70% {
+    transform: translate3d(0, -7px, 0);
+  }
+
+  90% {
+    transform: translate3d(0, -2px, 0);
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes twinkle {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1) rotate(180deg);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 成功ページ専用スタイル */
+.success-page-enter {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+  .success-card {
+    padding: 30px 20px !important;
+    margin: 10px !important;
+  }
+
+  .success-title {
+    font-size: 28px !important;
+  }
+
+  .success-features-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
