@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 const PostGenerator = () => {
-  // 基本状態管理（完全独立版）
+  // 基本状態管理（簡素化版）
   const [prompt, setPrompt] = useState('');
   const [tone, setTone] = useState('カジュアル');
   const [generatedPost, setGeneratedPost] = useState('');
@@ -13,25 +13,101 @@ const PostGenerator = () => {
   const [userPlan, setUserPlan] = useState('free');
   const [generationTime, setGenerationTime] = useState(null);
 
-  // 初期化（最小限）
-  useEffect(() => {
-    // プラン確認（最小限）
-    const savedPlan = localStorage.getItem('userPlan');
+  // 🔧 修正: シンプル化されたプレミアム確認
+  const checkPremiumStatus = () => {
+    console.log('🔍 Checking premium status...');
+
+    // 主要キーのみをチェック（シンプル化）
+    const userPlan = localStorage.getItem('userPlan');
     const subscriptionStatus = localStorage.getItem('subscriptionStatus');
 
-    console.log('🔧 Standalone plan check:', { savedPlan, subscriptionStatus });
+    console.log('📊 Premium check:', { userPlan, subscriptionStatus });
 
-    if (savedPlan === 'premium' && subscriptionStatus === 'active') {
+    // 🔧 修正: プレミアム判定の簡素化
+    const isPremiumUser = (userPlan === 'premium' && subscriptionStatus === 'active');
+
+    if (isPremiumUser) {
+      console.log('✅ Premium status confirmed');
       setUserPlan('premium');
       setUsage({ remaining: 'unlimited' });
+      localStorage.removeItem('dailyUsage'); // 無料プランデータクリア
     } else {
+      console.log('📋 Free plan confirmed');
       setUserPlan('free');
-      // 古いデータをクリア
-      localStorage.removeItem('dailyUsage');
+      // 🔧 修正: 初期値の適切な設定
+      setUsage({ remaining: 3, used: 0, limit: 3 });
+    }
+  };
+
+  // 初期化
+  useEffect(() => {
+    checkPremiumStatus();
+
+    // URLパラメータからStripe成功を検出
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session_id');
+
+    if (sessionId) {
+      console.log('💳 Stripe session detected:', sessionId);
+      manualUpgradeToPremium();
     }
   }, []);
 
-  // AI投稿生成（完全独立版）
+  // 🔧 修正: 手動プレミアム移行の改善
+  const manualUpgradeToPremium = () => {
+    console.log('🔧 Manual premium upgrade initiated');
+
+    localStorage.setItem('userPlan', 'premium');
+    localStorage.setItem('subscriptionStatus', 'active');
+    localStorage.setItem('premiumActivatedAt', new Date().toISOString());
+    localStorage.removeItem('dailyUsage');
+
+    setUserPlan('premium');
+    setUsage({ remaining: 'unlimited' });
+
+    console.log('✅ Manual premium upgrade completed');
+
+    // URL クリーンアップ
+    const url = new URL(window.location);
+    url.searchParams.delete('session_id');
+    window.history.replaceState({}, document.title, url.toString());
+  };
+
+  // 🔧 修正: プレミアムアップグレード処理の改善
+  const handleUpgrade = async () => {
+    try {
+      console.log('🚀 Starting upgrade process...');
+      setError(''); // エラークリア
+
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: 'upgrade-user-' + Date.now()
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('💳 Checkout session created:', data);
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('決済URLが取得できませんでした');
+      }
+    } catch (error) {
+      console.error('❌ Upgrade error:', error);
+      setError('アップグレード処理でエラーが発生しました: ' + error.message);
+    }
+  };
+
+  // 🔧 修正: AI投稿生成の改善
   const generatePost = async () => {
     if (!prompt.trim()) {
       setError('投稿のテーマを入力してください');
@@ -46,18 +122,18 @@ const PostGenerator = () => {
     const startTime = Date.now();
 
     try {
-      const endpoint = '/api/generate-post-shared';
+      // 🔧 修正: プレミアムユーザーは別エンドポイント使用
+      const endpoint = userPlan === 'premium'
+        ? '/api/generate-post'
+        : '/api/generate-post-shared';
 
       const requestBody = {
         prompt: prompt.trim(),
         tone,
-        userType: 'free' // 常にfreeで統一
+        userType: userPlan // 'free' または 'premium'
       };
 
-      console.log('🚀 Standalone API call:', {
-        endpoint,
-        requestBody
-      });
+      console.log('🚀 API call:', { endpoint, requestBody });
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -75,6 +151,7 @@ const PostGenerator = () => {
       if (!response.ok) {
         if (response.status === 429) {
           setError('1日の無料生成回数を超えました。プレミアムプランで無制限生成！');
+          // 🔧 修正: 使用量の正確な設定
           setUsage({ remaining: 0, used: 3, limit: 3 });
           setShowUpgradePrompt(true);
         } else {
@@ -83,58 +160,56 @@ const PostGenerator = () => {
         return;
       }
 
-      // 成功時の処理
+      // 🔧 修正: 成功時の処理改善
       setGeneratedPost(data.post);
       setQuality(data.quality);
 
-      if (data.usage) {
-        setUsage(data.usage);
-        console.log('📊 Usage updated:', data.usage);
+      // 🔧 修正: 使用量更新の改善
+      if (data.usage && userPlan === 'free') {
+        console.log('📊 Updating usage:', data.usage);
+        setUsage(prevUsage => ({
+          remaining: data.usage.remaining || 0,
+          used: (prevUsage.limit || 3) - (data.usage.remaining || 0),
+          limit: prevUsage.limit || 3
+        }));
+
+        // プレミアム転換タイミング
+        if (data.usage.remaining <= 1) {
+          setShowUpgradePrompt(true);
+        }
       }
 
       const endTime = Date.now();
       setGenerationTime(endTime - startTime);
 
-      // プレミアム転換タイミング
-      if (data.usage && data.usage.remaining <= 1) {
-        setShowUpgradePrompt(true);
-      }
-
     } catch (error) {
       console.error('❌ Generation error:', error);
-      setError('ネットワークエラーが発生しました。しばらく待ってから再試行してください。');
+      setError('ネットワークエラーが発生しました: ' + error.message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // アップグレード処理（簡易版）
-  const handleUpgrade = async () => {
-    try {
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: 'standalone-upgrade-' + Date.now()
+  // 🔧 修正: デバッグ機能の条件付き有効化
+  useEffect(() => {
+    // 開発環境でのみデバッグ機能を有効化
+    if (process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') {
+      window.debugSNSApp = {
+        showInfo: () => ({
+          userPlan,
+          usage,
+          localStorage: Object.fromEntries(
+            Object.keys(localStorage).map(key => [key, localStorage.getItem(key)])
+          )
         }),
-      });
-
-      const data = await response.json();
-
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        setError('決済ページの作成に失敗しました');
-      }
-    } catch (error) {
-      console.error('Upgrade error:', error);
-      setError('アップグレード処理でエラーが発生しました');
+        manualUpgrade: manualUpgradeToPremium,
+        checkStatus: checkPremiumStatus
+      };
+      console.log('🔧 Debug functions available: window.debugSNSApp');
     }
-  };
+  }, [userPlan, usage]);
 
-  // アップグレードプロンプト（インライン版）
+  // アップグレードプロンプト
   const UpgradePrompt = () => {
     if (!showUpgradePrompt) return null;
 
@@ -240,7 +315,7 @@ const PostGenerator = () => {
     );
   };
 
-  // メイン画面（完全独立版）
+  // メイン画面
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f0f4ff', padding: '2rem' }}>
       <div style={{ maxWidth: '60rem', margin: '0 auto' }}>
@@ -281,16 +356,18 @@ const PostGenerator = () => {
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
           padding: '2rem'
         }}>
-          {/* 使用状況表示 */}
+          {/* 🔧 修正: 使用状況表示の改善 */}
           <div style={{
             marginBottom: '1.5rem',
             padding: '1rem',
-            background: '#dbeafe',
+            background: userPlan === 'premium' ? '#dcfce7' : '#dbeafe',
             borderRadius: '0.5rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <span style={{ fontSize: '1.25rem' }}>📊</span>
+                <span style={{ fontSize: '1.25rem' }}>
+                  {userPlan === 'premium' ? '👑' : '📊'}
+                </span>
                 <span style={{ fontWeight: '600', color: '#1f2937' }}>
                   {userPlan === 'premium' ? 'プレミアムプラン' : '無料プラン'}
                 </span>
@@ -301,14 +378,14 @@ const PostGenerator = () => {
                   <span style={{ color: '#10b981', fontWeight: 'bold' }}>無制限生成</span>
                 ) : (
                   <span style={{ color: '#2563eb', fontWeight: 'bold' }}>
-                    残り {usage.remaining}/{usage.limit}回
+                    残り {typeof usage.remaining === 'number' ? usage.remaining : 3}/{usage.limit || 3}回
                   </span>
                 )}
               </div>
             </div>
 
-            {/* 統計情報（プレミアム） */}
-            {userPlan === 'premium' && generationTime && (
+            {/* 統計情報 */}
+            {generationTime && (
               <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
                 <span>生成時間: {(generationTime / 1000).toFixed(1)}秒</span>
                 {quality && <span style={{ marginLeft: '1rem' }}>品質: {quality}点</span>}
@@ -413,6 +490,27 @@ const PostGenerator = () => {
               borderRadius: '0.5rem'
             }}>
               <p style={{ color: '#dc2626', margin: 0 }}>⚠️ {error}</p>
+
+              {/* 🔧 修正: Stripe決済エラー時の対処法表示 */}
+              {error.includes('アップグレード') && (
+                <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#dc2626' }}>
+                  <p>決済がうまくいかない場合：</p>
+                  <button
+                    onClick={manualUpgradeToPremium}
+                    style={{
+                      background: '#dc2626',
+                      color: 'white',
+                      padding: '0.5rem 1rem',
+                      borderRadius: '0.25rem',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem'
+                    }}
+                  >
+                    手動でプレミアムに移行
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -512,7 +610,7 @@ const PostGenerator = () => {
 
             {/* 現在の使用状況表示 */}
             <div style={{ marginTop: '1rem', fontSize: '0.875rem', opacity: 0.8 }}>
-              今日の残り生成数: {typeof usage.remaining === 'number' ? usage.remaining : 0}回/3回
+              今日の残り生成数: {typeof usage.remaining === 'number' ? usage.remaining : 3}回/3回
             </div>
           </div>
         )}
