@@ -1,4 +1,8 @@
-import React, { useState, useEffect } from 'react';
+
+// 既存のPostGenerator.jsxに最小限の変更のみ適用
+// JavaScript機能は一切変更せず、className追加のみ
+
+import React, { useEffect } from 'react';
 
 // 🔧 SubscriptionManagerコンポーネントを直接統合
 const SubscriptionManager = ({ userId, onPlanChange, onClose }) => {
@@ -1075,25 +1079,37 @@ const PostGenerator = () => {
 
   // メイン画面
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f0f4ff', padding: '2rem' }}>
-      <div style={{ maxWidth: '60rem', margin: '0 auto' }}>
+    <div
+      className="unified-container"
+      style={{ minHeight: '100vh', backgroundColor: '#f0f4ff', padding: '2rem' }}
+    >
+      <div
+        className="unified-main-container"
+        style={{ maxWidth: '60rem', margin: '0 auto' }}
+      >
         {/* ヘッダー */}
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}>
+        <div
+          className="unified-header"
+          style={{ textAlign: 'center', marginBottom: '2rem' }}
+        >          
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}>
             <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#1f2937' }}>AI SNS自動化ツール</h1>
 
             {/* プレミアムバッジ */}
             {userPlan === 'premium' && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                background: 'linear-gradient(to right, #fbbf24, #f97316)',
-                color: 'white',
-                padding: '0.5rem 1rem',
-                borderRadius: '9999px',
-                fontWeight: 'bold'
-              }}>
+              <div
+                className="unified-premium-badge"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  background: 'linear-gradient(to right, #fbbf24, #f97316)',
+                  color: 'white',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '9999px',
+                  fontWeight: 'bold'
+                }}
+              >
                 <span>👑</span>
                 PREMIUM MEMBER
               </div>
@@ -1126,12 +1142,15 @@ const PostGenerator = () => {
         </div>
 
         {/* メインコンテンツ */}
-        <div style={{
-          background: 'white',
-          borderRadius: '1rem',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          padding: '2rem'
-        }}>
+        <div
+          className="unified-card"
+          style={{
+            background: 'white',
+            borderRadius: '1rem',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            padding: '2rem'
+          }}
+        >
           {/* 使用状況表示 */}
           <div style={{
             marginBottom: '1.5rem',
@@ -1186,6 +1205,7 @@ const PostGenerator = () => {
                 投稿のテーマ
               </label>
               <textarea
+                className="unified-textarea"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="例: 新商品の紹介、イベントの告知、日常の出来事など..."
@@ -1201,6 +1221,7 @@ const PostGenerator = () => {
                 }}
                 rows={3}
               />
+
             </div>
 
             <div>
@@ -1208,6 +1229,7 @@ const PostGenerator = () => {
                 投稿のトーン
               </label>
               <select
+                className="unified-select"
                 value={tone}
                 onChange={(e) => setTone(e.target.value)}
                 style={{

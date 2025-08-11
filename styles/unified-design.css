@@ -1,0 +1,239 @@
+/* styles/unified-design.css - 既存機能を壊さない安全なスタイル統一パッチ */
+
+/* ============================================
+   統一デザインシステム - 安全適用版
+   既存のコンポーネント機能は一切変更しない
+============================================ */
+
+/* 基本カラーシステム */
+:root {
+  --premium-primary: linear-gradient(45deg, #fbbf24, #f59e0b);
+  --premium-secondary: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+  --free-primary: linear-gradient(45deg, #3b82f6, #1d4ed8);
+  --free-secondary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --premium-shadow: 0 8px 20px rgba(251, 191, 36, 0.3);
+  --free-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+}
+
+/* 背景統一（既存のbody/htmlに適用） */
+body[data-theme="premium"] {
+  background: var(--premium-secondary) !important;
+}
+
+body[data-theme="free"] {
+  background: var(--free-secondary) !important;
+}
+
+/* 統一カードスタイル - 既存のコンテナに適用 */
+.unified-card {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  transition: all 0.3s ease !important;
+}
+
+/* 統一ヘッダースタイル */
+.unified-header {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+  padding: 20px 30px !important;
+  margin-bottom: 30px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+
+/* タイトル統一 */
+.unified-title {
+  font-size: 28px !important;
+  font-weight: 800 !important;
+  margin: 0 !important;
+  background: var(--free-primary) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+[data-theme="premium"] .unified-title {
+  background: var(--premium-primary) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* プレミアムバッジ統一 */
+.unified-premium-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  background: var(--premium-primary) !important;
+  color: white !important;
+  padding: 8px 16px !important;
+  border-radius: 20px !important;
+  font-size: 14px !important;
+  font-weight: bold !important;
+  box-shadow: var(--premium-shadow) !important;
+}
+
+/* ボタン統一 */
+.unified-button {
+  background: var(--free-primary) !important;
+  color: white !important;
+  border: none !important;
+  padding: 16px 32px !important;
+  border-radius: 16px !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  box-shadow: var(--free-shadow) !important;
+}
+
+[data-theme="premium"] .unified-button {
+  background: var(--premium-primary) !important;
+  box-shadow: var(--premium-shadow) !important;
+}
+
+.unified-button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 12px 25px rgba(59, 130, 246, 0.4) !important;
+}
+
+[data-theme="premium"] .unified-button:hover {
+  box-shadow: 0 12px 25px rgba(251, 191, 36, 0.4) !important;
+}
+
+/* 設定ボタン統一 */
+.unified-settings-btn {
+  background: rgba(107, 114, 128, 0.1) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 12px !important;
+  cursor: pointer !important;
+  color: #6b7280 !important;
+  font-size: 18px !important;
+  transition: all 0.3s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.unified-settings-btn:hover {
+  background: rgba(107, 114, 128, 0.2) !important;
+  transform: scale(1.05) !important;
+}
+
+/* 入力フィールド統一 */
+.unified-input,
+.unified-textarea,
+.unified-select {
+  border: 2px solid #e5e7eb !important;
+  border-radius: 12px !important;
+  padding: 14px 16px !important;
+  font-size: 16px !important;
+  transition: border-color 0.3s ease !important;
+  background: white !important;
+}
+
+.unified-input:focus,
+.unified-textarea:focus,
+.unified-select:focus {
+  border-color: #3b82f6 !important;
+  outline: none !important;
+}
+
+[data-theme="premium"] .unified-input:focus,
+[data-theme="premium"] .unified-textarea:focus,
+[data-theme="premium"] .unified-select:focus {
+  border-color: #fbbf24 !important;
+}
+
+/* プラン表示統一 */
+.unified-plan-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  background: var(--free-primary) !important;
+  color: white !important;
+  padding: 12px 20px !important;
+  border-radius: 16px !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  margin-bottom: 24px !important;
+}
+
+[data-theme="premium"] .unified-plan-badge {
+  background: linear-gradient(45deg, #10b981, #059669) !important;
+}
+
+/* 使用量表示統一 */
+.unified-usage-display {
+  background: rgba(59, 130, 246, 0.1) !important;
+  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  text-align: center !important;
+  margin-bottom: 24px !important;
+  color: #1d4ed8 !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="premium"] .unified-usage-display {
+  background: rgba(16, 185, 129, 0.1) !important;
+  border-color: rgba(16, 185, 129, 0.2) !important;
+  color: #059669 !important;
+}
+
+/* 結果エリア統一 */
+.unified-result-area {
+  background: #f8fafc !important;
+  border-radius: 16px !important;
+  padding: 24px !important;
+  margin-top: 24px !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+/* アニメーション統一 */
+@keyframes unified-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.unified-animate {
+  animation: unified-fade-in 0.5s ease-out !important;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+  .unified-card {
+    margin: 10px !important;
+    border-radius: 16px !important;
+    padding: 20px !important;
+  }
+
+  .unified-header {
+    padding: 15px 20px !important;
+    flex-direction: column !important;
+    gap: 15px !important;
+  }
+
+  .unified-title {
+    font-size: 24px !important;
+  }
+}
+
+/* ダークモード対応（将来用） */
+@media (prefers-color-scheme: dark) {
+  .unified-card {
+    background: rgba(31, 41, 55, 0.95) !important;
+    color: white !important;
+  }
+}
