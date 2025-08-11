@@ -1,124 +1,206 @@
-// api/post-to-threads.js - 修正版（localStorage依存を排除）
+// api/post-to-threads.js - 完全修正版（実投稿対応）
 export default async function handler(req, res) {
+  console.log('=== Threads Post API START (COMPLETE FIX) ===');
+  console.log('Method:', req.method);
+  console.log('Body:', req.body);
+  console.log('Environment check:', {
+    hasKvUrl: !!process.env.KV_REST_API_URL,
+    hasKvToken: !!process.env.KV_REST_API_TOKEN,
+    hasThreadsAppId: !!process.env.THREADS_APP_ID,
+    hasThreadsAppSecret: !!process.env.THREADS_APP_SECRET
+  });
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const { content, userId } = req.body;
+
+  // 入力バリデーション
+  if (!content || !userId) {
+    console.error('Missing required parameters:', { content: !!content, userId: !!userId });
+    return res.status(400).json({
+      error: 'コンテンツとユーザーIDが必要です',
+      required: ['content', 'userId'],
+      received: { content: !!content, userId: !!userId }
+    });
+  }
+
+  if (content.length > 500) {
+    return res.status(400).json({
+      error: 'Threadsの投稿が500文字を超えています',
+      maxLength: 500,
+      currentLength: content.length
+    });
+  }
+
   try {
-    const { content, userId } = req.body;
+    console.log('Processing Threads post for userId:', userId);
+    console.log('Content preview:', content.substring(0, 50) + '...');
 
-    // 入力バリデーション
-    if (!content || !userId) {
-      return res.status(400).json({
-        error: 'コンテンツとユーザーIDが必要です',
-        required: ['content', 'userId']
-      });
-    }
-
-    if (content.length > 500) {
-      return res.status(400).json({
-        error: 'テキストが500文字を超えています',
-        length: content.length,
-        limit: 500
-      });
-    }
-
-    // 🔧 修正: プレミアムプランチェック（KVベース）
+    // 1. プレミアムプランの確認
+    console.log('=== PREMIUM PLAN CHECK START ===');
     const userPlan = await getUserPlanFromKV(userId);
+    console.log('User plan check result:', userPlan);
+
     if (userPlan !== 'premium') {
       return res.status(403).json({
         error: 'プレミアムプラン限定機能です',
         upgrade_required: true,
-        current_plan: userPlan
+        current_plan: userPlan,
+        message: 'Threads投稿にはプレミアムプランが必要です'
       });
     }
 
-    // 🔧 修正: ThreadsトークンをKVから取得
-    const threadsToken = await getThreadsTokenFromKV(userId);
-    if (!threadsToken) {
-      // 🔧 修正: テストトークンの場合の処理
-      if (userId.includes('numaken') || userId.includes('test')) {
-        console.log('🔧 Production mode: Threads post for user:', userId);
+    // 2. Threadsトークンの取得
+    console.log('=== THREADS TOKEN RETRIEVAL START ===');
+    const tokenResult = await getThreadsTokenFromKV(userId);
 
-        return res.status(200).json({
-          success: true,
-          message: 'Threadsに投稿しました', // テストモード表記を削除
-          post_id: 'threads_' + Date.now(), // test_プレフィックスを削除
-          platform: 'threads',
-          test_mode: false, // 🔧 本番モードに変更
-          content: content.substring(0, 50) + '...',
-          posted_at: new Date().toISOString()
+    console.log('Token retrieval result:', {
+      found: !!tokenResult,
+      key: tokenResult?.key,
+      hasAccessToken: !!tokenResult?.access_token,
+      hasUserId: !!tokenResult?.threads_user_id,
+      isTestToken: tokenResult?.access_token?.includes('test_token')
+    });
+
+    if (!tokenResult) {
+      console.log('❌ No Threads token found');
+      return res.status(401).json({
+        error: 'THREADS_NOT_CONNECTED',
+        message: 'Threadsアカウントが接続されていません',
+        requiresAuth: true,
+        platform: 'threads',
+        action: 'Threads接続を先に行ってください'
+      });
+    }
+
+    // 3. テストモードかリアルモードかの判定
+    const isTestMode = tokenResult.access_token.includes('test_token') ||
+      tokenResult.access_token.includes('manual_test') ||
+      userId.includes('test') ||
+      !process.env.THREADS_APP_ID; // Threads API未設定時はテストモード
+
+    console.log('Mode determination:', {
+      isTestMode,
+      userId,
+      hasThreadsConfig: !!process.env.THREADS_APP_ID
+    });
+
+    if (isTestMode) {
+      console.log('=== TEST MODE EXECUTION ===');
+
+      // テストモードのシミュレーション
+      await new Promise(resolve => setTimeout(resolve, 1800));
+
+      const testResponse = {
+        success: true,
+        message: '✅ テストモード: Threads投稿が成功しました！',
+        post_id: 'test_threads_' + Date.now(),
+        platform: 'threads',
+        test_mode: true,
+        content: content,
+        user_id: userId,
+        posted_at: new Date().toISOString(),
+        character_count: content.length
+      };
+
+      console.log('✅ Test mode response:', testResponse);
+
+      // テスト投稿履歴を保存
+      await savePostHistoryToKV(userId, 'threads', content, testResponse.post_id, true);
+
+      return res.status(200).json(testResponse);
+    }
+
+    // 4. 実際のThreads API投稿
+    console.log('=== REAL THREADS API EXECUTION START ===');
+
+    const apiResult = await postToThreadsAPI(content, tokenResult.access_token, tokenResult.threads_user_id, userId);
+
+    console.log('Threads API result:', {
+      success: apiResult.success,
+      postId: apiResult.post_id,
+      error: apiResult.error
+    });
+
+    if (!apiResult.success) {
+      console.error('❌ Threads API failed:', apiResult.error);
+
+      // API失敗時の詳細エラー
+      if (apiResult.status === 401) {
+        return res.status(401).json({
+          error: 'THREADS_AUTH_EXPIRED',
+          message: 'Threadsの認証が期限切れです。再度接続してください。',
+          requiresReauth: true,
+          platform: 'threads'
         });
       }
 
-      return res.status(401).json({
-        error: 'Threadsアカウントが接続されていません',
-        action: 'Please connect your Threads account first',
-        debug: {
-          userId,
-          tokenFound: false
-        }
+      if (apiResult.status === 403) {
+        return res.status(403).json({
+          error: 'THREADS_PERMISSION_DENIED',
+          message: 'Threads投稿の権限がありません。アプリの権限設定を確認してください。',
+          platform: 'threads',
+          details: apiResult.error
+        });
+      }
+
+      return res.status(apiResult.status || 500).json({
+        error: 'THREADS_POST_FAILED',
+        message: 'Threads投稿に失敗しました',
+        details: apiResult.error,
+        platform: 'threads'
       });
     }
 
-    // 実際のThreads API投稿（トークン有効な場合）
-    const threadsResult = await postToThreadsAPI(content, threadsToken);
+    // 5. 成功時の処理
+    console.log('✅ Threads post successful');
 
-    // 投稿履歴をKVに保存
-    await savePostHistoryToKV(userId, 'threads', content, threadsResult.post_id);
+    // 投稿履歴を保存
+    await savePostHistoryToKV(userId, 'threads', content, apiResult.post_id, false);
 
-    return res.status(200).json({
+    const successResponse = {
       success: true,
-      message: 'Threadsに投稿しました', // 感嘆符を削除（統一性）
-      post_id: threadsResult.post_id,
+      message: '✅ Threadsに投稿しました！',
+      post_id: apiResult.post_id,
       platform: 'threads',
+      test_mode: false,
+      content: content,
+      user_id: userId,
       posted_at: new Date().toISOString(),
       character_count: content.length,
-      test_mode: false // 🔧 本番モード明示
-    });
+      threads_url: apiResult.threads_url
+    };
+
+    console.log('✅ Success response:', successResponse);
+    return res.status(200).json(successResponse);
 
   } catch (error) {
-    console.error('❌ Threads post error:', error);
+    console.error('❌ Unexpected error in Threads post:', error);
     return res.status(500).json({
-      error: 'Threads投稿でエラーが発生しました',
+      error: 'INTERNAL_ERROR',
+      message: 'サーバー内部エラーが発生しました',
       details: error.message,
+      platform: 'threads',
       timestamp: new Date().toISOString()
     });
   }
 }
 
-// 🔧 修正: KVベースのヘルパー関数群
-
+// プレミアムプラン確認（KVベース）
 async function getUserPlanFromKV(userId) {
   try {
-    const response = await fetch(`${process.env.KV_REST_API_URL}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(['GET', `user_plan:${userId}`]),
-    });
+    console.log('Checking user plan for:', userId);
 
-    const result = await response.json();
-    return result.result || 'premium'; // 🔧 デフォルトをpremiumに（テスト用）
-  } catch (error) {
-    console.error('Failed to get user plan from KV:', error);
-    return 'premium'; // 🔧 エラー時もpremiumでテスト継続
-  }
-}
-
-async function getThreadsTokenFromKV(userId) {
-  try {
-    // 複数のキーパターンで検索
-    const possibleKeys = [
-      `threads_token:${userId}`,
-      `threads_token:numaken_threads`,
-      `threads_token:test_user`,
-      'threads_token:final-oauth-test'
+    const planKeys = [
+      `user_plan:${userId}`,
+      `userPlan:${userId}`,
+      'userPlan', // フォールバック
+      'user_plan'
     ];
 
-    for (const key of possibleKeys) {
+    for (const key of planKeys) {
       const response = await fetch(`${process.env.KV_REST_API_URL}`, {
         method: 'POST',
         headers: {
@@ -130,35 +212,113 @@ async function getThreadsTokenFromKV(userId) {
 
       const result = await response.json();
       if (result.result) {
-        console.log('✅ Threads token found with key:', key);
+        console.log(`Plan found with key ${key}:`, result.result);
         return result.result;
       }
     }
 
-    console.log('❌ Threads token not found for userId:', userId);
+    // フォールバック: ローカルストレージシミュレーション（手動プレミアム設定）
+    console.log('No plan found in KV, defaulting to premium for testing');
+    return 'premium';
+
+  } catch (error) {
+    console.error('Failed to get user plan from KV:', error);
+    return 'premium'; // エラー時はプレミアムでテスト継続
+  }
+}
+
+// Threadsトークン取得（KVベース）
+async function getThreadsTokenFromKV(userId) {
+  try {
+    console.log('Searching Threads token for userId:', userId);
+
+    const tokenKeys = [
+      `threads_token:${userId}`,
+      `threads_token:numaken_threads`,
+      `threads_token:test_user`,
+      `threads_token:oauth_user`,
+      'threads_token:final-oauth-test',
+      'threads_auth_token',
+      'threadsToken'
+    ];
+
+    for (const key of tokenKeys) {
+      console.log(`Checking KV key: ${key}`);
+
+      const response = await fetch(`${process.env.KV_REST_API_URL}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(['GET', key]),
+      });
+
+      const result = await response.json();
+      console.log(`KV response for ${key}:`, { status: response.status, hasResult: !!result.result });
+
+      if (result.result) {
+        console.log('✅ Threads token found with key:', key);
+
+        // Threadsユーザー情報も取得
+        const userInfoKey = key.replace('threads_token:', 'threads_user:');
+        const userInfoResponse = await fetch(`${process.env.KV_REST_API_URL}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(['GET', userInfoKey]),
+        });
+
+        let userInfo = null;
+        if (userInfoResponse.ok) {
+          const userInfoResult = await userInfoResponse.json();
+          if (userInfoResult.result) {
+            try {
+              userInfo = JSON.parse(userInfoResult.result);
+            } catch (e) {
+              console.log('Failed to parse Threads user info');
+            }
+          }
+        }
+
+        return {
+          key,
+          access_token: result.result,
+          threads_user_id: userInfo?.threadsId,
+          username: userInfo?.username
+        };
+      }
+    }
+
+    console.log('❌ No Threads token found in any key');
     return null;
+
   } catch (error) {
     console.error('Failed to get Threads token from KV:', error);
     return null;
   }
 }
 
-async function postToThreadsAPI(content, token) {
+// 実際のThreads API投稿
+async function postToThreadsAPI(content, accessToken, threadsUserId, userId) {
   try {
-    // 🔧 注意: 実際のThreads API実装はMeta for Developers設定後に有効
-    // 現在はテストモードとして動作
+    console.log('=== THREADS API CALL START ===');
+    console.log('Content length:', content.length);
+    console.log('Token preview:', accessToken.substring(0, 20) + '...');
+    console.log('Threads User ID:', threadsUserId);
 
-    // 環境変数でThreads API設定確認
-    if (!process.env.THREADS_APP_ID || !process.env.THREADS_USER_ID) {
-      console.log('🔧 Threads API not configured, using test mode');
-      throw new Error('Threads API not configured');
+    if (!threadsUserId) {
+      throw new Error('Threads User ID not found');
     }
 
-    // 実際のThreads Graph API投稿
-    const createResponse = await fetch(`https://graph.threads.net/v1.0/${process.env.THREADS_USER_ID}/threads`, {
+    // Step 1: コンテナを作成
+    console.log('Creating Threads media container...');
+    const createResponse = await fetch(`https://graph.threads.net/v1.0/${threadsUserId}/threads`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -167,18 +327,28 @@ async function postToThreadsAPI(content, token) {
       })
     });
 
+    console.log('Threads create response status:', createResponse.status);
+
     if (!createResponse.ok) {
       const errorData = await createResponse.json();
-      throw new Error(`Threads create error: ${errorData.error?.message || 'Unknown error'}`);
+      console.error('❌ Threads create error:', errorData);
+      return {
+        success: false,
+        error: errorData.error?.message || 'Failed to create Threads container',
+        status: createResponse.status,
+        details: errorData
+      };
     }
 
     const createData = await createResponse.json();
+    console.log('✅ Threads container created:', createData);
 
-    // 投稿を公開
-    const publishResponse = await fetch(`https://graph.threads.net/v1.0/${process.env.THREADS_USER_ID}/threads_publish`, {
+    // Step 2: 投稿を公開
+    console.log('Publishing Threads post...');
+    const publishResponse = await fetch(`https://graph.threads.net/v1.0/${threadsUserId}/threads_publish`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -186,52 +356,68 @@ async function postToThreadsAPI(content, token) {
       })
     });
 
+    console.log('Threads publish response status:', publishResponse.status);
+
     if (!publishResponse.ok) {
       const errorData = await publishResponse.json();
-      throw new Error(`Threads publish error: ${errorData.error?.message || 'Unknown error'}`);
+      console.error('❌ Threads publish error:', errorData);
+      return {
+        success: false,
+        error: errorData.error?.message || 'Failed to publish Threads post',
+        status: publishResponse.status,
+        details: errorData
+      };
     }
 
     const publishData = await publishResponse.json();
+    console.log('✅ Threads post published:', publishData);
 
     return {
+      success: true,
       post_id: publishData.id,
-      text: content
+      creation_id: createData.id,
+      threads_url: `https://www.threads.net/t/${publishData.id}`,
+      response_data: publishData
     };
 
   } catch (error) {
-    console.error('Threads API call failed:', error);
-
-    // 🔧 本番モード: API失敗時も適切なレスポンス
+    console.error('❌ Threads API call failed:', error);
     return {
-      post_id: 'threads_' + Date.now(), // test_プレフィックス削除
-      text: content,
-      test_mode: false, // 🔧 本番モードに変更
-      fallback_mode: true // API失敗時のフォールバックであることを示す
+      success: false,
+      error: error.message,
+      status: 500
     };
   }
 }
 
-async function savePostHistoryToKV(userId, platform, content, postId) {
+// 投稿履歴保存
+async function savePostHistoryToKV(userId, platform, content, postId, isTestMode) {
   try {
     const historyKey = `post_history:${userId}:${platform}:${Date.now()}`;
     const postData = {
       platform,
-      content: content.substring(0, 100), // 最初の100文字のみ保存
+      content: content.substring(0, 100),
       postId,
       userId,
-      timestamp: new Date().toISOString()
+      isTestMode,
+      timestamp: new Date().toISOString(),
+      url: isTestMode ? null : `https://www.threads.net/t/${postId}`
     };
 
-    await fetch(`${process.env.KV_REST_API_URL}`, {
+    const response = await fetch(`${process.env.KV_REST_API_URL}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(['SETEX', historyKey, 86400 * 7, JSON.stringify(postData)]), // 7日間保存
+      body: JSON.stringify(['SETEX', historyKey, 86400 * 7, JSON.stringify(postData)]),
     });
 
-    console.log('✅ Post history saved:', historyKey);
+    if (response.ok) {
+      console.log('✅ Post history saved:', historyKey);
+    } else {
+      console.log('⚠️ Failed to save post history');
+    }
   } catch (error) {
     console.error('Failed to save post history:', error);
   }
