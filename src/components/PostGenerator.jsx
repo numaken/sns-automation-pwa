@@ -402,8 +402,18 @@ const PostGenerator = () => {
     }
   };
 
-  // 🔧 修正: SNS接続状況確認の改善
+  // PostGenerator.jsx - SNS接続チェック無限ループ修正パッチ
+  // 🔧 この関数のみを既存のPostGenerator.jsxで置き換えてください
+
+  // 🔧 修正: SNS接続状況確認の改善（無限ループ防止）
   const checkSnsConnections = async () => {
+    // 既に確認中の場合はスキップ
+    if (window.snsCheckInProgress) {
+      console.log('🔧 SNS check already in progress, skipping');
+      return;
+    }
+
+    window.snsCheckInProgress = true;
     console.log('🔍 Checking SNS connections...');
 
     const userId = getCurrentUserId();
@@ -411,98 +421,106 @@ const PostGenerator = () => {
     try {
       // Twitter接続状態確認
       console.log('🐦 Checking Twitter connection...');
-      const twitterResponse = await fetch('/api/auth/twitter/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
-      });
+      try {
+        const twitterResponse = await fetch('/api/auth/twitter/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId })
+        });
 
-      if (twitterResponse.ok) {
-        const twitterData = await twitterResponse.json();
-        console.log('🐦 Twitter status:', twitterData);
+        if (twitterResponse.ok) {
+          const twitterData = await twitterResponse.json();
+          console.log('🐦 Twitter status:', twitterData);
 
-        if (twitterData.connected) {
-          setTwitterConnected(true);
-          setTwitterUsername(twitterData.username);
-          // localStorageにも保存
-          localStorage.setItem('twitter_username', twitterData.username);
-          localStorage.setItem('twitter_connected', 'true');
+          if (twitterData.connected) {
+            setTwitterConnected(true);
+            setTwitterUsername(twitterData.username);
+            // localStorageにも保存
+            localStorage.setItem('twitter_username', twitterData.username);
+            localStorage.setItem('twitter_connected', 'true');
+          } else {
+            setTwitterConnected(false);
+            setTwitterUsername('');
+          }
         } else {
-          setTwitterConnected(false);
-          setTwitterUsername('');
+          console.log('❌ Twitter status check failed');
+          // フォールバック: localStorageから確認
+          const localTwitterToken = localStorage.getItem('twitter_token');
+          const localTwitterUser = localStorage.getItem('twitter_username');
+          if (localTwitterToken && localTwitterUser) {
+            setTwitterConnected(true);
+            setTwitterUsername(localTwitterUser);
+            console.log('🔧 Twitter status from localStorage:', localTwitterUser);
+          }
         }
-      } else {
-        console.log('❌ Twitter status check failed');
-        // フォールバック: localStorageから確認
+      } catch (twitterError) {
+        console.error('❌ Twitter connection check error:', twitterError);
+        // フォールバック処理
         const localTwitterToken = localStorage.getItem('twitter_token');
         const localTwitterUser = localStorage.getItem('twitter_username');
         if (localTwitterToken && localTwitterUser) {
           setTwitterConnected(true);
           setTwitterUsername(localTwitterUser);
-          console.log('🔧 Twitter status from localStorage:', localTwitterUser);
         }
       }
 
-    } catch (error) {
-      console.error('❌ Twitter connection check error:', error);
-      // フォールバック処理
-      const localTwitterToken = localStorage.getItem('twitter_token');
-      const localTwitterUser = localStorage.getItem('twitter_username');
-      if (localTwitterToken && localTwitterUser) {
-        setTwitterConnected(true);
-        setTwitterUsername(localTwitterUser);
-      }
-    }
-
-    try {
       // Threads接続状態確認
       console.log('📱 Checking Threads connection...');
-      const threadsResponse = await fetch('/api/auth/threads/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
-      });
+      try {
+        const threadsResponse = await fetch('/api/auth/threads/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId })
+        });
 
-      if (threadsResponse.ok) {
-        const threadsData = await threadsResponse.json();
-        console.log('📱 Threads status:', threadsData);
+        if (threadsResponse.ok) {
+          const threadsData = await threadsResponse.json();
+          console.log('📱 Threads status:', threadsData);
 
-        if (threadsData.connected) {
-          setThreadsConnected(true);
-          setThreadsUsername(threadsData.username);
-          // localStorageにも保存
-          localStorage.setItem('threads_username', threadsData.username);
-          localStorage.setItem('threads_connected', 'true');
+          if (threadsData.connected) {
+            setThreadsConnected(true);
+            setThreadsUsername(threadsData.username);
+            // localStorageにも保存
+            localStorage.setItem('threads_username', threadsData.username);
+            localStorage.setItem('threads_connected', 'true');
+          } else {
+            setThreadsConnected(false);
+            setThreadsUsername('');
+          }
         } else {
-          setThreadsConnected(false);
-          setThreadsUsername('');
+          console.log('❌ Threads status check failed');
+          // フォールバック: localStorageから確認
+          const localThreadsToken = localStorage.getItem('threads_token');
+          const localThreadsUser = localStorage.getItem('threads_username');
+          if (localThreadsToken) {
+            setThreadsConnected(true);
+            setThreadsUsername(localThreadsUser || 'Connected User');
+            console.log('🔧 Threads status from localStorage');
+          }
         }
-      } else {
-        console.log('❌ Threads status check failed');
-        // フォールバック: localStorageから確認
+      } catch (threadsError) {
+        console.error('❌ Threads connection check error:', threadsError);
+        // フォールバック処理
         const localThreadsToken = localStorage.getItem('threads_token');
-        const localThreadsUser = localStorage.getItem('threads_username');
         if (localThreadsToken) {
           setThreadsConnected(true);
-          setThreadsUsername(localThreadsUser || 'Connected User');
-          console.log('🔧 Threads status from localStorage');
+          setThreadsUsername(localStorage.getItem('threads_username') || 'Connected User');
         }
       }
 
-    } catch (error) {
-      console.error('❌ Threads connection check error:', error);
-      // フォールバック処理
-      const localThreadsToken = localStorage.getItem('threads_token');
-      if (localThreadsToken) {
-        setThreadsConnected(true);
-        setThreadsUsername(localStorage.getItem('threads_username') || 'Connected User');
-      }
-    }
+      console.log('🎯 SNS connections checked:', {
+        twitter: { connected: twitterConnected, username: twitterUsername },
+        threads: { connected: threadsConnected, username: threadsUsername }
+      });
 
-    console.log('🎯 SNS connections checked:', {
-      twitter: { connected: twitterConnected, username: twitterUsername },
-      threads: { connected: threadsConnected, username: threadsUsername }
-    });
+    } catch (error) {
+      console.error('❌ SNS connection check failed:', error);
+    } finally {
+      // 確認完了フラグをリセット
+      setTimeout(() => {
+        window.snsCheckInProgress = false;
+      }, 2000); // 2秒間は再実行を防ぐ
+    }
   };
 
   // 🔧 修正: ユーザーID生成の統一
