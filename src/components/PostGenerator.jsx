@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 const PostGenerator = () => {
-  // 基本状態管理（簡素化版）
+  // 基本状態管理
   const [prompt, setPrompt] = useState('');
   const [tone, setTone] = useState('カジュアル');
   const [generatedPost, setGeneratedPost] = useState('');
@@ -12,6 +12,14 @@ const PostGenerator = () => {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [userPlan, setUserPlan] = useState('free');
   const [generationTime, setGenerationTime] = useState(null);
+
+  // SNS投稿関連の状態
+  const [twitterConnected, setTwitterConnected] = useState(false);
+  const [threadsConnected, setThreadsConnected] = useState(false);
+  const [twitterUsername, setTwitterUsername] = useState('');
+  const [isPostingToTwitter, setIsPostingToTwitter] = useState(false);
+  const [isPostingToThreads, setIsPostingToThreads] = useState(false);
+  const [showSubscriptionManager, setShowSubscriptionManager] = useState(false);
 
   // 🔧 修正: シンプル化されたプレミアム確認
   const checkPremiumStatus = () => {
@@ -31,11 +39,32 @@ const PostGenerator = () => {
       setUserPlan('premium');
       setUsage({ remaining: 'unlimited' });
       localStorage.removeItem('dailyUsage'); // 無料プランデータクリア
+      checkSnsConnections(); // SNS接続状況確認
     } else {
       console.log('📋 Free plan confirmed');
       setUserPlan('free');
       // 🔧 修正: 初期値の適切な設定
       setUsage({ remaining: 3, used: 0, limit: 3 });
+    }
+  };
+
+  // SNS接続状況確認
+  const checkSnsConnections = () => {
+    // Twitter接続確認
+    const twitterToken = localStorage.getItem('twitter_token');
+    const twitterUser = localStorage.getItem('twitter_username');
+
+    if (twitterToken && twitterUser) {
+      setTwitterConnected(true);
+      setTwitterUsername(twitterUser);
+      console.log('🐦 Twitter connected:', twitterUser);
+    }
+
+    // Threads接続確認（実装準備）
+    const threadsToken = localStorage.getItem('threads_token');
+    if (threadsToken) {
+      setThreadsConnected(true);
+      console.log('📱 Threads connected');
     }
   };
 
@@ -64,6 +93,7 @@ const PostGenerator = () => {
 
     setUserPlan('premium');
     setUsage({ remaining: 'unlimited' });
+    checkSnsConnections(); // プレミアム移行後にSNS接続確認
 
     console.log('✅ Manual premium upgrade completed');
 
@@ -71,6 +101,111 @@ const PostGenerator = () => {
     const url = new URL(window.location);
     url.searchParams.delete('session_id');
     window.history.replaceState({}, document.title, url.toString());
+  };
+
+  // Twitter接続処理
+  const connectTwitter = async () => {
+    try {
+      console.log('🐦 Starting Twitter OAuth...');
+
+      const response = await fetch('/api/auth/twitter/authorize', {
+        method: 'GET',
+      });
+
+      const data = await response.json();
+
+      if (data.authUrl) {
+        // OAuth認証ページにリダイレクト
+        window.location.href = data.authUrl;
+      } else {
+        throw new Error('認証URLの取得に失敗しました');
+      }
+    } catch (error) {
+      console.error('❌ Twitter connection error:', error);
+      setError('Twitter接続でエラーが発生しました: ' + error.message);
+    }
+  };
+
+  // Threads接続処理（準備）
+  const connectThreads = async () => {
+    try {
+      console.log('📱 Starting Threads OAuth...');
+      // Threads OAuth実装予定
+      setError('Threads連携は準備中です。しばらくお待ちください。');
+    } catch (error) {
+      console.error('❌ Threads connection error:', error);
+      setError('Threads接続でエラーが発生しました: ' + error.message);
+    }
+  };
+
+  // TwitterへSNS投稿
+  const postToTwitter = async () => {
+    if (!generatedPost) {
+      setError('投稿する内容を先に生成してください');
+      return;
+    }
+
+    if (!twitterConnected) {
+      setError('Twitterアカウントを先に接続してください');
+      return;
+    }
+
+    setIsPostingToTwitter(true);
+    setError('');
+
+    try {
+      console.log('🐦 Posting to Twitter...');
+
+      const response = await fetch('/api/post-to-twitter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: generatedPost,
+          userId: 'twitter-user-' + Date.now()
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Twitter投稿に失敗しました');
+      }
+
+      const result = await response.json();
+      console.log('✅ Twitter post successful:', result);
+
+      // 成功通知
+      alert('✅ Twitterに投稿しました！');
+
+    } catch (error) {
+      console.error('❌ Twitter post error:', error);
+      setError('Twitter投稿でエラーが発生しました: ' + error.message);
+    } finally {
+      setIsPostingToTwitter(false);
+    }
+  };
+
+  // ThreadsへSNS投稿（準備）
+  const postToThreads = async () => {
+    if (!generatedPost) {
+      setError('投稿する内容を先に生成してください');
+      return;
+    }
+
+    setIsPostingToThreads(true);
+    setError('');
+
+    try {
+      console.log('📱 Posting to Threads...');
+      // Threads投稿API実装予定
+      setError('Threads投稿は準備中です。しばらくお待ちください。');
+    } catch (error) {
+      console.error('❌ Threads post error:', error);
+      setError('Threads投稿でエラーが発生しました: ' + error.message);
+    } finally {
+      setIsPostingToThreads(false);
+    }
   };
 
   // 🔧 修正: プレミアムアップグレード処理の改善
@@ -198,16 +333,19 @@ const PostGenerator = () => {
         showInfo: () => ({
           userPlan,
           usage,
+          twitterConnected,
+          threadsConnected,
           localStorage: Object.fromEntries(
             Object.keys(localStorage).map(key => [key, localStorage.getItem(key)])
           )
         }),
         manualUpgrade: manualUpgradeToPremium,
-        checkStatus: checkPremiumStatus
+        checkStatus: checkPremiumStatus,
+        checkSns: checkSnsConnections
       };
       console.log('🔧 Debug functions available: window.debugSNSApp');
     }
-  }, [userPlan, usage]);
+  }, [userPlan, usage, twitterConnected, threadsConnected]);
 
   // アップグレードプロンプト
   const UpgradePrompt = () => {
@@ -267,6 +405,8 @@ const PostGenerator = () => {
               <ul style={{ color: '#a16207', fontSize: '0.875rem', listStyle: 'none', padding: 0, margin: 0, textAlign: 'left' }}>
                 <li>⚡ 無制限の投稿生成</li>
                 <li>🚀 高速生成（専用APIキー）</li>
+                <li>🐦 Twitter自動投稿</li>
+                <li>📱 Threads自動投稿</li>
                 <li>👑 広告なしのクリーンUI</li>
               </ul>
             </div>
@@ -340,11 +480,29 @@ const PostGenerator = () => {
                 PREMIUM MEMBER
               </div>
             )}
+
+            {/* 設定ボタン（プレミアムのみ） */}
+            {userPlan === 'premium' && (
+              <button
+                onClick={() => setShowSubscriptionManager(!showSubscriptionManager)}
+                style={{
+                  background: '#6b7280',
+                  color: 'white',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '0.5rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem'
+                }}
+              >
+                ⚙️ 設定
+              </button>
+            )}
           </div>
 
           <p style={{ fontSize: '1.25rem', color: '#6b7280' }}>
             {userPlan === 'premium'
-              ? '無制限AI投稿生成'
+              ? '無制限AI投稿生成 + SNS自動投稿'
               : 'APIキー設定不要で即座にAI投稿生成'}
           </p>
         </div>
@@ -550,26 +708,117 @@ const PostGenerator = () => {
                 <span>文字数: {generatedPost.length}文字</span>
               </div>
 
-              {/* コピーボタン */}
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(generatedPost);
-                  const originalText = generatedPost;
-                  setGeneratedPost('📋 コピーしました！');
-                  setTimeout(() => setGeneratedPost(originalText), 1000);
-                }}
-                style={{
+              {/* アクションボタン */}
+              <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                {/* コピーボタン */}
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(generatedPost);
+                    const originalText = generatedPost;
+                    setGeneratedPost('📋 コピーしました！');
+                    setTimeout(() => setGeneratedPost(originalText), 1000);
+                  }}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  📋 クリップボードにコピー
+                </button>
+
+                {/* プレミアム限定：SNS投稿ボタン */}
+                {userPlan === 'premium' && (
+                  <>
+                    {/* Twitter投稿 */}
+                    {twitterConnected ? (
+                      <button
+                        onClick={postToTwitter}
+                        disabled={isPostingToTwitter}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: isPostingToTwitter ? '#9ca3af' : '#1d9bf0',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '0.5rem',
+                          cursor: isPostingToTwitter ? 'not-allowed' : 'pointer',
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        {isPostingToTwitter ? '投稿中...' : `🐦 @${twitterUsername}に投稿`}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={connectTwitter}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: '#1d9bf0',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '0.5rem',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        🐦 Twitterを接続
+                      </button>
+                    )}
+
+                    {/* Threads投稿 */}
+                    {threadsConnected ? (
+                      <button
+                        onClick={postToThreads}
+                        disabled={isPostingToThreads}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: isPostingToThreads ? '#9ca3af' : '#000',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '0.5rem',
+                          cursor: isPostingToThreads ? 'not-allowed' : 'pointer',
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        {isPostingToThreads ? '投稿中...' : '📱 Threadsに投稿'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={connectThreads}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: '#000',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '0.5rem',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        📱 Threadsを接続
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* 無料プラン：SNS投稿プレビュー */}
+              {userPlan !== 'premium' && (
+                <div style={{
                   marginTop: '1rem',
-                  padding: '0.5rem 1rem',
-                  background: '#10b981',
-                  color: 'white',
-                  border: 'none',
+                  padding: '1rem',
+                  background: '#fef3c7',
                   borderRadius: '0.5rem',
-                  cursor: 'pointer'
-                }}
-              >
-                📋 クリップボードにコピー
-              </button>
+                  border: '1px solid #fbbf24'
+                }}>
+                  <p style={{ color: '#92400e', fontSize: '0.875rem', margin: 0 }}>
+                    💎 プレミアムプランなら、この投稿をTwitterやThreadsに自動投稿できます！
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -591,6 +840,21 @@ const PostGenerator = () => {
             <p style={{ fontSize: '1.125rem', marginBottom: '1.5rem', opacity: 0.9 }}>
               プレミアムプランで無制限生成＋SNS自動投稿をお楽しみください
             </p>
+
+            {/* プレミアム特典 */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '1rem',
+              marginBottom: '1.5rem',
+              fontSize: '0.875rem'
+            }}>
+              <div>⚡ 無制限AI生成</div>
+              <div>🐦 Twitter自動投稿</div>
+              <div>📱 Threads自動投稿</div>
+              <div>🚀 高速処理</div>
+            </div>
+
             <button
               onClick={handleUpgrade}
               style={{
