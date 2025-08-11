@@ -352,40 +352,42 @@ const PostGenerator = () => {
     }
   };
 
+  // サブスクリプション管理関数（コンポーネント外で定義）
+  const handleCancelSubscription = async () => {
+    setSubscriptionLoading(true);
+    try {
+      if (cancelType === 'immediate') {
+        localStorage.setItem('userPlan', 'free');
+        localStorage.setItem('subscriptionStatus', 'cancelled');
+        setUserPlan('free');
+        setSubscriptionStatus('cancelled');
+        setUsage({ remaining: 3 });
+      }
+
+      setShowCancelModal(false);
+      setPostSuccess(`サブスクリプションを${cancelType === 'immediate' ? '即座に' : '期間終了時に'}キャンセルしました`);
+    } catch (error) {
+      setError('キャンセル処理でエラーが発生しました');
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
+  const handleReactivateSubscription = async () => {
+    setSubscriptionLoading(true);
+    try {
+      localStorage.setItem('subscriptionStatus', 'active');
+      setSubscriptionStatus('active');
+      setPostSuccess('サブスクリプションを再開しました');
+    } catch (error) {
+      setError('再開処理でエラーが発生しました');
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
   // サブスクリプション管理コンポーネント
   const SubscriptionManagerComponent = () => {
-    const handleCancelSubscription = async () => {
-      setSubscriptionLoading(true);
-      try {
-        if (cancelType === 'immediate') {
-          localStorage.setItem('userPlan', 'free');
-          localStorage.setItem('subscriptionStatus', 'cancelled');
-          setUserPlan('free');
-          setSubscriptionStatus('cancelled');
-          setUsage({ remaining: 3 });
-        }
-
-        setShowCancelModal(false);
-        setPostSuccess(`サブスクリプションを${cancelType === 'immediate' ? '即座に' : '期間終了時に'}キャンセルしました`);
-      } catch (error) {
-        setError('キャンセル処理でエラーが発生しました');
-      } finally {
-        setSubscriptionLoading(false);
-      }
-    };
-
-    const handleReactivateSubscription = async () => {
-      setSubscriptionLoading(true);
-      try {
-        localStorage.setItem('subscriptionStatus', 'active');
-        setSubscriptionStatus('active');
-        setPostSuccess('サブスクリプションを再開しました');
-      } catch (error) {
-        setError('再開処理でエラーが発生しました');
-      } finally {
-        setSubscriptionLoading(false);
-      }
-    };
 
     if (userPlan === 'free') {
       return (
