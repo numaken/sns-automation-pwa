@@ -1118,24 +1118,7 @@ const PostGenerator = () => {
               </div>
             )}
 
-            {/* 🔧 修正: アカウント設定ボタン（プレミアムのみ）の実装 */}
-            {userPlan === 'premium' && (
-              <button
-                onClick={() => setShowSubscriptionManager(true)}
-                style={{
-                  background: '#6b7280',
-                  color: 'white',
-                  padding: '0.5rem 1rem',
-                  borderRadius: '0.5rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem'
-                }}
-                title="プラン詳細・契約情報を確認"
-              >
-                ⚙️ アカウント設定
-              </button>
-            )}
+
           </div>
 
           <p style={{ fontSize: '1.25rem', color: '#6b7280' }}>
@@ -1170,25 +1153,7 @@ const PostGenerator = () => {
                 <span style={{ fontWeight: '600', color: '#1f2937' }}>
                   {userPlan === 'premium' ? 'プレミアムプラン' : '無料プラン'}
                 </span>
-                {/* 🔧 修正: 無料プランでも契約情報ボタンを表示（アップグレード用） */}
-                {userPlan === 'free' && (
-                  <button
-                    onClick={() => setShowSubscriptionManager(true)}
-                    style={{
-                      background: '#f97316',
-                      color: 'white',
-                      padding: '0.25rem 0.75rem',
-                      borderRadius: '0.375rem',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '0.75rem',
-                      marginLeft: '0.5rem'
-                    }}
-                    title="プラン詳細を確認・アップグレード"
-                  >
-                    📄 契約情報
-                  </button>
-                )}
+
               </div>
 
               <div style={{ textAlign: 'right' }}>
@@ -1623,6 +1588,62 @@ const PostGenerator = () => {
 
         {/* アップグレードプロンプト */}
         <UpgradePrompt />
+
+        {/* 🔧 新規: フッター統一設定ボタン */}
+        <div style={{
+          marginTop: '2rem',
+          textAlign: 'center',
+          padding: '1rem',
+          borderTop: '1px solid #e5e7eb'
+        }}>
+          <button
+            onClick={() => setShowSubscriptionManager(true)}
+            style={{
+              background: userPlan === 'premium'
+                ? 'linear-gradient(to right, #6b7280, #4b5563)'
+                : 'linear-gradient(to right, #f97316, #ea580c)',
+              color: 'white',
+              padding: '0.75rem 2rem',
+              borderRadius: '0.5rem',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              margin: '0 auto',
+              transition: 'all 0.2s',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            }}
+            title={userPlan === 'premium' ? 'プレミアムプラン管理・契約情報' : 'プラン詳細確認・アップグレード'}
+          >
+            {userPlan === 'premium' ? (
+              <>
+                <span>⚙️</span>
+                <span>アカウント設定</span>
+              </>
+            ) : (
+              <>
+                <span>📄</span>
+                <span>契約情報・プラン詳細</span>
+              </>
+            )}
+          </button>
+
+          <p style={{
+            fontSize: '0.875rem',
+            color: '#6b7280',
+            marginTop: '0.5rem',
+            marginBottom: 0
+          }}>
+            {userPlan === 'premium'
+              ? 'プラン管理・解約・請求情報はこちら'
+              : 'プレミアムプランの詳細・アップグレードはこちら'
+            }
+          </p>
+        </div>
 
         {/* 🔧 修正: SubscriptionManagerの表示 */}
         {showSubscriptionManager && (
