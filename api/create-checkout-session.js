@@ -1,4 +1,4 @@
-// api/create-checkout-session.js - Price ID不整合修正版
+// api/create-checkout-session.js - 緊急修正版（環境変数フォールバック）
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 export default async function handler(req, res) {
@@ -9,27 +9,22 @@ export default async function handler(req, res) {
   try {
     const { userId, customerEmail } = req.body;
 
-    // 🔧 修正: 環境変数の明示的確認
-    const priceId = process.env.STRIPE_PRICE_ID;
-    console.log('🔍 Environment check:', {
-      STRIPE_PRICE_ID: priceId,
-      STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ? 'Set' : 'Missing'
+    // 🔧 緊急修正: フォールバック付きPrice ID取得
+    const priceId = process.env.STRIPE_PRICE_ID || 'price_1Rv6An3xUV54aKjltVTNWShh';
+
+    console.log('🔍 Emergency fix - Environment check:', {
+      STRIPE_PRICE_ID_ENV: process.env.STRIPE_PRICE_ID,
+      STRIPE_PRICE_ID_USED: priceId,
+      HAS_STRIPE_SECRET: !!process.env.STRIPE_SECRET_KEY
     });
 
-    // Price ID検証
-    if (!priceId) {
-      console.error('❌ STRIPE_PRICE_ID not found in environment variables');
-      return res.status(500).json({
-        error: 'サーバー設定エラー',
-        details: 'Price ID設定が見つかりません'
-      });
-    }
+    // 🔧 Origin URL修正（URLエラー対策）
+    const baseUrl = req.headers.origin || 'https://sns-automation-pwa.vercel.app';
 
-    // 正しいPrice IDが設定されているか確認
-    if (priceId !== 'price_1Rv6An3xUV54aKjltVTNWShh') {
-      console.warn('⚠️ Unexpected Price ID:', priceId);
-      console.warn('Expected: price_1Rv6An3xUV54aKjltVTNWShh');
-    }
+    console.log('🌐 URL check:', {
+      origin: req.headers.origin,
+      baseUrl: baseUrl
+    });
 
     // Stripe Checkout セッション作成
     const session = await stripe.checkout.sessions.create({
@@ -37,57 +32,55 @@ export default async function handler(req, res) {
       mode: 'payment',
       line_items: [
         {
-          price: priceId, // 環境変数から取得
+          price: priceId,
           quantity: 1,
         },
       ],
-      success_url: `${req.headers.origin}/?session_id={CHECKOUT_SESSION_ID}&payment_success=true`,
-      cancel_url: `${req.headers.origin}/?payment_cancelled=true`,
+      success_url: `${baseUrl}/?session_id={CHECKOUT_SESSION_ID}&payment_success=true`,
+      cancel_url: `${baseUrl}/?payment_cancelled=true`,
       metadata: {
-        userId: userId,
+        userId: userId || 'unknown',
         product: 'PostPilot Pro Premium Plan',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        priceId: priceId
       },
       customer_email: customerEmail || undefined,
       billing_address_collection: 'auto',
       automatic_tax: {
-        enabled: false, // 日本の税制に応じて調整
+        enabled: false,
       },
     });
 
-    console.log('✅ Checkout session created:', {
+    console.log('✅ Emergency checkout session created:', {
       sessionId: session.id,
       priceId: priceId,
       amount: session.amount_total,
-      currency: session.currency
+      currency: session.currency,
+      url: session.url
     });
 
     return res.status(200).json({
       sessionId: session.id,
       url: session.url,
-      priceId: priceId // デバッグ用
+      priceId: priceId,
+      debug: {
+        envPriceId: process.env.STRIPE_PRICE_ID,
+        usedPriceId: priceId,
+        baseUrl: baseUrl
+      }
     });
 
   } catch (error) {
-    console.error('❌ Stripe checkout session creation failed:', error);
+    console.error('❌ Emergency checkout session creation failed:', error);
 
     return res.status(500).json({
       success: false,
       error: '決済セッション作成エラー',
-      details: error.message
+      details: error.message,
+      debug: {
+        hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
+        priceId: process.env.STRIPE_PRICE_ID || 'NOT_SET'
+      }
     });
   }
-}
-
-// 🔧 デバッグ用: 環境変数確認エンドポイント（本番では削除推奨）
-export async function debugEnvironment(req, res) {
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(403).json({ error: 'Debug disabled in production' });
-  }
-
-  return res.status(200).json({
-    STRIPE_PRICE_ID: process.env.STRIPE_PRICE_ID,
-    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ? 'Set' : 'Missing',
-    NODE_ENV: process.env.NODE_ENV
-  });
 }
