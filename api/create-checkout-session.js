@@ -1,100 +1,75 @@
-// ===============================================
-// 1. api/create-checkout-session.js - 完全修正版
-// ===============================================
-import Stripe from 'stripe';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+// api/create-checkout-session.js - Price ID不整合修正版
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 export default async function handler(req, res) {
-  // CORS設定
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // 環境変数チェック
-    if (!process.env.STRIPE_SECRET_KEY) {
-      console.error('❌ STRIPE_SECRET_KEY not found');
+    const { userId, customerEmail } = req.body;
+
+    // 🔧 修正: 環境変数の明示的確認
+    const priceId = process.env.STRIPE_PRICE_ID;
+    console.log('🔍 Environment check:', {
+      STRIPE_PRICE_ID: priceId,
+      STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ? 'Set' : 'Missing'
+    });
+
+    // Price ID検証
+    if (!priceId) {
+      console.error('❌ STRIPE_PRICE_ID not found in environment variables');
       return res.status(500).json({
-        error: 'Server configuration error',
-        details: 'Stripe configuration missing'
+        error: 'サーバー設定エラー',
+        details: 'Price ID設定が見つかりません'
       });
     }
 
-    console.log('✅ Creating Stripe checkout session...');
-
-    const { customerEmail, userId } = req.body;
-
-    // ユーザーID生成（未提供の場合）
-    const sessionUserId = userId || `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    // ベースURL設定
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
-      req.headers.origin ||
-      'https://sns-automation-pwa.vercel.app';
-
-    // 🔧 修正: 金額を¥2,980に統一・一回払いに変更
-    const sessionParams = {
-      payment_method_types: ['card'],
-      line_items: [{
-        price_data: {
-          currency: 'jpy',
-          product_data: {
-            name: 'PostPilot Pro - プレミアムプラン',
-            description: '無制限AI投稿生成 + SNS自動投稿機能',
-          },
-          unit_amount: 298000, // ¥2,980（引き継ぎ書通り）
-        },
-        quantity: 1,
-      }],
-      mode: 'payment', // 一回払いに変更
-      success_url: `${baseUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/?cancelled=true`,
-      client_reference_id: sessionUserId,
-      metadata: {
-        userId: sessionUserId,
-        planType: 'premium',
-        source: 'sns_automation_pwa',
-        createdAt: new Date().toISOString()
-      }
-    };
-
-    // 顧客メール設定（任意）
-    if (customerEmail) {
-      sessionParams.customer_email = customerEmail;
+    // 正しいPrice IDが設定されているか確認
+    if (priceId !== 'price_1Rv6An3xUV54aKjltVTNWShh') {
+      console.warn('⚠️ Unexpected Price ID:', priceId);
+      console.warn('Expected: price_1Rv6An3xUV54aKjltVTNWShh');
     }
 
-    console.log('✅ Creating session with params:', {
-      userId: sessionUserId,
-      amount: '¥2,980',
-      mode: 'payment'
+    // Stripe Checkout セッション作成
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'payment',
+      line_items: [
+        {
+          price: priceId, // 環境変数から取得
+          quantity: 1,
+        },
+      ],
+      success_url: `${req.headers.origin}/?session_id={CHECKOUT_SESSION_ID}&payment_success=true`,
+      cancel_url: `${req.headers.origin}/?payment_cancelled=true`,
+      metadata: {
+        userId: userId,
+        product: 'PostPilot Pro Premium Plan',
+        timestamp: new Date().toISOString()
+      },
+      customer_email: customerEmail || undefined,
+      billing_address_collection: 'auto',
+      automatic_tax: {
+        enabled: false, // 日本の税制に応じて調整
+      },
     });
 
-    const session = await stripe.checkout.sessions.create(sessionParams);
-
-    console.log(`✅ Checkout session created: ${session.id}`);
+    console.log('✅ Checkout session created:', {
+      sessionId: session.id,
+      priceId: priceId,
+      amount: session.amount_total,
+      currency: session.currency
+    });
 
     return res.status(200).json({
-      success: true,
       sessionId: session.id,
       url: session.url,
-      userId: sessionUserId
+      priceId: priceId // デバッグ用
     });
 
   } catch (error) {
-    console.error('❌ Stripe checkout error:', {
-      message: error.message,
-      type: error.type,
-      code: error.code
-    });
+    console.error('❌ Stripe checkout session creation failed:', error);
 
     return res.status(500).json({
       success: false,
@@ -102,4 +77,17 @@ export default async function handler(req, res) {
       details: error.message
     });
   }
+}
+
+// 🔧 デバッグ用: 環境変数確認エンドポイント（本番では削除推奨）
+export async function debugEnvironment(req, res) {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'Debug disabled in production' });
+  }
+
+  return res.status(200).json({
+    STRIPE_PRICE_ID: process.env.STRIPE_PRICE_ID,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ? 'Set' : 'Missing',
+    NODE_ENV: process.env.NODE_ENV
+  });
 }
