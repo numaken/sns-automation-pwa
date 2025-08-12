@@ -1595,7 +1595,7 @@ const PostGenerator = () => {
                       border: '1px solid #93c5fd'
                     }}>
                       <span style={{ color: '#1e40af', fontWeight: 500 }}>
-                        🐦 {twitterUsername ? `@${twitterUsername}` : 'X (Twitter)'} ✅
+                        🐦 X (Twitter) ✅
                       </span>
                       <button
                         onClick={() => {
@@ -1968,7 +1968,7 @@ const PostGenerator = () => {
                           fontSize: '0.875rem'
                         }}
                       >
-                        {isPostingToTwitter ? '投稿中...' : `🐦 X {twitterUsername ? `(@${ twitterUsername })` : ''} に投稿`}
+                        {isPostingToTwitter ? '投稿中...' : `🐦 X (Twitter) に投稿`}
                       </button>
                     ) : (
                       <button
