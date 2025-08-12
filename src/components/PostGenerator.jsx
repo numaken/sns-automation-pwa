@@ -493,8 +493,7 @@ const WelcomeModal = ({ onClose, onTwitterConnect, onThreadsConnect }) => {
                     marginBottom: '1rem'
                   }}
                 >
-                  <span>🐦</span>
-                  <span>Twitterに接続</span>
+                  <span>🐦 X (旧Twitter)に接続</span>
                 </button>
 
                 <button
@@ -600,7 +599,7 @@ const ConnectionBadge = ({ twitterConnected, threadsConnected, twitterUsername, 
             gap: '0.25rem'
           }}>
             <span>🐦</span>
-            <span>X (@{twitterUsername})</span>
+            <span>X (旧Twitter)</span>
             <span>✅</span>
           </span>
         )}
@@ -713,7 +712,7 @@ const PostGenerator = () => {
 
         if (twitterResponse.ok) {
           const twitterData = await twitterResponse.json();
-          console.log('🐦 Twitter status:', twitterData);
+          console.log('🐦 X (旧Twitter) status:', twitterData);
 
           if (twitterData.connected) {
             setTwitterConnected(true);
@@ -862,7 +861,7 @@ const PostGenerator = () => {
     const oauth_token = urlParams.get('oauth_token');
     const oauth_verifier = urlParams.get('oauth_verifier');
     if (oauth_token && oauth_verifier) {
-      console.log('🐦 Twitter OAuth callback detected');
+      console.log('🐦 X (旧Twitter) OAuth callback detected');
       setTimeout(() => {
         checkSnsConnections();
       }, 1000);
@@ -899,7 +898,7 @@ const PostGenerator = () => {
       console.log('📩 Window message received:', event.data);
 
       if (event.data.type === 'TWITTER_AUTH_SUCCESS') {
-        console.log('🐦 Twitter auth success message received');
+        console.log('🐦 X (旧Twitter) auth success message received');
         setTwitterConnected(true);
         setTwitterUsername(event.data.username);
         localStorage.setItem('twitter_username', event.data.username);
@@ -1740,7 +1739,7 @@ const PostGenerator = () => {
             {/* SNS接続状況（全ユーザー） */}
             <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
               <span>SNS接続: </span>
-              {twitterConnected && <span style={{ color: '#1d9bf0' }}>🐦 X (@{twitterUsername}) </span>}
+              {twitterConnected && <span style={{ color: '#1d9bf0' }}>🐦 X (旧Twitter)</span>}
               {threadsConnected && <span style={{ color: '#000' }}>📱 Threads </span>}
               {!twitterConnected && !threadsConnected && <span>未接続</span>}
             </div>
@@ -2114,7 +2113,7 @@ const PostGenerator = () => {
               fontSize: '0.875rem'
             }}>
               <div>⚡ 無制限AI生成</div>
-              <div>🐦 Twitter自動投稿</div>
+              <div>🐦 X (旧Twitter)自動投稿</div>
               <div>📱 Threads自動投稿</div>
               <div>🔄 同時投稿機能</div>
             </div>
