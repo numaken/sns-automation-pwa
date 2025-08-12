@@ -106,6 +106,11 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <header className="bg-white shadow-sm border-b">
+        <div className="company-badge">
+          <span>panolabo LLC</span>
+        </div>
+        <h1>PostPilot Pro</h1>
+        <p>革新的な「API設定不要」SNS投稿自動化ツール</p>        
         <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Sparkles className="h-6 w-6 text-blue-600" />
