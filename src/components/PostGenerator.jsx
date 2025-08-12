@@ -1740,7 +1740,7 @@ const PostGenerator = () => {
             {/* SNS接続状況（全ユーザー） */}
             <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
               <span>SNS接続: </span>
-              {twitterConnected && <span style={{ color: '#1d9bf0' }}>🐦 X </span>}
+              {twitterConnected && <span style={{ color: '#1d9bf0' }}>🐦 X (@{twitterUsername}) </span>}
               {threadsConnected && <span style={{ color: '#000' }}>📱 Threads </span>}
               {!twitterConnected && !threadsConnected && <span>未接続</span>}
             </div>
@@ -1968,7 +1968,7 @@ const PostGenerator = () => {
                           fontSize: '0.875rem'
                         }}
                       >
-                        {isPostingToTwitter ? '投稿中...' : `🐦 X に投稿`}
+                        {isPostingToTwitter ? '投稿中...' : `🐦 X (@${twitterUsername}) に投稿`}
                       </button>
                     ) : (
                       <button
