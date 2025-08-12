@@ -1,5 +1,5 @@
-// PostGenerator.jsx - SNS投稿機能完全修正版
-// 🔧 修正: OAuth認証状態確認・投稿ボタン表示・プレミアム判定
+// PostGenerator.jsx - SNS投稿機能完全修正版（コンパイルエラー修正済み）
+// 🔧 修正: OAuth認証状態確認・投稿ボタン表示・プレミアム判定・コンパイルエラー解決
 
 import React, { useState, useEffect } from 'react';
 
@@ -364,6 +364,10 @@ const PostGenerator = () => {
   const [userPlan, setUserPlan] = useState('free');
   const [generationTime, setGenerationTime] = useState(null);
 
+  // 🔧 修正: 不足していた状態変数を追加
+  const [upgrading, setUpgrading] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+
   // SNS投稿関連の状態
   const [twitterConnected, setTwitterConnected] = useState(false);
   const [threadsConnected, setThreadsConnected] = useState(false);
@@ -401,9 +405,6 @@ const PostGenerator = () => {
       checkSnsConnections();
     }
   };
-
-  // PostGenerator.jsx - SNS接続チェック無限ループ修正パッチ
-  // 🔧 この関数のみを既存のPostGenerator.jsxで置き換えてください
 
   // 🔧 修正: SNS接続状況確認の改善（無限ループ防止）
   const checkSnsConnections = async () => {
@@ -918,12 +919,12 @@ const PostGenerator = () => {
     console.log('🎯 Simultaneous posting completed:', { successful: successful.length, failed: failed.length });
   };
 
-  // プレミアムアップグレード処理
+  // 🔧 修正: プレミアムアップグレード処理の修正
   const handleUpgrade = async () => {
     try {
-      setUpgrading(true); // ローディング状態設定
+      setUpgrading(true);
 
-      const userId = getCurrentUserId(); // planUtils.jsから
+      const userId = getCurrentUserId();
 
       console.log('🚀 Starting upgrade process for user:', userId);
 
@@ -932,7 +933,7 @@ const PostGenerator = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
-          customerEmail: userEmail // 任意：ユーザーメールアドレス
+          customerEmail: userEmail || undefined // 任意：ユーザーメールアドレス
         })
       });
 
@@ -954,43 +955,6 @@ const PostGenerator = () => {
       setError('エラーが発生しました。ネットワーク接続を確認してください。');
       setUpgrading(false);
     }
-  };
-
-  // アップグレードボタンコンポーネント例
-  const UpgradeButton = ({ className = "" }) => {
-    const [upgrading, setUpgrading] = useState(false);
-    const [error, setError] = useState(null);
-
-    return (
-      <div className={`space-y-2 ${className}`}>
-        <button
-          onClick={handleUpgrade}
-          disabled={upgrading}
-          className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 px-6 rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105"
-        >
-          {upgrading ? (
-            <div className="flex items-center justify-center space-x-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              <span>決済画面を準備中...</span>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center space-x-2">
-              <span>⭐</span>
-              <span>プレミアムにアップグレード</span>
-              <span>¥2,980</span>
-            </div>
-          )}
-        </button>
-
-        {error && (
-          <p className="text-sm text-red-600 text-center">{error}</p>
-        )}
-
-        <p className="text-xs text-gray-500 text-center">
-          💳 安全な決済（Stripe使用）・30日間有効
-        </p>
-      </div>
-    );
   };
 
   // AI投稿生成
@@ -1174,18 +1138,19 @@ const PostGenerator = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <button
                 onClick={handleUpgrade}
+                disabled={upgrading}
                 style={{
                   width: '100%',
-                  background: '#fbbf24',
+                  background: upgrading ? '#9ca3af' : '#fbbf24',
                   color: 'white',
                   padding: '0.5rem 1rem',
                   borderRadius: '0.5rem',
                   fontWeight: '500',
                   border: 'none',
-                  cursor: 'pointer'
+                  cursor: upgrading ? 'not-allowed' : 'pointer'
                 }}
               >
-                月額¥980でアップグレード
+                {upgrading ? '決済画面準備中...' : '月額¥980でアップグレード'}
               </button>
               <button
                 onClick={() => setShowUpgradePrompt(false)}
@@ -1666,19 +1631,20 @@ const PostGenerator = () => {
 
             <button
               onClick={handleUpgrade}
+              disabled={upgrading}
               style={{
-                background: 'white',
-                color: '#f97316',
+                background: upgrading ? '#9ca3af' : 'white',
+                color: upgrading ? 'white' : '#f97316',
                 padding: '1rem 2rem',
                 borderRadius: '0.5rem',
                 fontWeight: 'bold',
                 fontSize: '1.125rem',
                 border: 'none',
-                cursor: 'pointer',
+                cursor: upgrading ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s'
               }}
             >
-              💎 プレミアムプランを見る（¥980/月）
+              {upgrading ? '決済画面準備中...' : '💎 プレミアムプランを見る（¥980/月）'}
             </button>
 
             {/* 現在の使用状況表示 */}
