@@ -1,5 +1,5 @@
-// PostGenerator.jsx - SNS投稿機能完全修正版（コンパイルエラー修正済み）
-// 🔧 修正: OAuth認証状態確認・投稿ボタン表示・プレミアム判定・コンパイルエラー解決
+// PostGenerator.jsx - SNS接続UX改善完全修正版
+// 🚀 改善: 無料ユーザーでもSNS接続可能・プレミアム移行後即座投稿
 
 import React, { useState, useEffect } from 'react';
 
@@ -238,7 +238,7 @@ const SubscriptionManager = ({ userId, onPlanChange, onClose }) => {
                 </h5>
                 <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                   <div style={{ marginBottom: '0.5rem' }}>⚡ 無制限AI投稿生成</div>
-                  <div style={{ marginBottom: '0.5rem' }}>🐦 Twitter自動投稿</div>
+                  <div style={{ marginBottom: '0.5rem' }}>🐦 X (旧Twitter) 自動投稿</div>
                   <div style={{ marginBottom: '0.5rem' }}>📱 Threads自動投稿</div>
                   <div style={{ marginBottom: '0.5rem' }}>🔄 同時投稿機能</div>
                   <div style={{ marginBottom: '0.5rem' }}>👑 広告なし</div>
@@ -350,6 +350,286 @@ const SubscriptionManager = ({ userId, onPlanChange, onClose }) => {
   );
 };
 
+// 🚀 新規追加: ウェルカムモーダルコンポーネント
+const WelcomeModal = ({ onClose, onTwitterConnect, onThreadsConnect }) => {
+  const [step, setStep] = useState(1);
+
+  const styles = {
+    container: {
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+      padding: '1rem'
+    },
+    modal: {
+      backgroundColor: 'white',
+      borderRadius: '1rem',
+      maxWidth: '500px',
+      width: '100%',
+      position: 'relative',
+      maxHeight: '90vh',
+      overflowY: 'auto'
+    },
+    header: {
+      padding: '1.5rem 1.5rem 1rem',
+      borderBottom: '1px solid #f3f4f6',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between'
+    },
+    closeButton: {
+      background: 'none',
+      border: 'none',
+      fontSize: '1.5rem',
+      color: '#6b7280',
+      cursor: 'pointer',
+      padding: '0.25rem'
+    },
+    content: {
+      padding: '1.5rem'
+    },
+    button: {
+      width: '100%',
+      padding: '0.75rem 1.5rem',
+      borderRadius: '0.5rem',
+      border: 'none',
+      cursor: 'pointer',
+      fontWeight: 500,
+      fontSize: '1rem',
+      marginBottom: '0.5rem',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '0.5rem'
+    }
+  };
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.modal}>
+        <div style={styles.header}>
+          <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
+            {step === 1 ? '🎉 PostPilot Proへようこそ！' : '📱 SNS接続設定'}
+          </h2>
+          <button onClick={onClose} style={styles.closeButton}>×</button>
+        </div>
+
+        <div style={styles.content}>
+          {step === 1 && (
+            <div>
+              <p style={{ color: '#6b7280', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                まずはSNSアカウントを接続して、投稿準備を完了させましょう！
+                無料でも接続でき、プレミアム移行後すぐに投稿開始できます。
+              </p>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <span style={{ marginRight: '0.75rem', fontSize: '1.25rem' }}>✨</span>
+                  <span>無料でも接続可能</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <span style={{ marginRight: '0.75rem', fontSize: '1.25rem' }}>🚀</span>
+                  <span>プレミアム移行後すぐに投稿開始</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <span style={{ marginRight: '0.75rem', fontSize: '1.25rem' }}>💎</span>
+                  <span>APIキー設定不要</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <span style={{ marginRight: '0.75rem', fontSize: '1.25rem' }}>⚡</span>
+                  <span>投稿までの時間を大幅短縮</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  onClick={() => setStep(2)}
+                  style={{
+                    ...styles.button,
+                    background: 'linear-gradient(to right, #2563eb, #7c3aed)',
+                    color: 'white',
+                    flex: 1
+                  }}
+                >
+                  SNS接続へ進む
+                </button>
+                <button
+                  onClick={onClose}
+                  style={{
+                    ...styles.button,
+                    background: '#f3f4f6',
+                    color: '#6b7280',
+                    width: 'auto',
+                    padding: '0.75rem 1rem'
+                  }}
+                >
+                  後で設定
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div>
+              <p style={{ color: '#6b7280', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                どちらか1つでも接続すれば投稿準備完了です。
+                両方接続すると同時投稿も可能になります！
+              </p>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <button
+                  onClick={() => {
+                    onTwitterConnect();
+                    onClose();
+                  }}
+                  style={{
+                    ...styles.button,
+                    background: '#1d9bf0',
+                    color: 'white',
+                    marginBottom: '1rem'
+                  }}
+                >
+                  <span>🐦</span>
+                  <span>Twitterに接続</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onThreadsConnect();
+                    onClose();
+                  }}
+                  style={{
+                    ...styles.button,
+                    background: '#000',
+                    color: 'white'
+                  }}
+                >
+                  <span>📱</span>
+                  <span>Threadsに接続</span>
+                </button>
+              </div>
+
+              <div style={{ fontSize: '0.875rem', color: '#6b7280', textAlign: 'center', marginBottom: '1rem' }}>
+                接続後は、AI投稿生成→プレミアム移行→即座投稿のスムーズな流れで利用できます
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  onClick={() => setStep(1)}
+                  style={{
+                    ...styles.button,
+                    background: '#f3f4f6',
+                    color: '#6b7280',
+                    width: 'auto',
+                    padding: '0.75rem 1rem'
+                  }}
+                >
+                  戻る
+                </button>
+                <button
+                  onClick={onClose}
+                  style={{
+                    ...styles.button,
+                    background: '#10b981',
+                    color: 'white',
+                    flex: 1
+                  }}
+                >
+                  後で接続する
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 🚀 新規追加: 接続状態バッジコンポーネント
+const ConnectionBadge = ({ twitterConnected, threadsConnected, twitterUsername, threadsUsername }) => {
+  const isReady = twitterConnected || threadsConnected;
+
+  if (!isReady) {
+    return (
+      <div style={{
+        background: '#dbeafe',
+        border: '1px solid #93c5fd',
+        borderRadius: '0.5rem',
+        padding: '1rem',
+        marginBottom: '1.5rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <span style={{ marginRight: '0.5rem', fontSize: '1.25rem' }}>💡</span>
+          <span style={{ fontWeight: 600, color: '#1e40af' }}>SNS接続で投稿準備を完了させませんか？</span>
+        </div>
+        <p style={{ color: '#3730a3', fontSize: '0.875rem', margin: 0 }}>
+          事前に接続しておくと、プレミアム移行後すぐに投稿開始できます（無料でも接続可能）
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      background: '#ecfdf5',
+      border: '1px solid #86efac',
+      borderRadius: '0.5rem',
+      padding: '1rem',
+      marginBottom: '1.5rem'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+        <span style={{ marginRight: '0.5rem', fontSize: '1.25rem' }}>🚀</span>
+        <span style={{ fontWeight: 600, color: '#166534' }}>投稿準備完了！</span>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+        {twitterConnected && (
+          <span style={{
+            background: '#dbeafe',
+            color: '#1e40af',
+            padding: '0.25rem 0.75rem',
+            borderRadius: '9999px',
+            fontSize: '0.875rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.25rem'
+          }}>
+            <span>🐦</span>
+            <span>X (@{twitterUsername})</span>
+            <span>✅</span>
+          </span>
+        )}
+
+        {threadsConnected && (
+          <span style={{
+            background: '#f3f4f6',
+            color: '#374151',
+            padding: '0.25rem 0.75rem',
+            borderRadius: '9999px',
+            fontSize: '0.875rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.25rem'
+          }}>
+            <span>📱</span>
+            <span>Threads</span>
+            <span>✅</span>
+          </span>
+        )}
+      </div>
+
+      <p style={{ color: '#166534', fontSize: '0.875rem', margin: 0 }}>
+        プレミアム移行後、投稿生成→即座投稿のスムーズな体験をお楽しみいただけます
+      </p>
+    </div>
+  );
+};
+
 // メインのPostGeneratorコンポーネント
 const PostGenerator = () => {
   // 基本状態管理
@@ -379,6 +659,9 @@ const PostGenerator = () => {
   // アカウント設定ボタン状態管理
   const [showSubscriptionManager, setShowSubscriptionManager] = useState(false);
 
+  // 🚀 新規追加: ウェルカムモーダル状態管理
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+
   // 🔧 修正: プレミアム確認とSNS接続状況確認を統合
   const checkPremiumStatus = () => {
     console.log('🔍 Checking premium status...');
@@ -395,15 +678,14 @@ const PostGenerator = () => {
       setUserPlan('premium');
       setUsage({ remaining: 'unlimited' });
       localStorage.removeItem('dailyUsage');
-      // プレミアムユーザーの場合のみSNS接続確認
-      checkSnsConnections();
     } else {
       console.log('📋 Free plan confirmed');
       setUserPlan('free');
       setUsage({ remaining: 3, used: 0, limit: 3 });
-      // 無料プランでもSNS接続状況は確認（表示用）
-      checkSnsConnections();
     }
+
+    // 🚀 改善: 全ユーザーでSNS接続確認を実行
+    checkSnsConnections();
   };
 
   // 🔧 修正: SNS接続状況確認の改善（無限ループ防止）
@@ -534,12 +816,28 @@ const PostGenerator = () => {
     return userId;
   };
 
+  // 🚀 新規追加: 初回訪問判定
+  const checkFirstVisit = () => {
+    const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
+    const hasConnectedAnySNS = localStorage.getItem('twitter_connected') || localStorage.getItem('threads_connected');
+
+    if (!hasSeenWelcome && !hasConnectedAnySNS) {
+      // 2秒後にウェルカムモーダルを表示（ページ読み込み完了後）
+      setTimeout(() => {
+        setShowWelcomeModal(true);
+      }, 2000);
+    }
+  };
+
   // 🔧 修正: 初期化処理の改善
   useEffect(() => {
     console.log('🚀 PostGenerator initializing...');
 
     // プレミアム状態とSNS接続確認
     checkPremiumStatus();
+
+    // 🚀 新規追加: 初回訪問確認
+    checkFirstVisit();
 
     // URLパラメータからの状態検知
     const urlParams = new URLSearchParams(window.location.search);
@@ -1058,14 +1356,50 @@ const PostGenerator = () => {
     console.log('🔧 Debug functions available: window.debugSNSApp');
   }, [userPlan, usage, twitterConnected, threadsConnected]);
 
-  // 🔧 修正: SNS投稿ボタンの表示判定
+  // 🚀 改善: SNS投稿ボタンの表示判定（プレミアムのみ）
   const shouldShowSNSButtons = () => {
     return userPlan === 'premium' && generatedPost && generatedPost.trim().length > 0;
+  };
+
+  // 🚀 改善: SNS接続ボタンの表示判定（全ユーザー）
+  const shouldShowConnectionButtons = () => {
+    return true; // 全ユーザーに表示
+  };
+
+  // 🚀 改善: プレミアム誘導メッセージの生成
+  const generateUpgradeMessage = () => {
+    const isReady = twitterConnected || threadsConnected;
+
+    if (isReady) {
+      return {
+        title: "🚀 準備完了！今すぐプレミアムで投稿開始",
+        message: "SNS接続済みなので、プレミアム移行後すぐに投稿できます",
+        benefits: [
+          "✅ 即座投稿開始（待機時間なし）",
+          "🔥 無制限AI投稿生成",
+          "📱 X・Threads同時投稿",
+          "👑 プレミアム限定機能"
+        ]
+      };
+    } else {
+      return {
+        title: "💎 プレミアムで無制限投稿",
+        message: "プレミアム移行後、SNS接続で投稿開始できます",
+        benefits: [
+          "🔥 無制限AI投稿生成",
+          "📱 Twitter・Threads投稿機能",
+          "🚀 同時投稿機能",
+          "👑 プレミアム限定機能"
+        ]
+      };
+    }
   };
 
   // アップグレードプロンプト
   const UpgradePrompt = () => {
     if (!showUpgradePrompt) return null;
+
+    const upgradeInfo = generateUpgradeMessage();
 
     return (
       <div style={{
@@ -1105,7 +1439,7 @@ const PostGenerator = () => {
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>👑</div>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>
-                {usage.remaining === 0 ? '本日の無料生成完了！' : 'もっと生成しませんか？'}
+                {upgradeInfo.title}
               </h2>
             </div>
 
@@ -1119,20 +1453,14 @@ const PostGenerator = () => {
                 プレミアムで解放される機能
               </h3>
               <ul style={{ color: '#a16207', fontSize: '0.875rem', listStyle: 'none', padding: 0, margin: 0, textAlign: 'left' }}>
-                <li>⚡ 無制限の投稿生成</li>
-                <li>🚀 高速生成（専用APIキー）</li>
-                <li>🐦 Twitter自動投稿</li>
-                <li>📱 Threads自動投稿</li>
-                <li>🔄 同時投稿機能</li>
-                <li>👑 広告なしのクリーンUI</li>
+                {upgradeInfo.benefits.map((benefit, index) => (
+                  <li key={index}>{benefit}</li>
+                ))}
               </ul>
             </div>
 
             <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
-              {usage.remaining === 0
-                ? '明日も無料で3回生成できますが、今すぐ無制限で使いませんか？'
-                : `残り${usage.remaining}回の無料生成があります。`
-              }
+              {upgradeInfo.message}
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -1229,6 +1557,150 @@ const PostGenerator = () => {
             padding: '2rem'
           }}
         >
+          {/* 🚀 新規追加: 接続状態バッジ */}
+          <ConnectionBadge
+            twitterConnected={twitterConnected}
+            threadsConnected={threadsConnected}
+            twitterUsername={twitterUsername}
+            threadsUsername={threadsUsername}
+          />
+
+          {/* 🚀 新規追加: SNS接続セクション（全ユーザー表示） */}
+          {shouldShowConnectionButtons() && (
+            <div style={{
+              marginBottom: '2rem',
+              padding: '1.5rem',
+              background: '#f8fafc',
+              borderRadius: '0.75rem',
+              border: '1px solid #e2e8f0'
+            }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#1f2937', marginBottom: '1rem' }}>
+                📱 SNS接続設定
+              </h3>
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                事前に接続しておくと、プレミアム移行後すぐに投稿開始できます（無料でも接続可能）
+              </p>
+
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                {/* Twitter接続 */}
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  {twitterConnected ? (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.75rem 1rem',
+                      background: '#dbeafe',
+                      borderRadius: '0.5rem',
+                      border: '1px solid #93c5fd'
+                    }}>
+                      <span style={{ color: '#1e40af', fontWeight: 500 }}>
+                        🐦 @{twitterUsername} ✅
+                      </span>
+                      <button
+                        onClick={() => {
+                          localStorage.removeItem('twitter_token');
+                          localStorage.removeItem('twitter_username');
+                          localStorage.removeItem('twitter_connected');
+                          setTwitterConnected(false);
+                          setTwitterUsername('');
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#dc2626',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        切断
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={connectTwitter}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        background: '#1d9bf0',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      <span>🐦</span>
+                      <span>X (旧Twitter) に接続</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Threads接続 */}
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  {threadsConnected ? (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.75rem 1rem',
+                      background: '#f3f4f6',
+                      borderRadius: '0.5rem',
+                      border: '1px solid #d1d5db'
+                    }}>
+                      <span style={{ color: '#374151', fontWeight: 500 }}>
+                        📱 Threads ✅
+                      </span>
+                      <button
+                        onClick={() => {
+                          localStorage.removeItem('threads_token');
+                          localStorage.removeItem('threads_username');
+                          localStorage.removeItem('threads_connected');
+                          setThreadsConnected(false);
+                          setThreadsUsername('');
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#dc2626',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        切断
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={connectThreads}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem 1rem',
+                        background: '#000',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      <span>📱</span>
+                      <span>Threadsに接続</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 使用状況表示 */}
           <div style={{
             marginBottom: '1.5rem',
@@ -1265,15 +1737,13 @@ const PostGenerator = () => {
               </div>
             )}
 
-            {/* SNS接続状況（プレミアムのみ） */}
-            {userPlan === 'premium' && (
-              <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                <span>SNS接続: </span>
-                {twitterConnected && <span style={{ color: '#1d9bf0' }}>🐦 @{twitterUsername} </span>}
-                {threadsConnected && <span style={{ color: '#000' }}>📱 Threads </span>}
-                {!twitterConnected && !threadsConnected && <span>未接続</span>}
-              </div>
-            )}
+            {/* SNS接続状況（全ユーザー） */}
+            <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              <span>SNS接続: </span>
+              {twitterConnected && <span style={{ color: '#1d9bf0' }}>🐦 X (@{twitterUsername}) </span>}
+              {threadsConnected && <span style={{ color: '#000' }}>📱 Threads </span>}
+              {!twitterConnected && !threadsConnected && <span>未接続</span>}
+            </div>
           </div>
 
           {/* 入力フォーム */}
@@ -1480,10 +1950,10 @@ const PostGenerator = () => {
                   📋 クリップボードにコピー
                 </button>
 
-                {/* 🔧 修正: プレミアム限定SNS投稿ボタン（条件判定改善） */}
+                {/* 🚀 改善: プレミアム限定SNS投稿ボタン */}
                 {shouldShowSNSButtons() && (
                   <>
-                    {/* Twitter投稿 */}
+                    {/* X (旧Twitter) 投稿 */}
                     {twitterConnected ? (
                       <button
                         onClick={postToTwitter}
@@ -1498,7 +1968,7 @@ const PostGenerator = () => {
                           fontSize: '0.875rem'
                         }}
                       >
-                        {isPostingToTwitter ? '投稿中...' : `🐦 @${twitterUsername}に投稿`}
+                        {isPostingToTwitter ? '投稿中...' : `🐦 X (@${twitterUsername}) に投稿`}
                       </button>
                     ) : (
                       <button
@@ -1513,7 +1983,7 @@ const PostGenerator = () => {
                           fontSize: '0.875rem'
                         }}
                       >
-                        🐦 Twitterを接続
+                        🐦 X (旧Twitter) を接続
                       </button>
                     )}
 
@@ -1579,17 +2049,29 @@ const PostGenerator = () => {
                 )}
               </div>
 
-              {/* 無料プラン：SNS投稿プレビュー */}
+              {/* 🚀 改善: 無料プランのSNS投稿プレビュー */}
               {userPlan !== 'premium' && (
                 <div style={{
                   marginTop: '1rem',
                   padding: '1rem',
-                  background: '#fef3c7',
+                  background: 'linear-gradient(to right, #fef3c7, #fed7aa)',
                   borderRadius: '0.5rem',
                   border: '1px solid #fbbf24'
                 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span style={{ marginRight: '0.5rem', fontSize: '1.25rem' }}>💎</span>
+                    <span style={{ fontWeight: 600, color: '#92400e' }}>
+                      {(twitterConnected || threadsConnected)
+                        ? 'SNS接続済み！プレミアムで即座投稿開始'
+                        : 'プレミアムプランでSNS自動投稿'
+                      }
+                    </span>
+                  </div>
                   <p style={{ color: '#92400e', fontSize: '0.875rem', margin: 0 }}>
-                    💎 プレミアムプランなら、この投稿をTwitterやThreadsに自動投稿＋同時投稿できます！
+                    {(twitterConnected || threadsConnected)
+                      ? 'SNS接続準備完了済み。プレミアム移行後、この投稿をすぐに自動投稿できます！'
+                      : 'この投稿をTwitterやThreadsに自動投稿＋同時投稿できます！'
+                    }
                   </p>
                 </div>
               )}
@@ -1597,7 +2079,7 @@ const PostGenerator = () => {
           )}
         </div>
 
-        {/* プレミアム促進（無料プランのみ） */}
+        {/* 🚀 改善: プレミアム促進（無料プランのみ） */}
         {userPlan !== 'premium' && (
           <div style={{
             marginTop: '2rem',
@@ -1609,10 +2091,18 @@ const PostGenerator = () => {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
               <span style={{ fontSize: '1.5rem' }}>👑</span>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>もっと生成したい方へ</h3>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0 }}>
+                {(twitterConnected || threadsConnected)
+                  ? '準備完了！プレミアムで即座投稿開始'
+                  : 'もっと生成したい方へ'
+                }
+              </h3>
             </div>
             <p style={{ fontSize: '1.125rem', marginBottom: '1.5rem', opacity: 0.9 }}>
-              プレミアムプランで無制限生成＋SNS自動投稿をお楽しみください
+              {(twitterConnected || threadsConnected)
+                ? 'SNS接続済みなので、プレミアム移行後すぐに自動投稿開始できます'
+                : 'プレミアムプランで無制限生成＋SNS自動投稿をお楽しみください'
+              }
             </p>
 
             {/* プレミアム特典 */}
@@ -1644,18 +2134,39 @@ const PostGenerator = () => {
                 transition: 'all 0.2s'
               }}
             >
-              {upgrading ? '決済画面準備中...' : '💎 プレミアムプランを見る（¥980/月）'}
+              {upgrading ? '決済画面準備中...' : (
+                (twitterConnected || threadsConnected)
+                  ? '🚀 今すぐプレミアムで投稿開始（¥980/月）'
+                  : '💎 プレミアムプランを見る（¥980/月）'
+              )}
             </button>
 
             {/* 現在の使用状況表示 */}
             <div style={{ marginTop: '1rem', fontSize: '0.875rem', opacity: 0.8 }}>
               今日の残り生成数: {typeof usage.remaining === 'number' ? usage.remaining : 3}回/3回
+              {(twitterConnected || threadsConnected) && (
+                <div style={{ marginTop: '0.25rem' }}>
+                  ✅ SNS接続準備完了 - プレミアム移行後即座投稿可能
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* アップグレードプロンプト */}
         <UpgradePrompt />
+
+        {/* 🚀 新規追加: ウェルカムモーダル */}
+        {showWelcomeModal && (
+          <WelcomeModal
+            onClose={() => {
+              setShowWelcomeModal(false);
+              localStorage.setItem('hasSeenWelcome', 'true');
+            }}
+            onTwitterConnect={connectTwitter}
+            onThreadsConnect={connectThreads}
+          />
+        )}
 
         {/* フッター統一設定ボタン */}
         <div style={{
