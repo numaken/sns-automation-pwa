@@ -41,7 +41,7 @@ const Success = () => {
               </div>
               <div className="flex items-center justify-center">
                 <span className="text-green-600">✅</span>
-                <span className="ml-2">高品質AI生成 (GPT-3.5-turbo)</span>
+                <span className="ml-2">高品質AI生成</span>
               </div>
               <div className="flex items-center justify-center">
                 <span className="text-green-600">✅</span>

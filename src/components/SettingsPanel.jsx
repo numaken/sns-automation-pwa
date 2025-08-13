@@ -289,7 +289,7 @@ const SettingsPanel = () => {
           <li style={styles.featureItem}>
             <span style={{ ...styles.featureIcon, color: colors.success }}>✅</span>
             <span style={{ ...styles.featureText, ...styles.featureTextEnabled }}>
-              高品質AI生成 (GPT-3.5-turbo)
+              高品質AI生成
             </span>
           </li>
           <li style={styles.featureItem}>
