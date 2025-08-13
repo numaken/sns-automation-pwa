@@ -426,8 +426,8 @@ const SettingsPanel = () => {
           </div>
           <div style={{ ...styles.infoRow, borderBottom: 'none' }}>
             <span style={styles.infoLabel}>サポート:</span>
-            <a href="mailto:numaken@gmail.com" style={styles.emailLink}>
-              numaken@gmail.com
+            <a href="mailto:hello@panolabollc.com" style={styles.emailLink}>
+              hello@panolabollc.com
             </a>
           </div>
         </div>
