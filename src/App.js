@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Send, Sparkles } from 'lucide-react';
 import PostGenerator from './components/PostGenerator';
 import SettingsPanel from './components/SettingsPanel';
 import Success from './components/Success';
 import Cancel from './components/Cancel';
+import Header from './components/Header';
+import Footer from './components/Footer';
 import { useAnalyticsSafe } from './hooks/useAnalyticsSafe';
 import './App.css';
+import './styles/PWAStyle.css';
 
 function App() {
   // 🛡️ 安全なアナリティクス（既存機能に影響ゼロ）
@@ -13,6 +15,7 @@ function App() {
   
   const [activeTab, setActiveTab] = useState('generate');
   const [currentPage, setCurrentPage] = useState('main');
+  const [userPlan, setUserPlan] = useState('free');
 
   useEffect(() => {
     const path = window.location.pathname;
@@ -28,6 +31,12 @@ function App() {
     } else {
       setCurrentPage('main');
     }
+
+    // ユーザープランをチェック
+    const storedPlan = localStorage.getItem('userPlan');
+    if (storedPlan) {
+      setUserPlan(storedPlan);
+    }
   }, []);
 
   if (currentPage === 'success') {
@@ -40,37 +49,17 @@ function App() {
 
   return (
     <div className="app">
-      <div className="container">
-        <header className="header">
-          <div className="header-content">
-            <div className="logo">
-              <Sparkles className="logo-icon" />
-              <h1>PostPilot Pro</h1>
-            </div>
-            <nav className="nav-tabs">
-              <button
-                className={`nav-tab ${activeTab === 'generate' ? 'active' : ''}`}
-                onClick={() => setActiveTab('generate')}
-              >
-                <Send className="tab-icon" />
-                投稿生成
-              </button>
-              <button
-                className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
-                onClick={() => setActiveTab('settings')}
-              >
-                <Settings className="tab-icon" />
-                設定
-              </button>
-            </nav>
-          </div>
-        </header>
+      <Header userPlan={userPlan} />
+      
+      <main className="pwa-main">
+        {activeTab === 'generate' && <PostGenerator />}
+        {activeTab === 'settings' && <SettingsPanel />}
+      </main>
 
-        <main className="main-content">
-          {activeTab === 'generate' && <PostGenerator />}
-          {activeTab === 'settings' && <SettingsPanel />}
-        </main>
-      </div>
+      <Footer 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab}
+      />
     </div>
   );
 }

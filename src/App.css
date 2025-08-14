@@ -18,9 +18,21 @@ body {
 }
 
 /* App全体のスタイル */
-.App {
+.app {
   min-height: 100vh;
-  background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+}
+
+.main-content {
+  flex: 1;
+  padding: 2rem 1rem;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 /* PostGenerator コンポーネント */
