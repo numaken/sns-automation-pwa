@@ -668,13 +668,17 @@ const PostGenerator = () => {
 
     const userPlan = localStorage.getItem('userPlan');
     const subscriptionStatus = localStorage.getItem('subscriptionStatus');
+    const userId = getCurrentUserId();
 
-    console.log('📊 Premium check:', { userPlan, subscriptionStatus });
+    console.log('📊 Premium check:', { userPlan, subscriptionStatus, userId });
 
     const isPremiumUser = (userPlan === 'premium' && subscriptionStatus === 'active');
+    
+    // 🛠️ 開発者判定を適用
+    const effectivePlan = getEffectiveUserPlan(isPremiumUser ? 'premium' : 'free', userId);
 
-    if (isPremiumUser) {
-      console.log('✅ Premium status confirmed');
+    if (effectivePlan === 'premium') {
+      console.log('✅ Premium status confirmed (including developer override)');
       setUserPlan('premium');
       setUsage({ remaining: 'unlimited' });
       localStorage.removeItem('dailyUsage');
@@ -814,6 +818,26 @@ const PostGenerator = () => {
       localStorage.setItem('userId', userId);
     }
     return userId;
+  };
+
+  // 🛠️ 開発者判定システム
+  const isDeveloper = (userId) => {
+    // 開発者UserIDのリスト（環境変数から取得または直接指定）
+    const developerIds = [
+      process.env.REACT_APP_DEVELOPER_ID,
+      'developer_override_id',  // 緊急用固定ID
+    ].filter(Boolean);
+    
+    return developerIds.includes(userId);
+  };
+
+  // 🛠️ 開発者用プレミアムプラン判定
+  const getEffectiveUserPlan = (actualPlan, userId) => {
+    if (isDeveloper(userId)) {
+      console.log('🛠️ Developer mode: Force premium plan');
+      return 'premium';
+    }
+    return actualPlan;
   };
 
   // 🚀 新規追加: 初回訪問判定
@@ -1350,6 +1374,8 @@ const PostGenerator = () => {
         threadsConnected,
         twitterUsername,
         threadsUsername,
+        userId: getCurrentUserId(), // 🛠️ UserID表示追加
+        isDeveloperMode: isDeveloper(getCurrentUserId()), // 🛠️ 開発者モード確認
         localStorage: Object.fromEntries(
           Object.keys(localStorage).map(key => [key, localStorage.getItem(key)])
         )
@@ -1358,6 +1384,14 @@ const PostGenerator = () => {
       checkStatus: checkPremiumStatus,
       checkSns: checkSnsConnections,
       manualTwitter: manualTwitterSetup,
+      // 🛠️ 開発者用機能追加
+      getDeveloperId: () => getCurrentUserId(),
+      toggleDeveloperMode: () => {
+        const currentId = getCurrentUserId();
+        console.log('🛠️ Current UserID:', currentId);
+        console.log('🛠️ Is Developer:', isDeveloper(currentId));
+        console.log('🛠️ To enable developer mode, add this ID to REACT_APP_DEVELOPER_ID or update the developerIds array');
+      }
     };
     console.log('🔧 Debug functions available: window.debugSNSApp');
   }, [userPlan, usage, twitterConnected, threadsConnected]);
