@@ -1313,7 +1313,7 @@ const PostGenerator = () => {
       setQuality(data.quality);
       
       // GA4イベント送信
-      trackPostGeneration(selectedPlatform, selectedTone, userPlan);
+      trackPostGeneration('Twitter', tone, userPlan);
 
       if (data.usage && userPlan === 'free') {
         console.log('📊 Updating usage:', data.usage);
