@@ -1,8 +1,5 @@
-// PostPilot Pro - 最小限テスト版（KVなし）
-// FUNCTION_INVOCATION_FAILED 原因特定用
-
+// PostPilot Pro - 基本アクセス記録
 export default async function handler(req, res) {
-  // CORS対応
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -15,22 +12,23 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // 🧪 最小限の処理でテスト
   try {
-    console.log('[Analytics] Minimal test handler called');
+    // 基本アクセスログ記録
+    const data = req.body || {};
+    console.log('[Analytics] Visit tracked:', {
+      page: data.page,
+      utm_source: data.utm_source,
+      timestamp: data.timestamp
+    });
     
     res.status(200).json({ 
       tracked: true, 
-      timestamp: new Date().toISOString(),
-      status: 'minimal_test',
-      received_data: req.body || {}
+      timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    console.log('[Analytics] Minimal handler error:', error.message);
     res.status(200).json({ 
       tracked: false, 
-      error: error.message,
       timestamp: new Date().toISOString()
     });
   }
