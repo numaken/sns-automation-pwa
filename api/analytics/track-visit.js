@@ -1,5 +1,5 @@
-// PostPilot Pro - 分離型アナリティクストラッキング
-// 既存システムへの影響ゼロ設計
+// PostPilot Pro - 修正版アナリティクストラッキング
+// FUNCTION_INVOCATION_FAILED対応
 
 import { kv } from '@vercel/kv';
 
@@ -21,22 +21,29 @@ export default async function handler(req, res) {
     // 🛡️ 即座にレスポンス返却（本体処理遅延ゼロ）
     res.status(200).json({ 
       tracked: true, 
-      timestamp: new Date().toISOString() 
+      timestamp: new Date().toISOString(),
+      status: 'received'
     });
 
-    // 🔄 非同期バックグラウンド処理（既存機能に影響なし）
-    setImmediate(async () => {
+    // 🔄 非同期バックグラウンド処理（修正版）
+    // setImmediate ではなく Promise.resolve().then() を使用
+    Promise.resolve().then(async () => {
       try {
-        await processAnalyticsSafe(req.body);
+        await processAnalyticsSafe(req.body || {});
       } catch (error) {
         // 🔇 サイレントログ（既存システムに影響なし）
-        console.log(`[Analytics] Safe tracking failed: ${error.message}`);
+        console.log(`[Analytics] Background processing failed:`, error.message);
       }
     });
 
   } catch (error) {
     // 📊 アナリティクスエラーでも正常応答
-    res.status(200).json({ tracked: false, error: 'silent' });
+    console.log('[Analytics] Handler error:', error.message);
+    res.status(200).json({ 
+      tracked: false, 
+      error: 'silent',
+      timestamp: new Date().toISOString()
+    });
   }
 }
 
@@ -51,35 +58,47 @@ async function processAnalyticsSafe(data) {
 
     // 🔐 既存KVキーと完全分離（プレフィックス使用）
     const prefix = 'analytics_v1_';
-    const today = new Date().toISOString().split('T')[0]; // 2025-08-14
+    const today = new Date().toISOString().split('T')[0];
     const hour = new Date().getHours();
 
-    // 📊 分離されたKVキーで安全な統計収集
-    const safeOperations = [
-      // 日別総アクセス数
-      kv.incr(`${prefix}daily_${today}`).catch(() => null),
-      
-      // 時間別アクセス数
-      kv.incr(`${prefix}hourly_${today}_${hour}`).catch(() => null),
-      
-      // ページ別アクセス数（安全なページ名に変換）
-      kv.incr(`${prefix}page_${page.replace(/[^a-zA-Z0-9]/g, '_')}_${today}`).catch(() => null),
-      
-      // 流入元統計
-      referrer && kv.incr(`${prefix}ref_${referrer.replace(/[^a-zA-Z0-9.]/g, '_')}_${today}`).catch(() => null),
-      
-      // UTM統計
-      utm_source && kv.incr(`${prefix}utm_${utm_source}_${today}`).catch(() => null),
-    ].filter(Boolean);
+    // 📊 安全な統計収集（エラー耐性強化）
+    const safeOperations = [];
 
-    // 🔥 非ブロッキング並行実行（一部失敗でも継続）
-    await Promise.allSettled(safeOperations);
+    // 基本統計
+    try {
+      safeOperations.push(kv.incr(`${prefix}total`));
+    } catch (e) { /* ignore */ }
 
-    // 📈 累計カウント（失敗しても既存機能に影響なし）
-    await kv.incr(`${prefix}total`).catch(() => null);
+    try {
+      safeOperations.push(kv.incr(`${prefix}daily_${today}`));
+    } catch (e) { /* ignore */ }
+
+    try {
+      safeOperations.push(kv.incr(`${prefix}hourly_${today}_${hour}`));
+    } catch (e) { /* ignore */ }
+
+    // オプション統計
+    if (page && page !== '/') {
+      try {
+        const safePage = page.replace(/[^a-zA-Z0-9]/g, '_');
+        safeOperations.push(kv.incr(`${prefix}page_${safePage}_${today}`));
+      } catch (e) { /* ignore */ }
+    }
+
+    if (utm_source) {
+      try {
+        const safeUtm = utm_source.replace(/[^a-zA-Z0-9]/g, '_');
+        safeOperations.push(kv.incr(`${prefix}utm_${safeUtm}_${today}`));
+      } catch (e) { /* ignore */ }
+    }
+
+    // 🔥 非ブロッキング並行実行（全て失敗でも問題なし）
+    if (safeOperations.length > 0) {
+      await Promise.allSettled(safeOperations);
+    }
 
   } catch (error) {
     // 🛡️ 完全分離エラーハンドリング
-    throw error;
+    console.log('[Analytics] processAnalyticsSafe error:', error.message);
   }
 }
