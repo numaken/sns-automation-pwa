@@ -35,6 +35,13 @@
   gap: 0.75rem;
 }
 
+.logo-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+}
+
 .pwa-logo-icon {
   color: #fbbf24;
   width: 32px;
@@ -73,6 +80,24 @@
 @keyframes pulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.05); }
+}
+
+/* β版バッジ */
+.beta-badge {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.3rem;
+  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.4);
+  animation: betaPulse 3s ease-in-out infinite;
+  letter-spacing: 0.3px;
+}
+
+@keyframes betaPulse {
+  0%, 85%, 100% { transform: scale(1); }
+  92.5% { transform: scale(1.1); }
 }
 
 /* PWAメインコンテンツ */

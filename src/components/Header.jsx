@@ -7,7 +7,10 @@ const Header = ({ userPlan }) => {
       <div className="pwa-header-container">
         <div className="pwa-logo">
           <Sparkles className="pwa-logo-icon" />
-          <h1>PostPilot Pro</h1>
+          <div className="logo-group">
+            <h1>PostPilot Pro</h1>
+            <span className="beta-badge">β版</span>
+          </div>
         </div>
         {userPlan === 'premium' && (
           <div className="pwa-premium-badge">
