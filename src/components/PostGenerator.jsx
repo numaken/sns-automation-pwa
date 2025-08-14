@@ -2,6 +2,7 @@
 // 🚀 改善: 無料ユーザーでもSNS接続可能・プレミアム移行後即座投稿
 
 import React, { useState, useEffect } from 'react';
+import { trackPostGeneration, trackPremiumClick, trackSocialConnect } from '../utils/analytics';
 
 // SubscriptionManagerコンポーネントを直接統合
 const SubscriptionManager = ({ userId, onPlanChange, onClose }) => {
@@ -1220,6 +1221,9 @@ const PostGenerator = () => {
   const handleUpgrade = async () => {
     try {
       setUpgrading(true);
+      
+      // GA4トラッキング
+      trackPremiumClick('post_generator');
 
       const userId = getCurrentUserId();
 
@@ -1307,6 +1311,9 @@ const PostGenerator = () => {
 
       setGeneratedPost(data.post);
       setQuality(data.quality);
+      
+      // GA4イベント送信
+      trackPostGeneration(selectedPlatform, selectedTone, userPlan);
 
       if (data.usage && userPlan === 'free') {
         console.log('📊 Updating usage:', data.usage);
