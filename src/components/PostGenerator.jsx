@@ -825,7 +825,7 @@ const PostGenerator = () => {
     // 開発者UserIDのリスト（環境変数から取得または直接指定）
     const developerIds = [
       process.env.REACT_APP_DEVELOPER_ID,
-      'developer_override_id',  // 緊急用固定ID
+      'user_1754949668394_q22a9yu8g',  // 開発者ID（numaken様）
     ].filter(Boolean);
     
     return developerIds.includes(userId);
