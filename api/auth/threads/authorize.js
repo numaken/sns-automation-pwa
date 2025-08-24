@@ -34,6 +34,14 @@ export default async function handler(req, res) {
       KV_REST_API_TOKEN: !!requiredEnvVars.KV_REST_API_TOKEN
     });
 
+    // 🔧 デバッグ: 実際のTHREADS_APP_IDの値を確認
+    console.log('THREADS_APP_ID value debug:', {
+      value: requiredEnvVars.THREADS_APP_ID,
+      type: typeof requiredEnvVars.THREADS_APP_ID,
+      length: requiredEnvVars.THREADS_APP_ID?.length,
+      firstChars: requiredEnvVars.THREADS_APP_ID?.substring(0, 5)
+    });
+
     const missingEnvVars = Object.entries(requiredEnvVars)
       .filter(([key, value]) => !value)
       .map(([key]) => key);
@@ -108,11 +116,19 @@ export default async function handler(req, res) {
 
     const authUrl = `https://threads.net/oauth/authorize?${authParams.toString()}`;
 
+    // 🔧 デバッグ: OAuth URLとパラメータを詳しく確認
     console.log('OAuth URL generated (FIXED):', {
       state,
       clientId: process.env.THREADS_APP_ID?.substring(0, 10) + '...',
       redirectUri,
       kvKeyPattern: 'state-only'
+    });
+
+    console.log('OAuth URL debug:', {
+      fullUrl: authUrl,
+      authParams: Object.fromEntries(authParams.entries()),
+      clientIdInParams: authParams.get('client_id'),
+      clientIdExists: !!authParams.get('client_id')
     });
 
     console.log('=== Threads OAuth Authorize SUCCESS (FIXED) ===');
