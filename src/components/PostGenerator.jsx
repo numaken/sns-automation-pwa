@@ -537,24 +537,7 @@ const PostGenerator = () => {
       console.log('📱 Starting Threads OAuth...');
       setError('');
 
-      // 環境変数チェック
-      const hasThreadsConfig = process.env.THREADS_APP_ID || process.env.REACT_APP_THREADS_APP_ID;
-
-      if (!hasThreadsConfig) {
-        // 環境変数が設定されていない場合
-        setError('Threads API設定が見つかりません。');
-
-        const manualSetup = window.confirm(
-          'Threads API設定が見つかりません。\n' +
-          '手動でThreads接続をテストしますか？\n' +
-          '（これは開発・テスト用です）'
-        );
-
-        if (manualSetup) {
-          manualThreadsSetup();
-        }
-        return;
-      }
+      // 🔧 修正: React環境では process.env は使用不可、API呼び出しで確認
 
       // Threads OAuth APIを呼び出し
       const testResponse = await fetch('/api/auth/threads/authorize', {

@@ -34,7 +34,7 @@ export default async function handler(req, res) {
         client_id: process.env.THREADS_APP_ID,
         client_secret: process.env.THREADS_APP_SECRET,
         grant_type: 'authorization_code',
-        redirect_uri: `${process.env.VERCEL_URL || 'https://sns-automation-pwa.vercel.app'}/api/auth/threads/callback`,
+        redirect_uri: `https://postpilot.panolabollc.com/api/auth/threads/callback`,
         code: code,
         code_verifier: authData.codeVerifier
       })

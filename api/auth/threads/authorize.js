@@ -34,7 +34,7 @@ export default async function handler(req, res) {
 
     // Threads OAuth認証URL
     const threadsClientId = process.env.THREADS_APP_ID;
-    const redirectUri = `${process.env.VERCEL_URL || 'https://sns-automation-pwa.vercel.app'}/api/auth/threads/callback`;
+    const redirectUri = `https://postpilot.panolabollc.com/api/auth/threads/callback`;
 
     const authParams = new URLSearchParams({
       client_id: threadsClientId,
