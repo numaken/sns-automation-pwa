@@ -235,7 +235,7 @@ const SubscriptionManager = ({ userId, onPlanChange, onClose }) => {
                 </h5>
                 <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                   <div style={{ marginBottom: '0.5rem' }}>⚡ 無制限AI投稿生成</div>
-                  <div style={{ marginBottom: '0.5rem' }}>🐦 Twitter自動投稿</div>
+                  <div style={{ marginBottom: '0.5rem' }}>𝕏 X（旧Twitter）自動投稿</div>
                   <div style={{ marginBottom: '0.5rem' }}>📱 Threads自動投稿</div>
                   <div style={{ marginBottom: '0.5rem' }}>🔄 同時投稿機能</div>
                   <div style={{ marginBottom: '0.5rem' }}>👑 広告なし</div>
@@ -363,6 +363,7 @@ const PostGenerator = () => {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [userPlan, setUserPlan] = useState('free');
   const [generationTime, setGenerationTime] = useState(null);
+  const [showSignInPage, setShowSignInPage] = useState(false);
 
   // SNS投稿関連の状態
   const [twitterConnected, setTwitterConnected] = useState(false);
@@ -381,6 +382,34 @@ const PostGenerator = () => {
     const userPlan = localStorage.getItem('userPlan');
     const subscriptionStatus = localStorage.getItem('subscriptionStatus');
 
+    // 初回アクセス時（userPlanが未設定の場合）または無料プランでSNS未接続の場合
+    if (!userPlan || (userPlan === 'free' && !localStorage.getItem('twitter_connected') && !localStorage.getItem('threads_connected'))) {
+      console.log('🎉 First time access or free plan without SNS connection detected');
+      
+      // SNS接続チェック
+      const hasAnyConnection = localStorage.getItem('twitter_connected') === 'true' || 
+                               localStorage.getItem('threads_connected') === 'true';
+      
+      if (!hasAnyConnection) {
+        console.log('📱 Showing sign-in page');
+        setShowSignInPage(true);
+        setUserPlan('free'); // 一時的に無料プランに設定
+        return;
+      } else {
+        // SNS接続済みの場合はプレミアムプランに設定
+        console.log('✅ SNS already connected - Setting up premium plan automatically');
+        localStorage.setItem('userPlan', 'premium');
+        localStorage.setItem('subscriptionStatus', 'active');
+        localStorage.setItem('premiumActivatedAt', new Date().toISOString());
+        setUserPlan('premium');
+        setUsage({ remaining: 'unlimited' });
+        localStorage.removeItem('dailyUsage');
+      }
+      
+      checkSnsConnections();
+      return;
+    }
+
     console.log('📊 Premium check:', { userPlan, subscriptionStatus });
 
     const isPremiumUser = (userPlan === 'premium' && subscriptionStatus === 'active');
@@ -398,16 +427,46 @@ const PostGenerator = () => {
     }
   };
 
+  // SNS接続完了後の処理
+  const handleSnsConnectionComplete = () => {
+    console.log('🎉 SNS connection completed - Upgrading to premium');
+    localStorage.setItem('userPlan', 'premium');
+    localStorage.setItem('subscriptionStatus', 'active');
+    localStorage.setItem('premiumActivatedAt', new Date().toISOString());
+    setUserPlan('premium');
+    setUsage({ remaining: 'unlimited' });
+    setShowSignInPage(false);
+    
+    // SNS接続状態を更新（無限ループを防ぐため、直接状態を設定）
+    const twitterToken = localStorage.getItem('twitter_token');
+    const twitterUser = localStorage.getItem('twitter_username');
+    if (twitterToken && twitterUser) {
+      setTwitterConnected(true);
+      setTwitterUsername(twitterUser);
+    }
+    
+    const threadsToken = localStorage.getItem('threads_token');
+    const threadsUser = localStorage.getItem('threads_username');
+    if (threadsToken && threadsUser) {
+      setThreadsConnected(true);
+    }
+  };
+
   // SNS接続状況確認
   const checkSnsConnections = () => {
-    // Twitter接続確認
+    // X（旧Twitter）接続確認
     const twitterToken = localStorage.getItem('twitter_token');
     const twitterUser = localStorage.getItem('twitter_username');
 
     if (twitterToken && twitterUser) {
       setTwitterConnected(true);
       setTwitterUsername(twitterUser);
-      console.log('🐦 Twitter connected:', twitterUser);
+      console.log('𝕏 X connected:', twitterUser);
+      
+      // 初回サインインページ表示中なら、プレミアムにアップグレード
+      if (showSignInPage) {
+        handleSnsConnectionComplete();
+      }
     }
 
     // Threads接続確認
@@ -418,6 +477,11 @@ const PostGenerator = () => {
     if (threadsToken && threadsConnectedFlag === 'true') {
       setThreadsConnected(true);
       console.log('📱 Threads connected:', threadsUser);
+      
+      // 初回サインインページ表示中なら、プレミアムにアップグレード
+      if (showSignInPage) {
+        handleSnsConnectionComplete();
+      }
     }
   };
 
@@ -439,7 +503,7 @@ const PostGenerator = () => {
     const oauth_verifier = urlParams.get('oauth_verifier');
 
     if (oauth_token && oauth_verifier) {
-      console.log('🐦 Twitter OAuth callback detected');
+      console.log('𝕏 X OAuth callback detected');
       setTimeout(() => {
         checkSnsConnections();
       }, 1000);
@@ -466,10 +530,10 @@ const PostGenerator = () => {
     window.history.replaceState({}, document.title, url.toString());
   };
 
-  // Twitter接続処理
+  // X（旧Twitter）接続処理
   const connectTwitter = async () => {
     try {
-      console.log('🐦 Starting Twitter OAuth...');
+      console.log('𝕏 Starting X OAuth...');
       setError('');
 
       const testResponse = await fetch('/api/auth/twitter/authorize', {
@@ -498,8 +562,8 @@ const PostGenerator = () => {
         setError('Twitter OAuth APIが設定されていません。');
 
         const manualSetup = window.confirm(
-          'Twitter OAuth APIが設定されていません。\n' +
-          '手動でTwitter接続をテストしますか？\n' +
+          'X OAuth APIが設定されていません。\n' +
+          '手動でX接続をテストしますか？\n' +
           '（これは開発・テスト用です）'
         );
 
@@ -512,8 +576,8 @@ const PostGenerator = () => {
       setError('Twitter接続でエラーが発生しました: ' + error.message);
 
       const manualSetup = window.confirm(
-        'Twitter接続に失敗しました。\n' +
-        '手動でTwitter接続をテストしますか？\n' +
+        'X接続に失敗しました。\n' +
+        '手動でX接続をテストしますか？\n' +
         '（これは開発・テスト用です）'
       );
 
@@ -525,7 +589,7 @@ const PostGenerator = () => {
 
   // 手動Twitter接続設定（開発・テスト用）
   const manualTwitterSetup = () => {
-    const username = window.prompt('Twitterのユーザーネームをテスト入力してください（@なし）:');
+    const username = window.prompt ? window.prompt('Xのユーザーネームをテスト入力してください（@なし）:') : null;
     if (username) {
       localStorage.setItem('twitter_token', 'test_token_' + Date.now());
       localStorage.setItem('twitter_username', username);
@@ -616,7 +680,7 @@ const PostGenerator = () => {
     setError('');
 
     try {
-      console.log('🐦 Posting to Twitter...');
+      console.log('𝕏 Posting to X...');
       
       const userId = localStorage.getItem('twitter_user_id') || 'twitter-user-' + Date.now();
       console.log('🔍 Using userId for Twitter post:', userId);
@@ -646,11 +710,11 @@ const PostGenerator = () => {
 
         if (localStorage.getItem('twitter_token')?.includes('test_token')) {
           console.log('🔧 Test mode: simulating successful post');
-          window.alert('✅ テストモード: Twitter投稿が成功しました！\n\n' + generatedPost);
+          window.alert('✅ テストモード: X投稿が成功しました！\n\n' + generatedPost);
           return;
         }
 
-        throw new Error(data.error || 'Twitter投稿に失敗しました');
+        throw new Error(data.error || 'X投稿に失敗しました');
       }
 
       const result = await response.json();
@@ -662,7 +726,7 @@ const PostGenerator = () => {
 
     } catch (error) {
       console.error('❌ Twitter post error:', error);
-      setError('Twitter投稿でエラーが発生しました: ' + error.message);
+      setError('X投稿でエラーが発生しました: ' + error.message);
     } finally {
       setIsPostingToTwitter(false);
     }
@@ -825,6 +889,15 @@ const PostGenerator = () => {
       return;
     }
 
+    // SNS接続チェック（プレミアムユーザー向け）
+    if (userPlan === 'premium') {
+      const hasConnection = twitterConnected || threadsConnected;
+      if (!hasConnection) {
+        setError('投稿生成にはSNSアカウントの接続が必要です。先にTwitterまたはThreadsに接続してください。');
+        return;
+      }
+    }
+
     setIsLoading(true);
     setError('');
     setGeneratedPost('');
@@ -914,6 +987,85 @@ const PostGenerator = () => {
         )
       }),
       manualUpgrade: manualUpgradeToPremium,
+      // 🔧 開発・デバッグ用: プラン切り替え機能
+      resetToFree: () => {
+        console.log('🔄 Resetting to free plan...');
+        localStorage.setItem('userPlan', 'free');
+        localStorage.setItem('subscriptionStatus', 'inactive');
+        localStorage.removeItem('premiumActivatedAt');
+        localStorage.removeItem('dailyUsage');
+        // SNS接続も削除してサインインページに戻る
+        localStorage.removeItem('twitter_connected');
+        localStorage.removeItem('twitter_token');
+        localStorage.removeItem('twitter_username');
+        localStorage.removeItem('threads_connected');
+        localStorage.removeItem('threads_token');
+        localStorage.removeItem('threads_username');
+        
+        setUserPlan('free');
+        setUsage({ remaining: 3, used: 0, limit: 3 });
+        console.log('✅ Reset to free plan completed - SNS connections cleared - Reloading...');
+        setTimeout(() => window.location.reload(), 500);
+      },
+      
+      // 🆕 開発・デバッグ用: Stripe迂回で有料プラン化
+      upgradeToPremiumDirect: () => {
+        console.log('🚀 Direct upgrade to premium (bypassing Stripe)...');
+        localStorage.setItem('userPlan', 'premium');
+        localStorage.setItem('subscriptionStatus', 'active');
+        localStorage.setItem('premiumActivatedAt', new Date().toISOString());
+        localStorage.removeItem('dailyUsage');
+        
+        setUserPlan('premium');
+        setUsage({ remaining: 'unlimited' });
+        console.log('✅ Direct upgrade to premium completed - Reloading...');
+        setTimeout(() => window.location.reload(), 500);
+      },
+      fullReset: () => {
+        console.log('🧹 Full reset - clearing all data...');
+        localStorage.clear();
+        console.log('✅ All data cleared - Reloading...');
+        setTimeout(() => window.location.reload(), 1000);
+      },
+      testTwitter: () => {
+        const username = window.prompt ? 
+          (window.prompt('テスト用Xユーザー名を入力（@なし）:') || 'test_user') : 
+          'test_user';
+        localStorage.setItem('twitter_token', 'test_token_x_' + Date.now());
+        localStorage.setItem('twitter_username', username);
+        localStorage.setItem('twitter_connected', 'true');
+        localStorage.setItem('userPlan', 'premium');
+        localStorage.setItem('subscriptionStatus', 'active');
+        console.log('✅ Test X connection created - Reload page');
+        setTimeout(() => window.location.reload(), 500);
+      },
+      testThreads: () => {
+        const username = window.prompt ? 
+          (window.prompt('テスト用Threadsユーザー名を入力:') || 'test_user') : 
+          'test_user';
+        localStorage.setItem('threads_token', 'test_token_threads_' + Date.now());
+        localStorage.setItem('threads_username', username);
+        localStorage.setItem('threads_connected', 'true');
+        localStorage.setItem('userPlan', 'premium');
+        localStorage.setItem('subscriptionStatus', 'active');
+        console.log('✅ Test Threads connection created - Reload page');
+        setTimeout(() => window.location.reload(), 500);
+      },
+      enableAdminMode: () => {
+        const password = window.prompt ? window.prompt('管理者パスワードを入力してください:') : null;
+        if (password === 'sns2024admin') {
+          localStorage.setItem('admin_mode', 'true');
+          console.log('✅ 管理者モードが有効になりました - ページをリロードしてください');
+          setTimeout(() => window.location.reload(), 500);
+        } else {
+          console.log('❌ パスワードが間違っています');
+        }
+      },
+      disableAdminMode: () => {
+        localStorage.removeItem('admin_mode');
+        console.log('✅ 管理者モードが無効になりました - ページをリロードしてください');
+        setTimeout(() => window.location.reload(), 500);
+      },
       checkStatus: checkPremiumStatus,
       checkSns: checkSnsConnections,
       manualTwitter: manualTwitterSetup,
@@ -980,7 +1132,7 @@ const PostGenerator = () => {
               <ul style={{ color: '#a16207', fontSize: '0.875rem', listStyle: 'none', padding: 0, margin: 0, textAlign: 'left' }}>
                 <li>⚡ 無制限の投稿生成</li>
                 <li>🚀 高速生成（専用APIキー）</li>
-                <li>🐦 Twitter自動投稿</li>
+                <li>𝕏 X（旧Twitter）自動投稿</li>
                 <li>📱 Threads自動投稿</li>
                 <li>🔄 同時投稿機能</li>
                 <li>👑 広告なしのクリーンUI</li>
@@ -1030,6 +1182,189 @@ const PostGenerator = () => {
       </div>
     );
   };
+
+  // 初回サインインページ
+  if (showSignInPage) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+        padding: '2rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+      }}>
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '24px',
+          padding: '3rem',
+          maxWidth: '600px',
+          width: '100%',
+          textAlign: 'center',
+          boxShadow: '0 32px 64px -12px rgba(0, 0, 0, 0.25)'
+        }}>
+          <h1 style={{ 
+            fontSize: '2.5rem', 
+            marginBottom: '1rem', 
+            background: 'linear-gradient(135deg, #667eea, #764ba2)',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            color: 'transparent'
+          }}>
+            🚀 SNS自動投稿アプリへようこそ
+          </h1>
+          
+          <p style={{ 
+            fontSize: '1.25rem', 
+            color: '#6b7280', 
+            marginBottom: '2rem',
+            lineHeight: '1.6'
+          }}>
+            始めるには、X（旧Twitter）またはThreadsアカウントに接続してください。<br/>
+            接続後、無制限のAI投稿生成と自動投稿が利用可能になります！
+          </p>
+
+          <div style={{ 
+            display: 'flex', 
+            gap: '1rem', 
+            justifyContent: 'center',
+            marginBottom: '2rem'
+          }}>
+            <button
+              onClick={connectTwitter}
+              disabled={isLoading}
+              style={{
+                background: 'linear-gradient(135deg, #1da1f2, #0d8bd9)',
+                color: 'white',
+                padding: '1rem 2rem',
+                borderRadius: '12px',
+                border: 'none',
+                fontSize: '1.125rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                boxShadow: '0 4px 12px rgba(29, 161, 242, 0.4)',
+                opacity: isLoading ? 0.7 : 1
+              }}
+            >
+              𝕏 X（旧Twitter）で接続
+            </button>
+
+            <button
+              onClick={connectThreads}
+              disabled={isLoading}
+              style={{
+                background: 'linear-gradient(135deg, #000, #333)',
+                color: 'white',
+                padding: '1rem 2rem',
+                borderRadius: '12px',
+                border: 'none',
+                fontSize: '1.125rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                opacity: isLoading ? 0.7 : 1
+              }}
+            >
+              📱 Threadsで接続
+            </button>
+          </div>
+
+          {/* テスト用接続ボタン（管理者のみ） */}
+          {(localStorage.getItem('admin_mode') === 'true' || window.location.hostname === 'localhost') && (
+            <div style={{
+              marginTop: '2rem',
+              padding: '1.5rem',
+              background: 'rgba(59, 130, 246, 0.1)',
+              borderRadius: '12px',
+              border: '1px dashed rgba(59, 130, 246, 0.3)'
+            }}>
+            <p style={{
+              fontSize: '0.875rem',
+              color: '#6b7280',
+              marginBottom: '1rem',
+              textAlign: 'center'
+            }}>
+              🧪 テスト用（開発環境のみ）
+            </p>
+            
+            <div style={{
+              display: 'flex',
+              gap: '0.75rem',
+              justifyContent: 'center'
+            }}>
+              <button
+                onClick={() => {
+                  const username = window.prompt ? 
+                    (window.prompt('テスト用Xユーザー名を入力（@なし）:') || 'test_user') : 
+                    'test_user';
+                  localStorage.setItem('twitter_token', 'test_token_x_' + Date.now());
+                  localStorage.setItem('twitter_username', username);
+                  localStorage.setItem('twitter_connected', 'true');
+                  handleSnsConnectionComplete();
+                }}
+                style={{
+                  background: '#3b82f6',
+                  color: 'white',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                🔧 X接続テスト
+              </button>
+
+              <button
+                onClick={() => {
+                  const username = window.prompt ? 
+                    (window.prompt('テスト用Threadsユーザー名を入力:') || 'test_user') : 
+                    'test_user';
+                  localStorage.setItem('threads_token', 'test_token_threads_' + Date.now());
+                  localStorage.setItem('threads_username', username);
+                  localStorage.setItem('threads_connected', 'true');
+                  handleSnsConnectionComplete();
+                }}
+                style={{
+                  background: '#6b7280',
+                  color: 'white',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                🔧 Threads接続テスト
+              </button>
+            </div>
+          </div>
+          )}
+
+          {error && (
+            <div style={{
+              background: '#fef2f2',
+              color: '#dc2626',
+              padding: '1rem',
+              borderRadius: '8px',
+              marginTop: '1rem',
+              fontSize: '0.875rem'
+            }}>
+              {error}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // メイン画面
   return (
@@ -1097,25 +1432,24 @@ const PostGenerator = () => {
               </div>
             )}
 
-            {/* 設定ボタン（プレミアムのみ） */}
-            {userPlan === 'premium' && (
-              <button
-                onClick={() => setShowSubscriptionManager(true)}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  color: 'white',
-                  padding: '0.75rem 1rem',
-                  borderRadius: '15px',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: '600',
-                  backdropFilter: 'blur(10px)',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}
+            {/* 設定ボタン（全ユーザー） */}
+            <button
+              onClick={() => setShowSubscriptionManager(true)}
+              style={{
+                background: 'rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                padding: '0.75rem 1rem',
+                borderRadius: '15px',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                backdropFilter: 'blur(10px)',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
                 onMouseEnter={(e) => {
                   e.target.style.background = 'rgba(255, 255, 255, 0.3)';
                   e.target.style.transform = 'translateY(-2px)';
@@ -1128,7 +1462,6 @@ const PostGenerator = () => {
                 <span>⚙️</span>
                 設定
               </button>
-            )}
           </div>
 
           <p style={{ 
@@ -1315,32 +1648,83 @@ const PostGenerator = () => {
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
+                      justifyContent: 'space-between',
                       gap: '0.5rem',
                       padding: '0.25rem 0.75rem',
                       background: 'rgba(29, 155, 240, 0.1)',
                       borderRadius: '12px',
                       color: '#1d9bf0',
                       fontSize: '0.75rem',
-                      fontWeight: '600'
+                      fontWeight: '600',
+                      minWidth: '120px'
                     }}>
-                      <span>🐦</span>
-                      @{twitterUsername}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span>𝕏</span>
+                        @{twitterUsername}
+                      </div>
+                      <button
+                        onClick={() => {
+                          localStorage.removeItem('twitter_token');
+                          localStorage.removeItem('twitter_username');
+                          localStorage.removeItem('twitter_connected');
+                          setTwitterConnected(false);
+                          setTwitterUsername('');
+                        }}
+                        style={{
+                          background: 'rgba(220, 38, 38, 0.1)',
+                          color: '#dc2626',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '2px 6px',
+                          cursor: 'pointer',
+                          fontSize: '0.7rem',
+                          fontWeight: '500'
+                        }}
+                        title="X接続を解除"
+                      >
+                        ×
+                      </button>
                     </div>
                   ) : null}
                   {threadsConnected ? (
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
+                      justifyContent: 'space-between',
                       gap: '0.5rem',
                       padding: '0.25rem 0.75rem',
                       background: 'rgba(0, 0, 0, 0.1)',
                       borderRadius: '12px',
                       color: '#000',
                       fontSize: '0.75rem',
-                      fontWeight: '600'
+                      fontWeight: '600',
+                      minWidth: '120px'
                     }}>
-                      <span>🧵</span>
-                      @{localStorage.getItem('threads_username') || 'Threads'}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span>🧵</span>
+                        @{localStorage.getItem('threads_username') || 'Threads'}
+                      </div>
+                      <button
+                        onClick={() => {
+                          localStorage.removeItem('threads_token');
+                          localStorage.removeItem('threads_username');
+                          localStorage.removeItem('threads_connected');
+                          setThreadsConnected(false);
+                        }}
+                        style={{
+                          background: 'rgba(220, 38, 38, 0.1)',
+                          color: '#dc2626',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '2px 6px',
+                          cursor: 'pointer',
+                          fontSize: '0.7rem',
+                          fontWeight: '500'
+                        }}
+                        title="Threads接続を解除"
+                      >
+                        ×
+                      </button>
                     </div>
                   ) : null}
                   {!twitterConnected && !threadsConnected && (
@@ -1664,7 +2048,7 @@ const PostGenerator = () => {
                           fontSize: '0.875rem'
                         }}
                       >
-                        {isPostingToTwitter ? '投稿中...' : `🐦 @${twitterUsername}に投稿`}
+                        {isPostingToTwitter ? '投稿中...' : `𝕏 @${twitterUsername}に投稿`}
                       </button>
                     ) : (
                       <button
@@ -1679,7 +2063,7 @@ const PostGenerator = () => {
                           fontSize: '0.875rem'
                         }}
                       >
-                        🐦 Twitterを接続
+                        𝕏 Xを接続
                       </button>
                     )}
 
@@ -1763,9 +2147,9 @@ const PostGenerator = () => {
           )}
         </div>
 
-{/* プレミアム促進とアップグレード管理 - 一時的にコメントアウト */}
-        {/*
+{/* プレミアム促進とアップグレード管理 */}
         <>
+          {/* 無料プランの場合のプレミアム促進 */}
           {userPlan !== 'premium' && (
             <div style={{
               marginTop: '2rem',
@@ -1791,7 +2175,7 @@ const PostGenerator = () => {
                 fontSize: '0.875rem'
               }}>
                 <div>⚡ 無制限AI生成</div>
-                <div>🐦 Twitter自動投稿</div>
+                <div>𝕏 X（旧Twitter）自動投稿</div>
                 <div>📱 Threads自動投稿</div>
                 <div>🔄 同時投稿機能</div>
               </div>
@@ -1819,8 +2203,66 @@ const PostGenerator = () => {
             </div>
           )}
 
+          {/* アップグレードプロンプト */}
           <UpgradePrompt />
 
+          {/* 設定ボタン（全ユーザー） */}
+          <div style={{
+            marginTop: '2rem',
+            textAlign: 'center',
+            padding: '1rem',
+            borderTop: '1px solid rgba(255, 255, 255, 0.2)'
+          }}>
+            <button
+              onClick={() => setShowSubscriptionManager(true)}
+              style={{
+                background: userPlan === 'premium'
+                  ? 'linear-gradient(to right, #6b7280, #4b5563)'
+                  : 'linear-gradient(to right, #f97316, #ea580c)',
+                color: 'white',
+                padding: '0.75rem 2rem',
+                borderRadius: '0.5rem',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                margin: '0 auto',
+                transition: 'all 0.2s',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+              }}
+              title={userPlan === 'premium' ? 'プレミアムプラン管理・契約情報・解約' : 'プラン詳細確認・アップグレード'}
+            >
+              {userPlan === 'premium' ? (
+                <>
+                  <span>⚙️</span>
+                  <span>アカウント設定・解約</span>
+                </>
+              ) : (
+                <>
+                  <span>📄</span>
+                  <span>契約情報・プラン詳細</span>
+                </>
+              )}
+            </button>
+
+            <p style={{
+              fontSize: '0.875rem',
+              color: 'rgba(255, 255, 255, 0.7)',
+              marginTop: '0.5rem',
+              marginBottom: 0
+            }}>
+              {userPlan === 'premium'
+                ? 'プラン管理・解約・SNS接続解除はこちら'
+                : 'プレミアムプランの詳細・アップグレードはこちら'
+              }
+            </p>
+          </div>
+
+          {/* SubscriptionManagerの表示 */}
           {showSubscriptionManager && (
             <SubscriptionManager
               userId="current-user"
@@ -1829,7 +2271,6 @@ const PostGenerator = () => {
             />
           )}
         </>
-        */}
       </div>
     </>
   );

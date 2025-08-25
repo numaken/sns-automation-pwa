@@ -74,8 +74,8 @@ export default async function handler(req, res) {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        client_id: process.env.THREADS_APP_ID,
-        client_secret: process.env.THREADS_APP_SECRET,
+        client_id: process.env.THREADS_APP_ID?.trim(),
+        client_secret: process.env.THREADS_APP_SECRET?.trim(),
         grant_type: 'authorization_code',
         redirect_uri: `https://postpilot.panolabollc.com/api/auth/threads/callback`,
         code: code,

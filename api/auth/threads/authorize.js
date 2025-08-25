@@ -100,8 +100,8 @@ export default async function handler(req, res) {
       });
     }
 
-    // Threads OAuth認証URL
-    const threadsClientId = process.env.THREADS_APP_ID;
+    // Threads OAuth認証URL（改行文字を除去）
+    const threadsClientId = process.env.THREADS_APP_ID?.trim();
     const redirectUri = `https://postpilot.panolabollc.com/api/auth/threads/callback`;
 
     const authParams = new URLSearchParams({
