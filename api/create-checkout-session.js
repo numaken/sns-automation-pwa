@@ -55,7 +55,7 @@ export default async function handler(req, res) {
     }
 
     // Origin URL確認・修正
-    const origin = req.headers.origin || req.headers.host ? `https://${req.headers.host}` : 'https://sns-automation-pwa.vercel.app';
+    const origin = req.headers.origin || req.headers.host ? `https://${req.headers.host}` : 'https://postpilot.panolabollc.com';
     console.log('🌐 Origin URL:', origin);
 
     // Stripe Checkout セッション作成（¥980対応）

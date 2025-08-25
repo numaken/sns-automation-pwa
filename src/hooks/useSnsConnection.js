@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 const API_BASE_URL = process.env.NODE_ENV === 'production'
-  ? 'https://sns-automation-pwa.vercel.app'
+  ? 'https://postpilot.panolabollc.com'
   : '';
 
 export const useSnsConnection = (userId) => {

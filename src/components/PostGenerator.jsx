@@ -1485,6 +1485,366 @@ const PostGenerator = () => {
           padding: '2.5rem',
           border: '1px solid rgba(255, 255, 255, 0.2)'
         }}>
+          {/* 投稿テーマ入力（メインエリア） */}
+          <div style={{
+            marginBottom: '2rem',
+            background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)',
+            borderRadius: '20px',
+            padding: '2rem',
+            border: '2px solid #e2e8f0'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{
+                width: '50px',
+                height: '50px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.5rem',
+                boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)'
+              }}>
+                ✍️
+              </div>
+              <div>
+                <h2 style={{ 
+                  fontSize: '1.5rem', 
+                  fontWeight: '700', 
+                  color: '#1f2937', 
+                  margin: 0,
+                  marginBottom: '4px'
+                }}>
+                  投稿テーマを入力
+                </h2>
+                <p style={{ 
+                  fontSize: '0.875rem', 
+                  color: '#6b7280', 
+                  margin: 0
+                }}>
+                  どんな内容を投稿したいか教えてください
+                </p>
+              </div>
+            </div>
+
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="例：今日学んだプログラミングの新しい技術について..."
+              style={{
+                width: '100%',
+                height: '120px',
+                padding: '1.5rem',
+                borderRadius: '16px',
+                border: '2px solid #e5e7eb',
+                fontSize: '1rem',
+                fontFamily: 'inherit',
+                resize: 'vertical',
+                backgroundColor: 'white',
+                boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)',
+                outline: 'none',
+                transition: 'all 0.2s ease'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#4f46e5';
+                e.target.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.06), 0 0 0 3px rgba(79, 70, 229, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#e5e7eb';
+                e.target.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.06)';
+              }}
+            />
+
+            {/* トーン選択とボタン */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              marginTop: '1.5rem',
+              flexWrap: 'wrap',
+              gap: '1rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <label style={{ fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>
+                  トーン:
+                </label>
+                <select
+                  value={tone}
+                  onChange={(e) => setTone(e.target.value)}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '8px',
+                    border: '1px solid #d1d5db',
+                    fontSize: '0.875rem',
+                    fontWeight: '500',
+                    backgroundColor: 'white',
+                    color: '#374151',
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="カジュアル">😊 カジュアル</option>
+                  <option value="プロフェッショナル">💼 プロフェッショナル</option>
+                  <option value="フレンドリー">🤝 フレンドリー</option>
+                  <option value="情熱的">🔥 情熱的</option>
+                </select>
+              </div>
+
+              <button
+                onClick={generatePost}
+                disabled={isLoading || !prompt.trim()}
+                style={{
+                  background: !prompt.trim() || isLoading 
+                    ? '#9ca3af' 
+                    : 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+                  color: 'white',
+                  padding: '1rem 2rem',
+                  borderRadius: '12px',
+                  border: 'none',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  cursor: !prompt.trim() || isLoading ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  boxShadow: !prompt.trim() || isLoading 
+                    ? 'none' 
+                    : '0 8px 25px rgba(79, 70, 229, 0.3)',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isLoading && prompt.trim()) {
+                    e.target.style.transform = 'translateY(-2px)';
+                    e.target.style.boxShadow = '0 12px 35px rgba(79, 70, 229, 0.4)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isLoading && prompt.trim()) {
+                    e.target.style.transform = 'translateY(0)';
+                    e.target.style.boxShadow = '0 8px 25px rgba(79, 70, 229, 0.3)';
+                  }
+                }}
+              >
+                {isLoading ? (
+                  <>
+                    <div style={{ 
+                      width: '20px', 
+                      height: '20px', 
+                      border: '2px solid rgba(255,255,255,0.3)', 
+                      borderTop: '2px solid white', 
+                      borderRadius: '50%', 
+                      animation: 'spin 1s linear infinite' 
+                    }} />
+                    生成中...
+                  </>
+                ) : (
+                  <>
+                    🤖 AI投稿生成
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* 生成された投稿文（メインエリア） */}
+          {generatedPost && (
+            <div style={{
+              marginBottom: '2rem',
+              background: 'linear-gradient(135deg, #f0f9ff, #dbeafe)',
+              borderRadius: '20px',
+              padding: '2rem',
+              border: '2px solid #3b82f6'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div style={{
+                  width: '50px',
+                  height: '50px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.5rem',
+                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                }}>
+                  🎯
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <h3 style={{ 
+                        fontSize: '1.5rem', 
+                        fontWeight: '700', 
+                        color: '#1f2937', 
+                        margin: 0,
+                        marginBottom: '4px'
+                      }}>
+                        生成された投稿文
+                      </h3>
+                      <p style={{ 
+                        fontSize: '0.875rem', 
+                        color: '#6b7280', 
+                        margin: 0
+                      }}>
+                        内容を確認して投稿またはコピーしてください
+                      </p>
+                    </div>
+                    {quality && (
+                      <div style={{
+                        background: quality.grade === 'A' ? '#10b981' : 
+                                   quality.grade === 'B' ? '#3b82f6' : 
+                                   quality.grade === 'C' ? '#f59e0b' : '#ef4444',
+                        color: 'white',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '12px',
+                        fontWeight: '700',
+                        fontSize: '1rem'
+                      }}>
+                        品質: {quality.grade}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                background: 'white',
+                borderRadius: '16px',
+                padding: '1.5rem',
+                border: '1px solid #e5e7eb',
+                boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.06)'
+              }}>
+                <div style={{
+                  fontSize: '1rem',
+                  lineHeight: '1.6',
+                  color: '#1f2937',
+                  whiteSpace: 'pre-wrap',
+                  fontFamily: 'inherit'
+                }}>
+                  {generatedPost}
+                </div>
+              </div>
+
+              {/* 投稿・コピーボタン */}
+              <div style={{ 
+                display: 'flex', 
+                gap: '1rem', 
+                marginTop: '1.5rem',
+                flexWrap: 'wrap'
+              }}>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(generatedPost);
+                    alert('✅ 投稿文をクリップボードにコピーしました！');
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #6b7280, #4b5563)',
+                    color: 'white',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '12px',
+                    border: 'none',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    boxShadow: '0 4px 12px rgba(107, 114, 128, 0.3)'
+                  }}
+                >
+                  📋 コピー
+                </button>
+
+                {/* SNS投稿ボタンはここに配置 */}
+                {(twitterConnected || threadsConnected) && userPlan === 'premium' && (
+                  <>
+                    {twitterConnected && (
+                      <button
+                        onClick={postToTwitter}
+                        disabled={isPostingToTwitter}
+                        style={{
+                          background: 'linear-gradient(135deg, #1da1f2, #0d8bd9)',
+                          color: 'white',
+                          padding: '0.75rem 1.5rem',
+                          borderRadius: '12px',
+                          border: 'none',
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          boxShadow: '0 4px 12px rgba(29, 161, 242, 0.3)'
+                        }}
+                      >
+                        {isPostingToTwitter ? '投稿中...' : '𝕏 Xに投稿'}
+                      </button>
+                    )}
+
+                    {threadsConnected && (
+                      <button
+                        onClick={postToThreads}
+                        disabled={isPostingToThreads}
+                        style={{
+                          background: 'linear-gradient(135deg, #000, #333)',
+                          color: 'white',
+                          padding: '0.75rem 1.5rem',
+                          borderRadius: '12px',
+                          border: 'none',
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+                        }}
+                      >
+                        {isPostingToThreads ? '投稿中...' : '📱 Threadsに投稿'}
+                      </button>
+                    )}
+
+                    {twitterConnected && threadsConnected && (
+                      <button
+                        onClick={postToAllPlatforms}
+                        style={{
+                          background: 'linear-gradient(135deg, #10b981, #059669)',
+                          color: 'white',
+                          padding: '0.75rem 1.5rem',
+                          borderRadius: '12px',
+                          border: 'none',
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                        }}
+                      >
+                        🔄 同時投稿
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* エラー表示 */}
+          {error && (
+            <div style={{
+              background: 'linear-gradient(135deg, #fee2e2, #fecaca)',
+              border: '2px solid #ef4444',
+              borderRadius: '12px',
+              padding: '1rem',
+              marginBottom: '1rem',
+              color: '#dc2626',
+              fontWeight: '500'
+            }}>
+              ❌ {error}
+            </div>
+          )}
           {/* 使用状況表示 */}
           <div style={{
             marginBottom: '2rem',

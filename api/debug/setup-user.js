@@ -130,7 +130,7 @@ export default async function handler(req, res) {
         '1. ページをリロードしてSNS接続状態を確認',
         '2. 投稿を生成してSNS投稿ボタンが表示されることを確認',
         '3. Twitter/Threads投稿をテスト実行',
-        '4. システム状態確認: curl -X POST "https://sns-automation-pwa.vercel.app/api/debug/system-status" -H "Content-Type: application/json" -d \'{"userId":"' + userId + '"}\'|jq .userData'
+        '4. システム状態確認: curl -X POST "https://postpilot.panolabollc.com/api/debug/system-status" -H "Content-Type: application/json" -d \'{"userId":"' + userId + '"}\'|jq .userData'
       ]
     };
 

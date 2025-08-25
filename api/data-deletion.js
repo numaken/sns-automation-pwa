@@ -25,7 +25,7 @@ export default async function handler(req, res) {
 
       // Metaに要求される形式でレスポンス
       const deletionResponse = {
-        url: `https://sns-automation-pwa.vercel.app/api/data-deletion-status`,
+        url: `https://postpilot.panolabollc.com/api/data-deletion-status`,
         confirmation_code: `DEL_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       };
 
@@ -47,7 +47,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       service: 'SNS自動化PWA - データ削除サービス',
       status: 'active',
-      endpoint: 'https://sns-automation-pwa.vercel.app/api/data-deletion',
+      endpoint: 'https://postpilot.panolabollc.com/api/data-deletion',
       description: 'Meta/Facebook API要件に準拠したデータ削除エンドポイント',
       last_updated: new Date().toISOString()
     });
