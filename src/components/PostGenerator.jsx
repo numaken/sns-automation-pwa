@@ -387,7 +387,6 @@ const PostGenerator = () => {
                                   localStorage.getItem('twitter_token');
     const hasThreadsConnection = localStorage.getItem('threads_connected') === 'true' || 
                                   localStorage.getItem('threads_token');
-    const hasAnyConnection = hasTwitterConnection || hasThreadsConnection;
     
     // 初回アクセス時（userPlanが未設定の場合）
     if (!userPlan) {
@@ -509,7 +508,6 @@ const PostGenerator = () => {
     const sessionId = urlParams.get('session_id');
     const twitterAuth = urlParams.get('twitter_auth');
     const threadsAuth = urlParams.get('auth_success');
-    const autoReturn = urlParams.get('auto_return');
 
     // OAuth認証成功時の処理
     if (twitterAuth === 'success' || threadsAuth === 'threads') {
@@ -2366,180 +2364,6 @@ const PostGenerator = () => {
             </div>
           )}
 
-          {/* 生成結果 */}
-          {generatedPost && (
-            <div style={{ marginTop: '2rem' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#1f2937', marginBottom: '1rem' }}>
-                生成された投稿
-              </h3>
-
-              <div style={{
-                background: '#f9fafb',
-                padding: '1.5rem',
-                borderRadius: '0.5rem',
-                border: '1px solid #e5e7eb'
-              }}>
-                <p style={{ color: '#1f2937', lineHeight: '1.6', whiteSpace: 'pre-wrap', margin: 0 }}>
-                  {generatedPost}
-                </p>
-              </div>
-
-              {/* 品質・統計表示 */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginTop: '1rem',
-                fontSize: '0.875rem',
-                color: '#6b7280'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  {quality && <span>品質スコア: {quality}点</span>}
-                  {generationTime && (
-                    <span>生成時間: {(generationTime / 1000).toFixed(1)}秒</span>
-                  )}
-                </div>
-                <span>文字数: {generatedPost.length}文字</span>
-              </div>
-
-              {/* アクションボタン */}
-              <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                {/* コピーボタン */}
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(generatedPost);
-                    const originalText = generatedPost;
-                    setGeneratedPost('📋 コピーしました！');
-                    setTimeout(() => setGeneratedPost(originalText), 1000);
-                  }}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: '#10b981',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem'
-                  }}
-                >
-                  📋 クリップボードにコピー
-                </button>
-
-                {/* プレミアム限定：SNS投稿ボタン */}
-                {userPlan === 'premium' && (
-                  <>
-                    {/* Twitter投稿 */}
-                    {twitterConnected ? (
-                      <button
-                        onClick={postToTwitter}
-                        disabled={isPostingToTwitter}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: isPostingToTwitter ? '#9ca3af' : '#1d9bf0',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '0.5rem',
-                          cursor: isPostingToTwitter ? 'not-allowed' : 'pointer',
-                          fontSize: '0.875rem'
-                        }}
-                      >
-                        {isPostingToTwitter ? '投稿中...' : `𝕏 @${twitterUsername}に投稿`}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={connectTwitter}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: '#1d9bf0',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '0.5rem',
-                          cursor: 'pointer',
-                          fontSize: '0.875rem'
-                        }}
-                      >
-                        𝕏 Xを接続
-                      </button>
-                    )}
-
-                    {/* Threads投稿 */}
-                    {threadsConnected ? (
-                      <button
-                        onClick={postToThreads}
-                        disabled={isPostingToThreads}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: isPostingToThreads ? '#9ca3af' : '#000',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '0.5rem',
-                          cursor: isPostingToThreads ? 'not-allowed' : 'pointer',
-                          fontSize: '0.875rem'
-                        }}
-                      >
-                        {isPostingToThreads ? '投稿中...' : '📱 Threadsに投稿'}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={connectThreads}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: '#000',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '0.5rem',
-                          cursor: 'pointer',
-                          fontSize: '0.875rem'
-                        }}
-                      >
-                        📱 Threadsを接続
-                      </button>
-                    )}
-
-                    {/* 同時投稿ボタン */}
-                    {(twitterConnected || threadsConnected) && (
-                      <button
-                        onClick={postToAllPlatforms}
-                        disabled={isPostingToTwitter || isPostingToThreads}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: (isPostingToTwitter || isPostingToThreads)
-                            ? '#9ca3af'
-                            : 'linear-gradient(to right, #7c3aed, #ec4899)',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '0.5rem',
-                          cursor: (isPostingToTwitter || isPostingToThreads) ? 'not-allowed' : 'pointer',
-                          fontSize: '0.875rem',
-                          fontWeight: 'bold'
-                        }}
-                      >
-                        {(isPostingToTwitter || isPostingToThreads)
-                          ? '投稿中...'
-                          : '🔄 同時投稿'
-                        }
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* 無料プラン：SNS投稿プレビュー */}
-              {userPlan !== 'premium' && (
-                <div style={{
-                  marginTop: '1rem',
-                  padding: '1rem',
-                  background: '#fef3c7',
-                  borderRadius: '0.5rem',
-                  border: '1px solid #fbbf24'
-                }}>
-                  <p style={{ color: '#92400e', fontSize: '0.875rem', margin: 0 }}>
-                    💎 プレミアムプランなら、この投稿をTwitterやThreadsに自動投稿＋同時投稿できます！
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
 {/* プレミアム促進とアップグレード管理 */}
