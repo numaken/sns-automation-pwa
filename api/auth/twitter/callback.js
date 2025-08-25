@@ -335,8 +335,36 @@ export default async function handler(req, res) {
                 countdownElement.textContent = countdown;
                 if (countdown <= 0) {
                     clearInterval(countdownTimer);
-                    countdownElement.parentElement.textContent = 'ウィンドウを閉じています...（手動で閉じてください）';
-                    closeWindow();
+                    countdownElement.parentElement.textContent = 'アプリに戻ります...';
+                    
+                    // Threadsと同様の戻る処理
+                    try {
+                        // 親ウィンドウにメッセージを送信
+                        if (window.opener && !window.opener.closed) {
+                            window.opener.postMessage({
+                                type: 'twitter_auth_complete',
+                                success: true,
+                                username: '${userData.data.username}',
+                                platform: 'twitter'
+                            }, '*');
+                            
+                            // 少し待ってからウィンドウを閉じる
+                            setTimeout(() => {
+                                try {
+                                    window.close();
+                                } catch (e) {
+                                    // 閉じれない場合はリダイレクト
+                                    window.location.href = 'https://postpilot.panolabollc.com/app?twitter_auth=success&username=${userData.data.username}&auto_return=true';
+                                }
+                            }, 500);
+                        } else {
+                            // 親ウィンドウがない場合はリダイレクト
+                            window.location.href = 'https://postpilot.panolabollc.com/app?twitter_auth=success&username=${userData.data.username}&auto_return=true';
+                        }
+                    } catch (e) {
+                        // エラーの場合はリダイレクト
+                        window.location.href = 'https://postpilot.panolabollc.com/app?twitter_auth=success&username=${userData.data.username}&auto_return=true';
+                    }
                 }
             }, 1000);
             
