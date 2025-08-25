@@ -415,12 +415,30 @@ const PostGenerator = () => {
       return;
     }
     
-    // 無料プランでSNS未接続の場合のみサインインページを表示
-    if (userPlan === 'free' && !hasAnyConnection) {
-      console.log('📱 Free plan without SNS - Showing sign-in page');
-      setShowSignInPage(true);
-      checkSnsConnections();
-      return;
+    // 無料プランの処理
+    if (userPlan === 'free') {
+      if (hasAnyConnection) {
+        // SNS接続済みの場合はプレミアムプランに自動アップグレード
+        console.log('✅ Free plan with SNS connection - Auto upgrading to premium');
+        localStorage.setItem('userPlan', 'premium');
+        localStorage.setItem('subscriptionStatus', 'active');
+        localStorage.setItem('premiumActivatedAt', new Date().toISOString());
+        setUserPlan('premium');
+        setUsage({ remaining: 'unlimited' });
+        setShowSignInPage(false); // サインインページを非表示
+        localStorage.removeItem('dailyUsage');
+        
+        // 状態更新完了後にメイン画面を確実に表示
+        setTimeout(() => setShowSignInPage(false), 100);
+        checkSnsConnections();
+        return;
+      } else {
+        // SNS未接続の場合のみサインインページを表示
+        console.log('📱 Free plan without SNS - Showing sign-in page');
+        setShowSignInPage(true);
+        checkSnsConnections();
+        return;
+      }
     }
 
     console.log('📊 Premium check:', { userPlan, subscriptionStatus });
