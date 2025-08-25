@@ -382,11 +382,6 @@ const PostGenerator = () => {
     const userPlan = localStorage.getItem('userPlan');
     const subscriptionStatus = localStorage.getItem('subscriptionStatus');
 
-    // SNS接続チェック（最初に実行）
-    const hasTwitterConnection = localStorage.getItem('twitter_connected') === 'true' || 
-                                  localStorage.getItem('twitter_token');
-    const hasThreadsConnection = localStorage.getItem('threads_connected') === 'true' || 
-                                  localStorage.getItem('threads_token');
     
     // 初回アクセス時（userPlanが未設定の場合）
     if (!userPlan) {
@@ -541,6 +536,7 @@ const PostGenerator = () => {
         checkSnsConnections();
       }, 1000);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 手動プレミアム移行
@@ -1105,6 +1101,7 @@ const PostGenerator = () => {
       manualThreads: manualThreadsSetup
     };
     console.log('🔧 Debug functions available: window.debugSNSApp');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userPlan, usage, twitterConnected, threadsConnected]);
 
   // アップグレードプロンプト
@@ -2226,64 +2223,6 @@ const PostGenerator = () => {
               </select>
             </div>
 
-            <button
-              onClick={generatePost}
-              disabled={isLoading || !prompt.trim()}
-              style={{
-                width: '100%',
-                background: isLoading || !prompt.trim()
-                  ? 'linear-gradient(135deg, #9ca3af, #6b7280)'
-                  : 'linear-gradient(135deg, #667eea, #764ba2)',
-                color: 'white',
-                padding: '1.25rem 2rem',
-                borderRadius: '20px',
-                fontWeight: '700',
-                fontSize: '1.125rem',
-                border: 'none',
-                cursor: isLoading || !prompt.trim() ? 'not-allowed' : 'pointer',
-                transition: 'all 0.3s ease',
-                boxShadow: isLoading || !prompt.trim() 
-                  ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                  : '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                position: 'relative',
-                overflow: 'hidden',
-                transform: 'scale(1)'
-              }}
-              onMouseEnter={(e) => {
-                if (!isLoading && prompt.trim()) {
-                  e.target.style.transform = 'scale(1.02)';
-                  e.target.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.25)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isLoading && prompt.trim()) {
-                  e.target.style.transform = 'scale(1)';
-                  e.target.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
-                }
-              }}
-            >
-              
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                {isLoading ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
-                    <div style={{
-                      width: '1.5rem',
-                      height: '1.5rem',
-                      border: '3px solid rgba(255, 255, 255, 0.3)',
-                      borderTop: '3px solid white',
-                      borderRadius: '50%'
-                    }}></div>
-                    AI投稿生成中...
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
-                    <span style={{ fontSize: '1.25rem' }}>✨</span>
-                    AI投稿生成
-                    <span style={{ fontSize: '1.25rem' }}>🚀</span>
-                  </div>
-                )}
-              </div>
-            </button>
           </div>
 
           {/* エラー表示 */}

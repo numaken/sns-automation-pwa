@@ -6,7 +6,7 @@ import { useUserPlan } from '../hooks/useUserPlan';
 
 // SettingsPanel関数の最初に追加
 const SettingsPanel = () => {
-  const { userPlan, isLoading } = useUserPlan();
+  const { userPlan } = useUserPlan();
   const isPremium = userPlan === 'premium';
 
 
