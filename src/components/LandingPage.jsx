@@ -72,6 +72,21 @@ const LandingPage = ({ onNavigateToApp }) => {
         maxWidth: '1200px',
         margin: '0 auto'
       }}>
+        <div style={{
+          display: 'inline-block',
+          background: 'linear-gradient(45deg, #10B981, #059669)',
+          color: 'white',
+          padding: '0.75rem 2rem',
+          borderRadius: '50px',
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          marginBottom: '2rem',
+          boxShadow: '0 8px 32px rgba(16, 185, 129, 0.3)',
+          animation: 'pulse 2s infinite'
+        }}>
+          🎉 完全無料で今すぐ試せます！
+        </div>
+
         <h1 style={{
           fontSize: '3rem',
           fontWeight: 'bold',
@@ -79,27 +94,28 @@ const LandingPage = ({ onNavigateToApp }) => {
           marginBottom: '1.5rem',
           lineHeight: '1.2'
         }}>
-          AIが作る、あなたが選ぶ<br/>
           <span style={{
             background: 'linear-gradient(45deg, #FFE066, #FF6B6B)',
             backgroundClip: 'text',
             WebkitBackgroundClip: 'text',
             color: 'transparent'
           }}>
-            自動SNS投稿ツール
-          </span>
+            「今月いくら請求される？」
+          </span><br/>
+          <span style={{ fontSize: '2.5rem' }}>😰</span> の不安もなし・月額固定¥980
         </h1>
 
         <p style={{
           fontSize: '1.25rem',
           color: 'rgba(255, 255, 255, 0.9)',
           marginBottom: '3rem',
-          maxWidth: '600px',
+          maxWidth: '700px',
           margin: '0 auto 3rem auto',
           lineHeight: '1.6'
         }}>
-          最新AIを活用したAI投稿生成と、X・Threadsへの自動投稿で、<br/>
-          SNS運用を圧倒的に効率化します。
+          <strong>他社の複雑な設定に挫折した方にこそおすすめ！</strong><br/>
+          APIキー設定・OpenAI登録・クレカ登録すべて不要で即利用開始<br/>
+          完全予算管理で安心してAI投稿生成をお楽しみください
         </p>
 
         <div style={{
@@ -162,6 +178,87 @@ const LandingPage = ({ onNavigateToApp }) => {
         </div>
       </section>
 
+      {/* 業界初の成果セクション */}
+      <section style={{
+        background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1))',
+        margin: '2rem',
+        borderRadius: '20px',
+        padding: '3rem 2rem',
+        border: '1px solid rgba(59, 130, 246, 0.2)'
+      }}>
+        <h2 style={{
+          textAlign: 'center',
+          fontSize: '2rem',
+          fontWeight: 'bold',
+          color: 'white',
+          marginBottom: '2rem'
+        }}>
+          🚀 APIキー設定不要の圧倒的メリット
+        </h2>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '2rem',
+          maxWidth: '800px',
+          margin: '0 auto'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              fontSize: '2.5rem',
+              fontWeight: 'bold',
+              color: '#3B82F6',
+              marginBottom: '0.5rem'
+            }}>即座</div>
+            <div style={{
+              fontSize: '1rem',
+              color: 'white',
+              fontWeight: 'bold',
+              marginBottom: '0.5rem'
+            }}>利用開始</div>
+            <div style={{
+              fontSize: '0.875rem',
+              color: 'rgba(255, 255, 255, 0.8)'
+            }}>サインアップ後すぐ</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              fontSize: '2.5rem',
+              fontWeight: 'bold',
+              color: '#10B981',
+              marginBottom: '0.5rem'
+            }}>安全</div>
+            <div style={{
+              fontSize: '1rem',
+              color: 'white',
+              fontWeight: 'bold',
+              marginBottom: '0.5rem'
+            }}>セキュリティ</div>
+            <div style={{
+              fontSize: '0.875rem',
+              color: 'rgba(255, 255, 255, 0.8)'
+            }}>APIキー漏洩リスクなし</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              fontSize: '2.5rem',
+              fontWeight: 'bold',
+              color: '#F59E0B',
+              marginBottom: '0.5rem'
+            }}>予算</div>
+            <div style={{
+              fontSize: '1rem',
+              color: 'white',
+              fontWeight: 'bold',
+              marginBottom: '0.5rem'
+            }}>管理簡単</div>
+            <div style={{
+              fontSize: '0.875rem',
+              color: 'rgba(255, 255, 255, 0.8)'
+            }}>月額固定¥980のみ</div>
+          </div>
+        </div>
+      </section>
+
       {/* 主要機能セクション */}
       <section id="features" style={{
         background: 'rgba(255, 255, 255, 0.1)',
@@ -187,7 +284,7 @@ const LandingPage = ({ onNavigateToApp }) => {
           maxWidth: '1200px',
           margin: '0 auto'
         }}>
-          {/* AI投稿生成 */}
+          {/* APIキー不要の簡単さ */}
           <div style={{
             background: 'rgba(255, 255, 255, 0.1)',
             borderRadius: '15px',
@@ -195,25 +292,26 @@ const LandingPage = ({ onNavigateToApp }) => {
             textAlign: 'center',
             border: '1px solid rgba(255, 255, 255, 0.2)'
           }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🤖</div>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔑</div>
             <h3 style={{
               fontSize: '1.5rem',
               fontWeight: 'bold',
               color: 'white',
               marginBottom: '1rem'
             }}>
-              AI投稿生成
+              APIキー設定不要
             </h3>
             <p style={{
               color: 'rgba(255, 255, 255, 0.8)',
               lineHeight: '1.6'
             }}>
-              最新AIを活用した高品質な投稿文を自動生成。<br/>
-              トーン調整やプラットフォーム最適化も自動対応。
+              <strong>他社AIツールの99%がAPIキー設定必須</strong><br/>
+              当サービスなら技術知識不要で即座に利用開始！<br/>
+              セキュリティリスク・設定ミスの心配もありません。
             </p>
           </div>
 
-          {/* 複数SNS対応 */}
+          {/* AI品質評価システム */}
           <div style={{
             background: 'rgba(255, 255, 255, 0.1)',
             borderRadius: '15px',
@@ -221,25 +319,25 @@ const LandingPage = ({ onNavigateToApp }) => {
             textAlign: 'center',
             border: '1px solid rgba(255, 255, 255, 0.2)'
           }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📱</div>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎯</div>
             <h3 style={{
               fontSize: '1.5rem',
               fontWeight: 'bold',
               color: 'white',
               marginBottom: '1rem'
             }}>
-              複数SNS対応
+              AI品質評価システム
             </h3>
             <p style={{
               color: 'rgba(255, 255, 255, 0.8)',
               lineHeight: '1.6'
             }}>
-              X（旧Twitter）・Threadsに対応。<br/>
-              同時投稿機能で効率的にリーチを拡大。
+              <strong>投稿品質をA~F評価で自動判定</strong><br/>
+              エンゲージメント予測で、より効果的な投稿を生成。
             </p>
           </div>
 
-          {/* ワンクリック投稿 */}
+          {/* 料金透明性 */}
           <div style={{
             background: 'rgba(255, 255, 255, 0.1)',
             borderRadius: '15px',
@@ -247,21 +345,21 @@ const LandingPage = ({ onNavigateToApp }) => {
             textAlign: 'center',
             border: '1px solid rgba(255, 255, 255, 0.2)'
           }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚡</div>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💰</div>
             <h3 style={{
               fontSize: '1.5rem',
               fontWeight: 'bold',
               color: 'white',
               marginBottom: '1rem'
             }}>
-              ワンクリック投稿
+              完全固定料金制
             </h3>
             <p style={{
               color: 'rgba(255, 255, 255, 0.8)',
               lineHeight: '1.6'
             }}>
-              生成された投稿文を確認して、<br/>
-              ワンクリックで各SNSへ自動投稿。
+              <strong>隠れた従量課金は一切なし</strong><br/>
+              月額¥980でAPIコスト込み、使い放題の安心設計。
             </p>
           </div>
         </div>
@@ -322,9 +420,10 @@ const LandingPage = ({ onNavigateToApp }) => {
               lineHeight: '1.8'
             }}>
               <li>📝 1日3回まで投稿生成</li>
-              <li>🤖 基本AI機能</li>
-              <li>📱 SNS連携</li>
-              <li>💬 コミュニティサポート</li>
+              <li><strong>🔑 APIキー設定不要</strong></li>
+              <li><strong>🎯 AI品質評価（A~F評価）</strong></li>
+              <li>📱 X・Threads連携</li>
+              <li><strong>💰 完全無料・隠れコストなし</strong></li>
             </ul>
           </div>
 
@@ -374,10 +473,11 @@ const LandingPage = ({ onNavigateToApp }) => {
               padding: 0,
               lineHeight: '1.8'
             }}>
-              <li>🚀 無制限投稿生成</li>
-              <li>⚡ 高速専用API</li>
+              <li><strong>🚀 無制限投稿生成</strong></li>
+              <li><strong>⚡ 高速専用API（8秒 vs 15秒）</strong></li>
               <li>📱 全SNS自動投稿</li>
               <li>🔄 同時投稿機能</li>
+              <li><strong>💰 完全固定¥980・従量課金なし</strong></li>
               <li>👑 優先サポート</li>
             </ul>
           </div>
@@ -434,8 +534,8 @@ const LandingPage = ({ onNavigateToApp }) => {
               color: 'rgba(255, 255, 255, 0.8)',
               lineHeight: '1.6'
             }}>
-              X（旧Twitter）やThreadsアカウントを<br/>
-              安全に連携
+              <strong>設定不要で即連携</strong><br/>
+              他社と違って面倒なAPIキー設定は一切不要
             </p>
           </div>
 
@@ -465,8 +565,8 @@ const LandingPage = ({ onNavigateToApp }) => {
               color: 'rgba(255, 255, 255, 0.8)',
               lineHeight: '1.6'
             }}>
-              簡単なプロンプトから<br/>
-              高品質な投稿文を自動生成
+              <strong>AI品質評価システム搭載</strong><br/>
+              A~F評価でエンゲージメント予測も可能
             </p>
           </div>
 
@@ -496,8 +596,8 @@ const LandingPage = ({ onNavigateToApp }) => {
               color: 'rgba(255, 255, 255, 0.8)',
               lineHeight: '1.6'
             }}>
-              生成された投稿を確認して<br/>
-              ワンクリックで各SNSに投稿
+              <strong>隠れた従量課金なし</strong><br/>
+              固定料金でAPIコストも全て込み
             </p>
           </div>
         </div>
@@ -523,7 +623,9 @@ const LandingPage = ({ onNavigateToApp }) => {
           maxWidth: '600px',
           margin: '0 auto 2rem auto'
         }}>
-          無料プランで今すぐ始められます。クレジットカード不要。
+          <strong>APIキー設定・OpenAI登録・クレカ登録すべて不要！</strong><br/>
+          「今月いくら請求される？」の不安もなし・月額固定¥980の完全予算管理<br/>
+          他社の複雑な設定に挫折した方にこそおすすめです
         </p>
         <button
           onClick={handleGetStarted}
