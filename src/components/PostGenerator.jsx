@@ -491,6 +491,18 @@ const PostGenerator = () => {
       }
     }
 
+    // SNS未接続かつ初回アクセスの場合、サインインページを表示
+    const hasTwitterConnection = !!(twitterToken && twitterUser);
+    const hasThreadsConnection = !!(threadsToken && threadsConnectedFlag === 'true');
+    const isFirstTimeUser = localStorage.getItem('firstVisit') !== 'false';
+    
+    if (!hasTwitterConnection && !hasThreadsConnection && isFirstTimeUser) {
+      console.log('🆕 First-time user detected - showing sign-in page');
+      setShowSignInPage(true);
+      localStorage.setItem('firstVisit', 'false');
+      return;
+    }
+
     console.log('✅ SNS connection check complete');
   };
 
@@ -1391,6 +1403,48 @@ const PostGenerator = () => {
               {error}
             </div>
           )}
+
+          {/* スキップボタン */}
+          <div style={{ 
+            marginTop: '2rem', 
+            textAlign: 'center',
+            paddingTop: '1.5rem',
+            borderTop: '1px solid rgba(255, 255, 255, 0.3)'
+          }}>
+            <p style={{
+              fontSize: '0.875rem',
+              color: 'rgba(107, 114, 128, 0.8)',
+              marginBottom: '1rem'
+            }}>
+              とりあえずSNS接続せずに試してみる
+            </p>
+            <button
+              onClick={() => {
+                console.log('👤 User chose to skip sign-in');
+                setShowSignInPage(false);
+                localStorage.setItem('firstVisit', 'false');
+              }}
+              style={{
+                background: 'rgba(255, 255, 255, 0.2)',
+                color: '#374151',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '500',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.2)';
+              }}
+            >
+              スキップして使ってみる
+            </button>
+          </div>
         </div>
       </div>
     );
