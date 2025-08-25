@@ -1,107 +1,207 @@
-// Cancel.jsx - 無料版専用安全版（プレミアム要素完全削除）
-
 import React from 'react';
 
 const Cancel = () => {
-  // プレミアム機能は一時的に完全無効化
-  const PREMIUM_FEATURES_ENABLED = false;
-
   const handleReturnToApp = () => {
     // アプリのメイン画面に戻る
     window.location.href = '/';
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
-        <div className="text-center">
-          {/* ヘッダー */}
-          <div className="mb-6">
-            <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
-              <span className="text-2xl">⏸️</span>
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '2rem',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    }}>
+      <div style={{
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(20px)',
+        borderRadius: '24px',
+        padding: '3rem',
+        maxWidth: '500px',
+        width: '100%',
+        textAlign: 'center',
+        boxShadow: '0 32px 64px -12px rgba(0, 0, 0, 0.25)'
+      }}>
+        {/* アイコン */}
+        <div style={{
+          background: 'linear-gradient(135deg, #FEF3C7, #FCD34D)',
+          borderRadius: '50%',
+          width: '80px',
+          height: '80px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 2rem auto',
+          boxShadow: '0 8px 32px rgba(252, 211, 77, 0.3)'
+        }}>
+          <span style={{ fontSize: '2.5rem' }}>⏸️</span>
+        </div>
+
+        {/* タイトル */}
+        <h1 style={{
+          fontSize: '2rem',
+          fontWeight: 'bold',
+          color: '#1f2937',
+          marginBottom: '1rem'
+        }}>
+          操作をキャンセルしました
+        </h1>
+
+        <p style={{
+          fontSize: '1.125rem',
+          color: '#6b7280',
+          marginBottom: '2rem',
+          lineHeight: '1.6'
+        }}>
+          何も変更されませんでした。<br/>
+          引き続き無料プランをお楽しみください。
+        </p>
+
+        {/* 現在のプラン情報 */}
+        <div style={{
+          background: 'rgba(59, 130, 246, 0.1)',
+          border: '1px solid rgba(59, 130, 246, 0.2)',
+          borderRadius: '16px',
+          padding: '1.5rem',
+          marginBottom: '2rem'
+        }}>
+          <h3 style={{
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
+            color: '#1e40af',
+            marginBottom: '1rem'
+          }}>
+            🆓 現在のプラン: 無料プラン
+          </h3>
+          
+          <div style={{
+            display: 'grid',
+            gap: '0.5rem',
+            textAlign: 'left'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              color: '#1e40af'
+            }}>
+              <span style={{ color: '#059669', marginRight: '0.5rem' }}>✅</span>
+              <span>1日3回のAI投稿生成</span>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              操作をキャンセルしました
-            </h1>
-            <p className="text-gray-600">
-              何も変更されませんでした
-            </p>
-          </div>
-
-          {/* 現在の状態説明 */}
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h2 className="font-semibold text-blue-800 mb-2">
-              現在のプラン: 無料プラン
-            </h2>
-            <div className="text-sm text-blue-700 space-y-1">
-              <div className="flex items-center justify-center">
-                <span className="text-green-600">✅</span>
-                <span className="ml-2">1日3回のAI投稿生成</span>
-              </div>
-              <div className="flex items-center justify-center">
-                <span className="text-green-600">✅</span>
-                <span className="ml-2">高品質AI生成機能</span>
-              </div>
-              <div className="flex items-center justify-center">
-                <span className="text-green-600">✅</span>
-                <span className="ml-2">APIキー設定不要</span>
-              </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              color: '#1e40af'
+            }}>
+              <span style={{ color: '#059669', marginRight: '0.5rem' }}>✅</span>
+              <span>高品質AI生成機能</span>
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              color: '#1e40af'
+            }}>
+              <span style={{ color: '#059669', marginRight: '0.5rem' }}>✅</span>
+              <span>X・Threads対応</span>
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              color: '#1e40af'
+            }}>
+              <span style={{ color: '#059669', marginRight: '0.5rem' }}>✅</span>
+              <span>APIキー設定不要</span>
             </div>
           </div>
+        </div>
 
-          {/* 無料版継続利用の案内 */}
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <h3 className="font-semibold text-green-800 mb-2">
-              📱 無料版を活用しましょう
-            </h3>
-            <p className="text-sm text-green-700">
-              無料版でも十分に高品質なAI投稿生成をお楽しみいただけます。<br />
-              設定不要で今すぐご利用できます。
-            </p>
-          </div>
+        {/* アクションボタン */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <button
+            onClick={handleReturnToApp}
+            style={{
+              background: 'linear-gradient(45deg, #667eea, #764ba2)',
+              color: 'white',
+              padding: '1rem 2rem',
+              borderRadius: '50px',
+              border: 'none',
+              fontSize: '1.125rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'translateY(-2px)';
+              e.target.style.boxShadow = '0 12px 40px rgba(102, 126, 234, 0.4)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = '0 8px 32px rgba(102, 126, 234, 0.3)';
+            }}
+          >
+            🚀 アプリに戻って投稿生成する
+          </button>
 
-          {/* 今後の機能開発について */}
-          {!PREMIUM_FEATURES_ENABLED && (
-            <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-              <div className="flex items-center justify-center mb-2">
-                <span className="text-gray-600">🚧</span>
-                <span className="ml-2 text-sm text-gray-700 font-medium">
-                  追加機能開発中
-                </span>
-              </div>
-              <p className="text-xs text-gray-600">
-                より便利な機能を開発中です。<br />
-                リリースまでしばらくお待ちください。
-              </p>
-            </div>
-          )}
+          <p style={{
+            fontSize: '0.875rem',
+            color: '#9ca3af',
+            margin: 0
+          }}>
+            無料版で1日3回まで高品質なAI投稿が生成できます
+          </p>
+        </div>
 
-          {/* アクションボタン */}
-          <div className="space-y-3">
-            <button
-              onClick={handleReturnToApp}
-              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+        {/* プレミアム案内 */}
+        <div style={{
+          marginTop: '2rem',
+          padding: '1rem',
+          background: 'rgba(16, 185, 129, 0.1)',
+          border: '1px solid rgba(16, 185, 129, 0.2)',
+          borderRadius: '12px'
+        }}>
+          <p style={{
+            fontSize: '0.875rem',
+            color: '#047857',
+            margin: 0
+          }}>
+            💡 無制限生成・自動投稿をお求めの場合は、<br/>
+            いつでもプレミアムプラン（¥980/月）にアップグレード可能です
+          </p>
+        </div>
+
+        {/* サポート情報 */}
+        <div style={{
+          marginTop: '2rem',
+          paddingTop: '1.5rem',
+          borderTop: '1px solid #e5e7eb'
+        }}>
+          <p style={{
+            fontSize: '0.75rem',
+            color: '#9ca3af',
+            margin: 0
+          }}>
+            ご質問がございましたら{' '}
+            <a 
+              href="mailto:numaken@gmail.com" 
+              style={{
+                color: '#3b82f6',
+                textDecoration: 'none'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.textDecoration = 'underline';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.textDecoration = 'none';
+              }}
             >
-              アプリに戻って投稿生成する
-            </button>
-            
-            <div className="text-center">
-              <p className="text-xs text-gray-500">
-                無料版で1日3回まで高品質なAI投稿が生成できます
-              </p>
-            </div>
-          </div>
-
-          {/* サポート情報 */}
-          <div className="mt-6 pt-4 border-t border-gray-200">
-            <p className="text-xs text-gray-500">
-              ご質問がございましたら<br />
-              <a href="mailto:numaken@gmail.com" className="text-blue-600 hover:underline">
-                numaken@gmail.com
-              </a>
-              までお気軽にお問い合わせください
-            </p>
-          </div>
+              numaken@gmail.com
+            </a>
+            {' '}までお気軽にお問い合わせください
+          </p>
         </div>
       </div>
     </div>
