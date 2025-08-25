@@ -32,3 +32,4 @@ sns-automation-pwa/
 api_backup*
 .env*
 !.env.example
+.env.vercel

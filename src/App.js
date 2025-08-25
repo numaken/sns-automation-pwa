@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings, Send, Sparkles } from 'lucide-react';
 import PostGenerator from './components/PostGenerator';
 import SettingsPanel from './components/SettingsPanel';
+import SnsSetup from './components/SnsSetup';
 import Success from './components/Success';
 import Cancel from './components/Cancel';
 import './App.css';
@@ -11,6 +12,7 @@ function App() {
   const [currentPlan, setCurrentPlan] = useState('free');
   const [usageStats, setUsageStats] = useState(null);
   const [currentPage, setCurrentPage] = useState('app'); // 'app', 'success', 'cancel'
+  const [needsSnsSetup, setNeedsSnsSetup] = useState(false);
 
   // URL解析とページ決定
   useEffect(() => {
@@ -45,6 +47,14 @@ function App() {
     const savedPlan = localStorage.getItem('userPlan') || 'free';
     console.log('App.js - Initial plan loaded:', savedPlan);
     setCurrentPlan(savedPlan);
+
+    // プレミアムプランでSNSセットアップが必要かチェック
+    if (savedPlan === 'premium') {
+      const setupCompleted = localStorage.getItem('sns_setup_completed');
+      if (!setupCompleted) {
+        setNeedsSnsSetup(true);
+      }
+    }
 
     // localStorage変更を監視する関数
     const checkPlanChanges = () => {
@@ -93,6 +103,11 @@ function App() {
     setUsageStats(stats);
   };
 
+  // SNSセットアップ完了ハンドラー
+  const handleSnsSetupComplete = () => {
+    setNeedsSnsSetup(false);
+  };
+
   // ページ別レンダリング
   if (currentPage === 'success') {
     return <Success />;
@@ -100,6 +115,11 @@ function App() {
 
   if (currentPage === 'cancel') {
     return <Cancel />;
+  }
+
+  // プレミアムプランでSNSセットアップが必要な場合
+  if (needsSnsSetup && currentPlan === 'premium') {
+    return <SnsSetup onSetupComplete={handleSnsSetupComplete} />;
   }
 
   // メインアプリのレンダリング

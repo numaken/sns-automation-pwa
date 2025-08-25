@@ -24,6 +24,15 @@ export default async function handler(req, res) {
     const authData = JSON.parse(authDataStr);
     console.log('Threads PKCE session found:', { userId, sessionKey });
 
+    // デバッグ：環境変数を確認
+    console.log('Callback THREADS_APP_ID debug:', {
+      raw: process.env.THREADS_APP_ID,
+      type: typeof process.env.THREADS_APP_ID,
+      length: process.env.THREADS_APP_ID?.length,
+      trimmed: process.env.THREADS_APP_ID?.trim(),
+      exists: !!process.env.THREADS_APP_ID
+    });
+
     // アクセストークンの取得
     const tokenResponse = await fetch('https://graph.threads.net/oauth/access_token', {
       method: 'POST',
@@ -31,8 +40,8 @@ export default async function handler(req, res) {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        client_id: process.env.THREADS_APP_ID,
-        client_secret: process.env.THREADS_APP_SECRET,
+        client_id: process.env.THREADS_APP_ID?.trim(),
+        client_secret: process.env.THREADS_APP_SECRET?.trim(),
         grant_type: 'authorization_code',
         redirect_uri: `https://postpilot.panolabollc.com/api/auth/threads/callback`,
         code: code,
@@ -43,10 +52,22 @@ export default async function handler(req, res) {
     const tokenData = await tokenResponse.json();
 
     if (!tokenResponse.ok) {
-      console.error('Threads token exchange failed:', tokenData);
+      console.error('Threads token exchange failed:', {
+        status: tokenResponse.status,
+        statusText: tokenResponse.statusText,
+        tokenData,
+        requestDetails: {
+          client_id: process.env.THREADS_APP_ID?.trim(),
+          has_secret: !!process.env.THREADS_APP_SECRET,
+          redirect_uri: `https://postpilot.panolabollc.com/api/auth/threads/callback`,
+          code_length: code?.length
+        }
+      });
       return res.status(400).json({
         error: 'トークンの取得に失敗しました',
-        details: tokenData.error_description
+        details: tokenData.error_description || tokenData.error || 'Unknown error',
+        status: tokenResponse.status,
+        debug_info: tokenData
       });
     }
 
@@ -104,26 +125,67 @@ export default async function handler(req, res) {
             <p><strong>@${userData.username}</strong> として接続されました</p>
             <div class="username">@${userData.username}</div>
             <p>これでThreadsに自動投稿できるようになりました。</p>
-            <button class="button" onclick="window.close(); window.opener?.location.reload();">
+            <button class="button" onclick="goBackToApp();">
                 アプリに戻る
             </button>
         </div>
         <script>
             // 親ウィンドウにメッセージを送信
             if (window.opener) {
+                // 親ウィンドウのlocalStorageに接続情報を保存
+                try {
+                    window.opener.localStorage.setItem('threads_token', 'connected');
+                    window.opener.localStorage.setItem('threads_username', '${userData.username}');
+                    window.opener.localStorage.setItem('threads_user_id', '${userId}');
+                    window.opener.localStorage.setItem('threads_connected', 'true');
+                } catch (e) {
+                    console.log('Could not set localStorage:', e);
+                }
+                
                 window.opener.postMessage({
                     type: 'THREADS_AUTH_SUCCESS',
                     username: '${userData.username}',
                     userId: '${userId}'
                 }, '*');
+                
+                // 成功メッセージを送信後、少し待ってからリロード
+                setTimeout(() => {
+                    try {
+                        window.opener.location.reload();
+                    } catch (e) {
+                        console.log('Could not reload parent window:', e);
+                    }
+                }, 500);
             }
             
-            // 3秒後に自動でウィンドウを閉じる
+            // 3秒後に自動でウィンドウを閉じる（または親ウィンドウに戻る）
             setTimeout(() => {
-                if (window.opener) {
-                    window.close();
+                try {
+                    if (window.opener) {
+                        window.close();
+                    } else {
+                        // popup ではない場合はアプリに戻る
+                        window.location.href = 'https://postpilot.panolabollc.com/';
+                    }
+                } catch (e) {
+                    // エラーが発生した場合はアプリに戻る
+                    window.location.href = 'https://postpilot.panolabollc.com/';
                 }
             }, 3000);
+            
+            // ボタンクリック時の処理も改善
+            function goBackToApp() {
+                try {
+                    if (window.opener) {
+                        window.opener.location.reload();
+                        window.close();
+                    } else {
+                        window.location.href = 'https://postpilot.panolabollc.com/';
+                    }
+                } catch (e) {
+                    window.location.href = 'https://postpilot.panolabollc.com/';
+                }
+            }
         </script>
     </body>
     </html>

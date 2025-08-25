@@ -112,24 +112,70 @@ export default async function handler(req, res) {
       'test'
     ];
 
+    // KVストレージから全てのキーを取得して、該当するPKCEデータを検索
+    const searchAllKeys = async () => {
+      try {
+        // SCAN コマンドでtwitter_oauth_pkce:*:${state} パターンを検索
+        const scanResponse = await fetch(`${process.env.KV_REST_API_URL}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(['SCAN', '0', 'MATCH', `twitter_oauth_pkce:*:${state}`, 'COUNT', '100']),
+        });
+        
+        const scanResult = await scanResponse.json();
+        console.log('SCAN result:', scanResult);
+        
+        if (scanResult.result && scanResult.result[1] && scanResult.result[1].length > 0) {
+          const keys = scanResult.result[1];
+          console.log('Found matching keys:', keys);
+          
+          for (const key of keys) {
+            const data = await getKVValue(key);
+            if (data) {
+              console.log(`✅ PKCE data found with key: ${key}`);
+              return { data: JSON.parse(data), key };
+            }
+          }
+        }
+      } catch (error) {
+        console.error('SCAN search error:', error);
+      }
+      return null;
+    };
+
     let pkceData = null;
     let foundKey = null;
 
     console.log('=== PKCE Data Search START ===');
 
-    // 各userIdパターンで検索
-    for (const userId of possibleUserIds) {
-      const kvKey = `twitter_oauth_pkce:${userId}:${state}`;
-      console.log(`Trying KV key: ${kvKey}`);
+    // 最初にSCANコマンドで全体検索
+    console.log('Trying SCAN search for all matching keys...');
+    const scanResult = await searchAllKeys();
+    if (scanResult) {
+      pkceData = scanResult.data;
+      foundKey = scanResult.key;
+      console.log('✅ PKCE data found via SCAN search');
+    } else {
+      console.log('❌ No data found via SCAN search');
+      
+      // SCANで見つからない場合は固定リストで検索
+      console.log('Trying fixed userId patterns...');
+      for (const userId of possibleUserIds) {
+        const kvKey = `twitter_oauth_pkce:${userId}:${state}`;
+        console.log(`Trying KV key: ${kvKey}`);
 
-      const data = await getKVValue(kvKey);
-      if (data) {
-        console.log(`✅ PKCE data found with userId: ${userId}`);
-        pkceData = JSON.parse(data);
-        foundKey = kvKey;
-        break;
-      } else {
-        console.log(`❌ No data found for userId: ${userId}`);
+        const data = await getKVValue(kvKey);
+        if (data) {
+          console.log(`✅ PKCE data found with userId: ${userId}`);
+          pkceData = JSON.parse(data);
+          foundKey = kvKey;
+          break;
+        } else {
+          console.log(`❌ No data found for userId: ${userId}`);
+        }
       }
     }
 
@@ -198,7 +244,7 @@ export default async function handler(req, res) {
       grant_type: 'authorization_code',
       client_id: process.env.TWITTER_CLIENT_ID,
       code: code,
-      redirect_uri: 'https://sns-automation-pwa.vercel.app/api/auth/twitter/callback',
+      redirect_uri: 'https://postpilot.panolabollc.com/api/auth/twitter/callback',
       code_verifier: pkceData.codeVerifier,
     });
 
@@ -206,7 +252,7 @@ export default async function handler(req, res) {
       grant_type: 'authorization_code',
       client_id: process.env.TWITTER_CLIENT_ID?.substring(0, 10) + '...',
       code: code.substring(0, 10) + '...',
-      redirect_uri: 'https://sns-automation-pwa.vercel.app/api/auth/twitter/callback',
+      redirect_uri: 'https://postpilot.panolabollc.com/api/auth/twitter/callback',
       code_verifier: pkceData.codeVerifier?.substring(0, 10) + '...'
     });
 
@@ -321,13 +367,45 @@ export default async function handler(req, res) {
         <div class="username">@${userData.data.username}</div>
         <div class="message">として接続されました</div>
         <button onclick="closeWindow()">ウィンドウを閉じる</button>
-        <button onclick="window.location.href='https://sns-automation-pwa.vercel.app'">メインページに戻る</button>
+        <button onclick="window.location.href='https://postpilot.panolabollc.com'">メインページに戻る</button>
         <div class="auto-close">このウィンドウは10秒後に自動で閉じます</div>
         <script>
+            // 親ウィンドウのlocalStorageに接続情報を保存
+            if (window.opener) {
+                try {
+                    window.opener.localStorage.setItem('twitter_token', 'connected');
+                    window.opener.localStorage.setItem('twitter_username', '${userData.data.username}');
+                    window.opener.localStorage.setItem('twitter_user_id', '${pkceData.userId}');
+                    window.opener.localStorage.setItem('twitter_connected', 'true');
+                    
+                    // 親ウィンドウにメッセージを送信
+                    window.opener.postMessage({
+                        type: 'TWITTER_AUTH_SUCCESS',
+                        username: '${userData.data.username}',
+                        userId: '${userData.data.id}'
+                    }, '*');
+                    
+                    // 少し待ってからリロード
+                    setTimeout(() => {
+                        try {
+                            window.opener.location.reload();
+                        } catch (e) {
+                            console.log('Could not reload parent window:', e);
+                        }
+                    }, 500);
+                } catch (e) {
+                    console.log('Could not set localStorage:', e);
+                }
+            }
+
             function closeWindow() {
                 // 複数の方法でウィンドウを閉じる
                 try {
-                    window.close();
+                    if (window.opener) {
+                        window.close();
+                    } else {
+                        window.location.href = 'https://postpilot.panolabollc.com';
+                    }
                 } catch (e) {
                     // window.close()が失敗した場合
                     try {
@@ -336,7 +414,7 @@ export default async function handler(req, res) {
                         window.close();
                     } catch (e2) {
                         // 最終手段：メインページにリダイレクト
-                        window.location.href = 'https://sns-automation-pwa.vercel.app';
+                        window.location.href = 'https://postpilot.panolabollc.com';
                     }
                 }
             }

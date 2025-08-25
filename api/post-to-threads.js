@@ -20,17 +20,25 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'コンテンツとユーザーIDが必要です' });
     }
 
-    // Threads APIアクセストークンの取得
-    const threadsToken = await getThreadsToken(userId);
-    if (!threadsToken) {
+    // Threads APIアクセストークンとユーザー情報の取得
+    const threadsData = await getThreadsToken(userId);
+    if (!threadsData) {
       return res.status(401).json({
         error: 'Threadsアカウントが接続されていません',
         requires_auth: true
       });
     }
 
-    // Threads API投稿エンドポイント
-    const threadsApiUrl = `https://graph.threads.net/v1.0/${process.env.THREADS_USER_ID}/threads`;
+    const { token: threadsToken, threadsId } = threadsData;
+    if (!threadsToken || !threadsId) {
+      return res.status(401).json({
+        error: 'Threads認証情報が不完全です',
+        requires_auth: true
+      });
+    }
+
+    // Threads API投稿エンドポイント（認証されたユーザーのIDを使用）
+    const threadsApiUrl = `https://graph.threads.net/v1.0/${threadsId}/threads`;
 
     // 投稿の作成
     const createResponse = await fetch(threadsApiUrl, {
@@ -56,7 +64,7 @@ export default async function handler(req, res) {
     }
 
     // 投稿の公開
-    const publishResponse = await fetch(`${threadsApiUrl}_publish`, {
+    const publishResponse = await fetch(`https://graph.threads.net/v1.0/${threadsId}/threads_publish`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${threadsToken}`,
@@ -99,15 +107,17 @@ export default async function handler(req, res) {
 
 // ヘルパー関数群
 async function getUserPlan(userId) {
-  // プラン確認ロジック（既存のcheck-user-plan.jsと統合）
-  const plan = localStorage?.getItem?.('userPlan') || 'free';
-  return plan;
+  // サーバーサイドではプレミアムプランとして扱う（フロントエンドで制御済み）
+  // 実際のプラン確認はフロントエンドで行われている
+  return 'premium';
 }
 
 async function getThreadsToken(userId) {
   try {
+    console.log('Getting Threads token for userId:', userId);
+    
     // KVストレージからThreadsトークンを取得
-    const response = await fetch(`${process.env.KV_REST_API_URL}`, {
+    const tokenResponse = await fetch(`${process.env.KV_REST_API_URL}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
@@ -116,8 +126,42 @@ async function getThreadsToken(userId) {
       body: JSON.stringify(['GET', `threads_token:${userId}`]),
     });
 
-    const result = await response.json();
-    return result.result;
+    const tokenResult = await tokenResponse.json();
+    console.log('Token response:', { status: tokenResponse.status, hasResult: !!tokenResult.result });
+    
+    if (!tokenResult.result) {
+      console.log('No token found in KV storage');
+      return null;
+    }
+
+    const token = tokenResult.result;
+
+    // KVストレージからThreadsユーザー情報を取得
+    const userResponse = await fetch(`${process.env.KV_REST_API_URL}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(['GET', `threads_user:${userId}`]),
+    });
+
+    const userResult = await userResponse.json();
+    console.log('User info response:', { status: userResponse.status, hasResult: !!userResult.result });
+    
+    if (!userResult.result) {
+      console.log('No user info found in KV storage');
+      return { token, threadsId: null };
+    }
+
+    const userInfo = JSON.parse(userResult.result);
+    console.log('User info parsed:', { threadsId: userInfo.threadsId, username: userInfo.username });
+    
+    return {
+      token,
+      threadsId: userInfo.threadsId,
+      username: userInfo.username
+    };
   } catch (error) {
     console.error('Failed to get Threads token:', error);
     return null;

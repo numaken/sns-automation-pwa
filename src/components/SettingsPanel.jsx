@@ -1,6 +1,6 @@
 // SettingsPanel.jsx - 完全美化版（PostCSS不使用、インラインスタイルのみ）
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUserPlan } from '../hooks/useUserPlan';
 
 
@@ -8,6 +8,91 @@ import { useUserPlan } from '../hooks/useUserPlan';
 const SettingsPanel = () => {
   const { userPlan, isLoading } = useUserPlan();
   const isPremium = userPlan === 'premium';
+  
+  // SNS接続状態
+  const [twitterConnected, setTwitterConnected] = useState(false);
+  const [threadsConnected, setThreadsConnected] = useState(false);
+  const [twitterUsername, setTwitterUsername] = useState('');
+  const [threadsUsername, setThreadsUsername] = useState('');
+
+  // 接続状態の初期化
+  useEffect(() => {
+    const checkConnections = () => {
+      // Twitter
+      const twitterToken = localStorage.getItem('twitter_token');
+      const twitterConn = localStorage.getItem('twitter_connected') === 'true';
+      const twitterUser = localStorage.getItem('twitter_username') || '';
+      setTwitterConnected(twitterToken && twitterConn);
+      setTwitterUsername(twitterUser);
+
+      // Threads
+      const threadsToken = localStorage.getItem('threads_token');
+      const threadsConn = localStorage.getItem('threads_connected') === 'true';
+      const threadsUser = localStorage.getItem('threads_username') || '';
+      setThreadsConnected(threadsToken && threadsConn);
+      setThreadsUsername(threadsUser);
+    };
+
+    checkConnections();
+    
+    // 定期的に接続状態を確認
+    const interval = setInterval(checkConnections, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // SNS接続解除
+  const disconnectTwitter = () => {
+    if (window.confirm('Twitterの接続を解除しますか？\n\n解除後は再度認証が必要になります。')) {
+      localStorage.removeItem('twitter_token');
+      localStorage.removeItem('twitter_user_id');
+      localStorage.removeItem('twitter_username');
+      localStorage.removeItem('twitter_connected');
+      setTwitterConnected(false);
+      setTwitterUsername('');
+      alert('✅ Twitterの接続を解除しました');
+    }
+  };
+
+  const disconnectThreads = () => {
+    if (window.confirm('Threadsの接続を解除しますか？\n\n解除後は再度認証が必要になります。')) {
+      localStorage.removeItem('threads_token');
+      localStorage.removeItem('threads_user_id');
+      localStorage.removeItem('threads_username');
+      localStorage.removeItem('threads_connected');
+      setThreadsConnected(false);
+      setThreadsUsername('');
+      alert('✅ Threadsの接続を解除しました');
+    }
+  };
+
+  const disconnectAllSNS = () => {
+    if (window.confirm('全てのSNS接続を解除しますか？\n\n解除後は再度認証が必要になります。')) {
+      // Twitter
+      localStorage.removeItem('twitter_token');
+      localStorage.removeItem('twitter_user_id');
+      localStorage.removeItem('twitter_username');
+      localStorage.removeItem('twitter_connected');
+      
+      // Threads
+      localStorage.removeItem('threads_token');
+      localStorage.removeItem('threads_user_id');
+      localStorage.removeItem('threads_username');
+      localStorage.removeItem('threads_connected');
+      
+      // セットアップ完了フラグ
+      localStorage.removeItem('sns_setup_completed');
+      
+      setTwitterConnected(false);
+      setThreadsConnected(false);
+      setTwitterUsername('');
+      setThreadsUsername('');
+      
+      alert('✅ 全てのSNS接続を解除しました\n\nページをリロードします。');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
+  };
 
 
   const PREMIUM_FEATURES_ENABLED = false;
@@ -184,6 +269,78 @@ const SettingsPanel = () => {
       color: colors.gray[600]
     },
 
+    // SNS接続管理
+    snsItem: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '1rem',
+      border: `1px solid ${colors.gray[200]}`,
+      borderRadius: '8px',
+      marginBottom: '0.75rem',
+      backgroundColor: colors.gray[50]
+    },
+    snsItemConnected: {
+      backgroundColor: '#f0fdf4',
+      borderColor: '#16a34a'
+    },
+    snsInfo: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.75rem'
+    },
+    snsIcon: {
+      fontSize: '1.5rem'
+    },
+    snsDetails: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '0.25rem'
+    },
+    snsName: {
+      fontSize: '0.875rem',
+      fontWeight: '600',
+      color: colors.gray[800]
+    },
+    snsUsername: {
+      fontSize: '0.75rem',
+      color: colors.gray[600]
+    },
+    snsStatus: {
+      fontSize: '0.75rem',
+      fontWeight: '500'
+    },
+    snsStatusConnected: {
+      color: '#16a34a'
+    },
+    snsStatusDisconnected: {
+      color: colors.gray[500]
+    },
+    disconnectButton: {
+      padding: '0.5rem 1rem',
+      fontSize: '0.75rem',
+      fontWeight: '600',
+      color: '#dc2626',
+      backgroundColor: '#fef2f2',
+      border: '1px solid #fecaca',
+      borderRadius: '6px',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease'
+    },
+    disconnectAllButton: {
+      width: '100%',
+      padding: '0.75rem 1rem',
+      fontSize: '0.875rem',
+      fontWeight: '600',
+      color: '#dc2626',
+      backgroundColor: '#fef2f2',
+      border: '1px solid #fecaca',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      marginTop: '1rem'
+    },
+
     // 設定項目
     settingItem: {
       display: 'flex',
@@ -346,6 +503,131 @@ const SettingsPanel = () => {
           </div>
         )}
       </div>
+
+      {/* SNS接続管理 */}
+      {isPremium && (
+        <div style={styles.card}>
+          <h2 style={styles.cardHeader}>
+            <span>🔗</span>
+            SNS接続管理
+          </h2>
+          
+          {/* Twitter */}
+          <div style={{
+            ...styles.snsItem,
+            ...(twitterConnected ? styles.snsItemConnected : {})
+          }}>
+            <div style={styles.snsInfo}>
+              <span style={styles.snsIcon}>🐦</span>
+              <div style={styles.snsDetails}>
+                <span style={styles.snsName}>Twitter</span>
+                {twitterConnected ? (
+                  <span style={styles.snsUsername}>@{twitterUsername}</span>
+                ) : null}
+                <span style={{
+                  ...styles.snsStatus,
+                  ...(twitterConnected ? styles.snsStatusConnected : styles.snsStatusDisconnected)
+                }}>
+                  {twitterConnected ? '✅ 接続済み' : '❌ 未接続'}
+                </span>
+              </div>
+            </div>
+            {twitterConnected && (
+              <button 
+                style={styles.disconnectButton}
+                onClick={disconnectTwitter}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#fee2e2';
+                  e.target.style.borderColor = '#fca5a5';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = '#fef2f2';
+                  e.target.style.borderColor = '#fecaca';
+                }}
+              >
+                接続解除
+              </button>
+            )}
+          </div>
+
+          {/* Threads */}
+          <div style={{
+            ...styles.snsItem,
+            ...(threadsConnected ? styles.snsItemConnected : {})
+          }}>
+            <div style={styles.snsInfo}>
+              <span style={styles.snsIcon}>🧵</span>
+              <div style={styles.snsDetails}>
+                <span style={styles.snsName}>Threads</span>
+                {threadsConnected ? (
+                  <span style={styles.snsUsername}>@{threadsUsername}</span>
+                ) : null}
+                <span style={{
+                  ...styles.snsStatus,
+                  ...(threadsConnected ? styles.snsStatusConnected : styles.snsStatusDisconnected)
+                }}>
+                  {threadsConnected ? '✅ 接続済み' : '❌ 未接続'}
+                </span>
+              </div>
+            </div>
+            {threadsConnected && (
+              <button 
+                style={styles.disconnectButton}
+                onClick={disconnectThreads}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#fee2e2';
+                  e.target.style.borderColor = '#fca5a5';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = '#fef2f2';
+                  e.target.style.borderColor = '#fecaca';
+                }}
+              >
+                接続解除
+              </button>
+            )}
+          </div>
+
+          {/* 全接続解除ボタン */}
+          {(twitterConnected || threadsConnected) && (
+            <button 
+              style={styles.disconnectAllButton}
+              onClick={disconnectAllSNS}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#fee2e2';
+                e.target.style.borderColor = '#fca5a5';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = '#fef2f2';
+                e.target.style.borderColor = '#fecaca';
+              }}
+            >
+              🚫 全ての接続を解除
+            </button>
+          )}
+
+          {/* 接続がない場合のメッセージ */}
+          {!twitterConnected && !threadsConnected && (
+            <div style={{
+              padding: '1.5rem',
+              textAlign: 'center',
+              backgroundColor: colors.gray[50],
+              borderRadius: '8px',
+              border: `1px solid ${colors.gray[200]}`
+            }}>
+              <span style={{ fontSize: '2rem', marginBottom: '0.5rem', display: 'block' }}>🔌</span>
+              <p style={{ 
+                margin: 0, 
+                color: colors.gray[600], 
+                fontSize: '0.875rem' 
+              }}>
+                まだSNSアカウントが接続されていません。<br />
+                投稿生成画面で「投稿」ボタンを押して接続を開始してください。
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* データ・プライバシー */}
       <div style={styles.card}>

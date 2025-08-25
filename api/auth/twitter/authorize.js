@@ -139,7 +139,7 @@ export default async function handler(req, res) {
     const pkceData = {
       codeVerifier,
       userId,
-      redirectUri: 'https://sns-automation-pwa.vercel.app/api/auth/twitter/callback',
+      redirectUri: 'https://postpilot.panolabollc.com/api/auth/twitter/callback',
       timestamp: Date.now()
     };
     
@@ -179,7 +179,7 @@ export default async function handler(req, res) {
     const params = new URLSearchParams({
       response_type: 'code',
       client_id: process.env.TWITTER_CLIENT_ID,
-      redirect_uri: 'https://sns-automation-pwa.vercel.app/api/auth/twitter/callback',
+      redirect_uri: 'https://postpilot.panolabollc.com/api/auth/twitter/callback',
       scope: 'tweet.read tweet.write users.read offline.access',
       state: state,
       code_challenge: codeChallenge,
@@ -191,7 +191,7 @@ export default async function handler(req, res) {
     console.log('OAuth URL generated:', {
       state,
       clientId: process.env.TWITTER_CLIENT_ID?.substring(0, 10) + '...',
-      redirectUri: 'https://sns-automation-pwa.vercel.app/api/auth/twitter/callback'
+      redirectUri: 'https://postpilot.panolabollc.com/api/auth/twitter/callback'
     });
     
     console.log('=== Twitter OAuth Authorize SUCCESS ===');

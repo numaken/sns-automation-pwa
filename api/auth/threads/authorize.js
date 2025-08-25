@@ -33,7 +33,14 @@ export default async function handler(req, res) {
     await setKVValue(sessionKey, JSON.stringify(authData), 1800); // 30分
 
     // Threads OAuth認証URL
-    const threadsClientId = process.env.THREADS_APP_ID;
+    const threadsClientId = process.env.THREADS_APP_ID?.trim();
+    console.log('THREADS_APP_ID debug:', {
+      raw: process.env.THREADS_APP_ID,
+      type: typeof process.env.THREADS_APP_ID,
+      length: process.env.THREADS_APP_ID?.length,
+      trimmed: threadsClientId,
+      exists: !!process.env.THREADS_APP_ID
+    });
     const redirectUri = `https://postpilot.panolabollc.com/api/auth/threads/callback`;
 
     const authParams = new URLSearchParams({
