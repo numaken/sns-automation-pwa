@@ -454,9 +454,13 @@ const PostGenerator = () => {
 
   // SNS接続状況確認
   const checkSnsConnections = () => {
+    console.log('🔍 Checking SNS connections...');
+    
     // X（旧Twitter）接続確認
     const twitterToken = localStorage.getItem('twitter_token');
     const twitterUser = localStorage.getItem('twitter_username');
+
+    console.log('𝕏 Twitter check:', { token: !!twitterToken, user: twitterUser, showSignInPage });
 
     if (twitterToken && twitterUser) {
       setTwitterConnected(true);
@@ -465,7 +469,9 @@ const PostGenerator = () => {
       
       // 初回サインインページ表示中なら、プレミアムにアップグレード
       if (showSignInPage) {
+        console.log('🎉 Twitter connection complete - upgrading to premium');
         handleSnsConnectionComplete();
+        return; // 処理完了
       }
     }
 
@@ -474,24 +480,50 @@ const PostGenerator = () => {
     const threadsConnectedFlag = localStorage.getItem('threads_connected');
     const threadsUser = localStorage.getItem('threads_username');
     
+    console.log('📱 Threads check:', { token: !!threadsToken, connected: threadsConnectedFlag, user: threadsUser, showSignInPage });
+    
     if (threadsToken && threadsConnectedFlag === 'true') {
       setThreadsConnected(true);
       console.log('📱 Threads connected:', threadsUser);
       
       // 初回サインインページ表示中なら、プレミアムにアップグレード
       if (showSignInPage) {
+        console.log('🎉 Threads connection complete - upgrading to premium');
         handleSnsConnectionComplete();
+        return; // 処理完了
       }
     }
+
+    console.log('✅ SNS connection check complete');
   };
 
   // 初期化
   useEffect(() => {
     checkPremiumStatus();
 
-    // URLパラメータからStripe成功を検出
+    // URLパラメータからOAuth成功を検出
     const urlParams = new URLSearchParams(window.location.search);
     const sessionId = urlParams.get('session_id');
+    const twitterAuth = urlParams.get('twitter_auth');
+    const threadsAuth = urlParams.get('auth_success');
+    const autoReturn = urlParams.get('auto_return');
+
+    // OAuth認証成功時の処理
+    if (twitterAuth === 'success' || threadsAuth === 'threads') {
+      console.log('🔄 OAuth success detected, checking connections...');
+      setTimeout(() => {
+        checkSnsConnections();
+        // URL履歴をクリーンアップ
+        const url = new URL(window.location);
+        url.searchParams.delete('twitter_auth');
+        url.searchParams.delete('auth_success');
+        url.searchParams.delete('username');
+        url.searchParams.delete('auto_return');
+        url.searchParams.delete('fixed');
+        url.searchParams.delete('platform');
+        window.history.replaceState({}, document.title, url.toString());
+      }, 500);
+    }
 
     if (sessionId) {
       console.log('💳 Stripe session detected:', sessionId);
