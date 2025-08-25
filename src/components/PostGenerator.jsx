@@ -1277,8 +1277,8 @@ const PostGenerator = () => {
             </button>
           </div>
 
-          {/* テスト用接続ボタン（管理者のみ） */}
-          {(localStorage.getItem('admin_mode') === 'true' || window.location.hostname === 'localhost') && (
+          {/* テスト用接続ボタン（管理者モード時のみ） */}
+          {localStorage.getItem('admin_mode') === 'true' && (
             <div style={{
               marginTop: '2rem',
               padding: '1.5rem',

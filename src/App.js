@@ -5,6 +5,7 @@ import Success from './components/Success';
 import Cancel from './components/Cancel';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import LandingPage from './components/LandingPage';
 import { useAnalyticsSafe } from './hooks/useAnalyticsSafe';
 import './App.css';
 import './styles/PWAStyle.css';
@@ -17,6 +18,13 @@ function App() {
   const [currentPage, setCurrentPage] = useState('main');
   const [userPlan, setUserPlan] = useState('free');
 
+  // ページ遷移用関数（SPAらしくリロードなし）
+  const navigateToApp = () => {
+    setCurrentPage('main');
+    // URLも更新（ブラウザの戻るボタン対応）
+    window.history.pushState({}, '', '/app');
+  };
+
   useEffect(() => {
     const path = window.location.pathname;
     const search = window.location.search;
@@ -28,7 +36,12 @@ function App() {
       setCurrentPage('success');
     } else if (path === '/cancel') {
       setCurrentPage('cancel');
+    } else if (path === '/app') {
+      setCurrentPage('main');
+    } else if (path === '/') {
+      setCurrentPage('landing');
     } else {
+      // 既存ユーザーの互換性のため、不明なパスはメイン機能に転送
       setCurrentPage('main');
     }
 
@@ -37,6 +50,25 @@ function App() {
     if (storedPlan) {
       setUserPlan(storedPlan);
     }
+
+    // ブラウザの戻る/進むボタン対応
+    const handlePopState = () => {
+      const newPath = window.location.pathname;
+      if (newPath === '/success' || window.location.search.includes('session_id')) {
+        setCurrentPage('success');
+      } else if (newPath === '/cancel') {
+        setCurrentPage('cancel');
+      } else if (newPath === '/app') {
+        setCurrentPage('main');
+      } else if (newPath === '/') {
+        setCurrentPage('landing');
+      } else {
+        setCurrentPage('main');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   if (currentPage === 'success') {
@@ -45,6 +77,10 @@ function App() {
 
   if (currentPage === 'cancel') {
     return <Cancel />;
+  }
+
+  if (currentPage === 'landing') {
+    return <LandingPage onNavigateToApp={navigateToApp} />;
   }
 
   return (
