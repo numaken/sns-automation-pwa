@@ -287,7 +287,7 @@ export default async function handler(req, res) {
         <div class="fix-info">✅ UserID問題修正済み - 安定動作中</div>
         <button onclick="closeWindow()">ウィンドウを閉じる</button>
         <button onclick="window.location.href='https://postpilot.panolabollc.com/app'">アプリに戻る</button>
-        <div class="auto-close">このウィンドウは10秒後に自動で閉じます</div>
+        <div class="auto-close">このウィンドウは<span id="countdown">10</span>秒後に自動で閉じます</div>
         <script>
             function closeWindow() {
               try {
@@ -327,10 +327,23 @@ export default async function handler(req, res) {
                 }
             }
             
-            // 10秒後に自動で閉じる
+            // カウントダウン表示
+            let countdown = 10;
+            const countdownElement = document.getElementById('countdown');
+            const countdownTimer = setInterval(() => {
+                countdown--;
+                countdownElement.textContent = countdown;
+                if (countdown <= 0) {
+                    clearInterval(countdownTimer);
+                    countdownElement.parentElement.textContent = 'ウィンドウを閉じています...（手動で閉じてください）';
+                    closeWindow();
+                }
+            }, 1000);
+            
+            // 即座に閉じる試行（ポップアップの場合）
             setTimeout(() => {
                 closeWindow();
-            }, 10000);
+            }, 100);
         </script>
     </div>
 </body>
