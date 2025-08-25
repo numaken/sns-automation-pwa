@@ -286,7 +286,7 @@ export default async function handler(req, res) {
         <div class="message">として接続されました</div>
         <div class="fix-info">✅ UserID問題修正済み - 安定動作中</div>
         <button onclick="closeWindow()">ウィンドウを閉じる</button>
-        <button onclick="window.location.href='https://postpilot.panolabollc.com'">メインページに戻る</button>
+        <button onclick="window.location.href='https://postpilot.panolabollc.com/app'">アプリに戻る</button>
         <div class="auto-close">このウィンドウは10秒後に自動で閉じます</div>
         <script>
             function closeWindow() {
@@ -306,7 +306,7 @@ export default async function handler(req, res) {
                   window.open('', '_self');
                   window.close();
                 } catch (e2) {
-                  window.location.href = 'https://postpilot.panolabollc.com?twitter_auth=success&username=${userData.data.username}&fixed=true';
+                  window.location.href = 'https://postpilot.panolabollc.com/app?twitter_auth=success&username=${userData.data.username}&fixed=true';
                 }
               }
             }            

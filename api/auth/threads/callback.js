@@ -141,7 +141,7 @@ export default async function handler(req, res) {
     console.log('=== Threads OAuth Callback SUCCESS (COMPLETE FIX) ===');
 
     // 修正: 成功時のメインアプリリダイレクト
-    const redirectUrl = `/?auth_success=threads&platform=threads&username=${encodeURIComponent(userData.username)}&fixed=true`;
+    const redirectUrl = `/app?auth_success=threads&platform=threads&username=${encodeURIComponent(userData.username)}&fixed=true`;
     console.log('Redirecting to:', redirectUrl);
 
     // 修正された成功ページのHTML
@@ -364,7 +364,7 @@ export default async function handler(req, res) {
             <h1>Threads接続エラー</h1>
             <p>認証に失敗しました。再度お試しください。</p>
             <p><small>修正版適用済み - State-only search + Improved error handling</small></p>
-            <button class="button primary" onclick="window.location.href='/?retry=threads'">
+            <button class="button primary" onclick="window.location.href='/app?retry=threads'">
                 🔄 再試行
             </button>
             <button class="button" onclick="window.close();">
