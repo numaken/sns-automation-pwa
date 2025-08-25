@@ -311,6 +311,16 @@ export default async function handler(req, res) {
               }
             }            
             
+            // ブラウザのlocalStorageに保存
+            localStorage.setItem('twitter_token', '${tokenData.access_token}');
+            localStorage.setItem('twitter_refresh_token', '${tokenData.refresh_token || ''}');
+            localStorage.setItem('twitter_user_id', '${userData.data.id}');
+            localStorage.setItem('twitter_username', '${userData.data.username}');
+            localStorage.setItem('twitter_connected', 'true');
+            localStorage.setItem('twitter_connected_at', new Date().toISOString());
+            
+            console.log('✅ Twitter tokens saved to localStorage');
+
             // 親ウィンドウに成功を通知
             if (window.opener) {
                 try {
@@ -339,6 +349,12 @@ export default async function handler(req, res) {
                     
                     // Threadsと同様の戻る処理
                     try {
+                        // localStorageを再確認・保存（リダイレクト前に確実に保存）
+                        localStorage.setItem('twitter_token', '${tokenData.access_token}');
+                        localStorage.setItem('twitter_username', '${userData.data.username}');
+                        localStorage.setItem('twitter_user_id', '${userData.data.id}');
+                        localStorage.setItem('twitter_connected', 'true');
+                        
                         // 親ウィンドウにメッセージを送信
                         if (window.opener && !window.opener.closed) {
                             window.opener.postMessage({
