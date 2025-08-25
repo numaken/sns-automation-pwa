@@ -391,54 +391,26 @@ const PostGenerator = () => {
     
     // 初回アクセス時（userPlanが未設定の場合）
     if (!userPlan) {
-      console.log('🎉 First time access - checking SNS connections');
+      console.log('🎉 First time access - setting up free plan');
+      // 初回アクセス時は無料プランから開始
+      localStorage.setItem('userPlan', 'free');
+      setUserPlan('free');
+      setUsage({ remaining: 3, used: 0, limit: 3 });
       
-      if (hasAnyConnection) {
-        // SNS接続済みの場合はプレミアムプランに設定してメイン画面を表示
-        console.log('✅ SNS already connected - Setting up premium plan automatically');
-        localStorage.setItem('userPlan', 'premium');
-        localStorage.setItem('subscriptionStatus', 'active');
-        localStorage.setItem('premiumActivatedAt', new Date().toISOString());
-        setUserPlan('premium');
-        setUsage({ remaining: 'unlimited' });
-        setShowSignInPage(false); // サインインページを非表示
-        localStorage.removeItem('dailyUsage');
-      } else {
-        // SNS未接続の場合のみサインインページを表示
-        console.log('📱 No SNS connection found - Showing sign-in page');
-        setShowSignInPage(true);
-        setUserPlan('free');
-        return;
-      }
-      
+      // メイン画面を表示
+      setShowSignInPage(false);
       checkSnsConnections();
       return;
     }
     
-    // 無料プランの処理
+    // 無料プラン：メイン画面を表示（SNS投稿機能は制限）
     if (userPlan === 'free') {
-      if (hasAnyConnection) {
-        // SNS接続済みの場合はプレミアムプランに自動アップグレード
-        console.log('✅ Free plan with SNS connection - Auto upgrading to premium');
-        localStorage.setItem('userPlan', 'premium');
-        localStorage.setItem('subscriptionStatus', 'active');
-        localStorage.setItem('premiumActivatedAt', new Date().toISOString());
-        setUserPlan('premium');
-        setUsage({ remaining: 'unlimited' });
-        setShowSignInPage(false); // サインインページを非表示
-        localStorage.removeItem('dailyUsage');
-        
-        // 状態更新完了後にメイン画面を確実に表示
-        setTimeout(() => setShowSignInPage(false), 100);
-        checkSnsConnections();
-        return;
-      } else {
-        // SNS未接続の場合のみサインインページを表示
-        console.log('📱 Free plan without SNS - Showing sign-in page');
-        setShowSignInPage(true);
-        checkSnsConnections();
-        return;
-      }
+      console.log('📋 Free plan - showing main screen with limited features');
+      setUserPlan('free');
+      setUsage({ remaining: 3, used: 0, limit: 3 });
+      setShowSignInPage(false);
+      checkSnsConnections();
+      return;
     }
 
     console.log('📊 Premium check:', { userPlan, subscriptionStatus });
