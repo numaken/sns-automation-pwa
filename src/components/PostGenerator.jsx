@@ -382,30 +382,43 @@ const PostGenerator = () => {
     const userPlan = localStorage.getItem('userPlan');
     const subscriptionStatus = localStorage.getItem('subscriptionStatus');
 
-    // 初回アクセス時（userPlanが未設定の場合）または無料プランでSNS未接続の場合
-    if (!userPlan || (userPlan === 'free' && !localStorage.getItem('twitter_connected') && !localStorage.getItem('threads_connected'))) {
-      console.log('🎉 First time access or free plan without SNS connection detected');
+    // SNS接続チェック（最初に実行）
+    const hasTwitterConnection = localStorage.getItem('twitter_connected') === 'true' || 
+                                  localStorage.getItem('twitter_token');
+    const hasThreadsConnection = localStorage.getItem('threads_connected') === 'true' || 
+                                  localStorage.getItem('threads_token');
+    const hasAnyConnection = hasTwitterConnection || hasThreadsConnection;
+    
+    // 初回アクセス時（userPlanが未設定の場合）
+    if (!userPlan) {
+      console.log('🎉 First time access - checking SNS connections');
       
-      // SNS接続チェック
-      const hasAnyConnection = localStorage.getItem('twitter_connected') === 'true' || 
-                               localStorage.getItem('threads_connected') === 'true';
-      
-      if (!hasAnyConnection) {
-        console.log('📱 Showing sign-in page');
-        setShowSignInPage(true);
-        setUserPlan('free'); // 一時的に無料プランに設定
-        return;
-      } else {
-        // SNS接続済みの場合はプレミアムプランに設定
+      if (hasAnyConnection) {
+        // SNS接続済みの場合はプレミアムプランに設定してメイン画面を表示
         console.log('✅ SNS already connected - Setting up premium plan automatically');
         localStorage.setItem('userPlan', 'premium');
         localStorage.setItem('subscriptionStatus', 'active');
         localStorage.setItem('premiumActivatedAt', new Date().toISOString());
         setUserPlan('premium');
         setUsage({ remaining: 'unlimited' });
+        setShowSignInPage(false); // サインインページを非表示
         localStorage.removeItem('dailyUsage');
+      } else {
+        // SNS未接続の場合のみサインインページを表示
+        console.log('📱 No SNS connection found - Showing sign-in page');
+        setShowSignInPage(true);
+        setUserPlan('free');
+        return;
       }
       
+      checkSnsConnections();
+      return;
+    }
+    
+    // 無料プランでSNS未接続の場合のみサインインページを表示
+    if (userPlan === 'free' && !hasAnyConnection) {
+      console.log('📱 Free plan without SNS - Showing sign-in page');
+      setShowSignInPage(true);
       checkSnsConnections();
       return;
     }
