@@ -24,35 +24,29 @@ export default async function handler(req, res) {
     console.log('Threads token check:', { key: tokenKey, hasToken: !!tokenData });
 
     if (tokenData) {
-      // トークンが存在する場合、詳細情報も取得
-      const userInfoKey = `threads_user:${userId}`;
-      const userInfo = await getKVValue(userInfoKey);
-
-      let userData = null;
-      if (userInfo) {
-        try {
-          userData = JSON.parse(userInfo);
-        } catch (e) {
-          console.log('Failed to parse Threads user info, using default');
-        }
+      // tokenDataを直接パース
+      let tokenInfo = null;
+      try {
+        tokenInfo = JSON.parse(tokenData);
+      } catch (e) {
+        console.log('Failed to parse token data, treating as raw token');
       }
 
       console.log('Threads connection confirmed:', {
         userId,
-        username: userData?.username || 'Connected User',
-        threadsId: userData?.threadsId,
-        connectedAt: userData?.connectedAt
+        username: tokenInfo?.username || 'Connected User',
+        threadsId: tokenInfo?.user_id,
+        connectedAt: tokenInfo?.created_at
       });
 
       return res.status(200).json({
         connected: true,
-        username: userData?.username || 'Connected User',
-        threadsId: userData?.threadsId,
-        connectedAt: userData?.connectedAt,
+        username: tokenInfo?.username || 'Connected User',
+        threadsId: tokenInfo?.user_id,
+        connectedAt: tokenInfo?.created_at,
         platform: 'threads'
       });
     }
-
     console.log('Threads not connected for userId:', userId);
     return res.status(200).json({
       connected: false,
