@@ -238,8 +238,8 @@ const SubscriptionManager = ({ userId, onPlanChange, onClose }) => {
                 </h5>
                 <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                   <div style={{ marginBottom: '0.5rem' }}>⚡ 無制限AI投稿生成</div>
-                  <div style={{ marginBottom: '0.5rem' }}>𝕏 (旧Twitter) 自動投稿</div>
-                  <div style={{ marginBottom: '0.5rem' }}>📱 Threads自動投稿</div>
+                  <div style={{ marginBottom: '0.5rem' }}>𝕏 (旧Twitter)自動投稿</div>
+                  <div style={{ marginBottom: '0.5rem' }}>@ Threads自動投稿</div>
                   <div style={{ marginBottom: '0.5rem' }}>🔄 同時投稿機能</div>
                   <div style={{ marginBottom: '0.5rem' }}>👑 広告なし</div>
                 </div>
@@ -413,7 +413,7 @@ const WelcomeModal = ({ onClose, onTwitterConnect, onThreadsConnect }) => {
       <div style={styles.modal}>
         <div style={styles.header}>
           <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
-            {step === 1 ? '🎉 PostPilot Proへようこそ！' : '📱 SNS接続設定'}
+            {step === 1 ? '🎉 PostPilot Proへようこそ！' : '📱SNS接続設定'}
           </h2>
           <button onClick={onClose} style={styles.closeButton}>×</button>
         </div>
@@ -508,7 +508,7 @@ const WelcomeModal = ({ onClose, onTwitterConnect, onThreadsConnect }) => {
                     color: 'white'
                   }}
                 >
-                  <span>📱</span>
+                  <span>@</span>
                   <span>Threadsに接続</span>
                 </button>
               </div>
@@ -616,7 +616,7 @@ const ConnectionBadge = ({ twitterConnected, threadsConnected, twitterUsername, 
             alignItems: 'center',
             gap: '0.25rem'
           }}>
-            <span>📱</span>
+            <span>@</span>
             <span>Threads (@{threadsUsername})</span>  {/* ← ユーザー名を追加 */}
             <span>✅</span>
           </span>
@@ -744,7 +744,7 @@ const PostGenerator = () => {
       }
 
       // Threads接続状態確認
-      console.log('📱 Checking Threads connection...');
+      console.log('@ Checking Threads connection...');
       try {
         const threadsResponse = await fetch('/api/auth/threads/status', {
           method: 'POST',
@@ -754,7 +754,7 @@ const PostGenerator = () => {
 
         if (threadsResponse.ok) {
           const threadsData = await threadsResponse.json();
-          console.log('📱 Threads status:', threadsData);
+          console.log('@ Threads status:', threadsData);
 
           if (threadsData.connected) {
             setThreadsConnected(true);
@@ -868,7 +868,7 @@ const PostGenerator = () => {
     const threadsAuth = urlParams.get('threads_auth');
     const threadsUsername = urlParams.get('username');
     if (threadsAuth === 'success' && threadsUsername) {
-      console.log('📱 Threads auth success detected:', threadsUsername);
+      console.log('@ Threads auth success detected:', threadsUsername);
       setThreadsConnected(true);
       setThreadsUsername(threadsUsername);
       localStorage.setItem('threads_username', threadsUsername);
@@ -903,7 +903,7 @@ const PostGenerator = () => {
       }
 
       if (event.data.type === 'THREADS_AUTH_SUCCESS') {
-        console.log('📱 Threads auth success message received');
+        console.log('@ Threads auth success message received');
         setThreadsConnected(true);
         setThreadsUsername(event.data.username);
         localStorage.setItem('threads_username', event.data.username);
@@ -967,7 +967,7 @@ const PostGenerator = () => {
   // Threads接続処理
   const connectThreads = async () => {
     try {
-      console.log('📱 Starting Threads OAuth...');
+      console.log('@ Starting Threads OAuth...');
       setError('');
 
       const userId = getCurrentUserId();
@@ -1102,7 +1102,7 @@ const PostGenerator = () => {
     setError('');
 
     try {
-      console.log('📱 Posting to Threads...');
+      console.log('@ Posting to Threads...');
 
       const userId = getCurrentUserId();
 
@@ -1173,7 +1173,7 @@ const PostGenerator = () => {
     const confirmPost = window.confirm(
       `以下のプラットフォームに同時投稿しますか？\n\n` +
       `📝 投稿内容:\n${generatedPost.substring(0, 100)}${generatedPost.length > 100 ? '...' : ''}\n\n` +
-      `📱 投稿先: ${connectedPlatforms.join(', ')}`
+      `@ 投稿先: ${connectedPlatforms.join(', ')}`
     );
 
     if (!confirmPost) return;
@@ -1206,7 +1206,7 @@ const PostGenerator = () => {
 
     if (threadsConnected) {
       try {
-        console.log('📱 Starting Threads post...');
+        console.log('@ Starting Threads post...');
         await postToThreads();
         results.push({ platform: 'Threads', success: true });
         console.log('✅ Threads post completed');
@@ -1392,7 +1392,7 @@ const PostGenerator = () => {
         benefits: [
           "✅ 即座投稿開始（待機時間なし）",
           "🔥 無制限AI投稿生成",
-          "📱 X・Threads同時投稿",
+          "@ X・Threads同時投稿",
           "👑 プレミアム限定機能"
         ]
       };
@@ -1402,7 +1402,7 @@ const PostGenerator = () => {
         message: "プレミアム移行後、SNS接続で投稿開始できます",
         benefits: [
           "🔥 無制限AI投稿生成",
-          "📱 Twitter・Threads投稿機能",
+          "@ Twitter・Threads投稿機能",
           "🚀 同時投稿機能",
           "👑 プレミアム限定機能"
         ]
@@ -1721,7 +1721,7 @@ const PostGenerator = () => {
                       border: '1px solid #d1d5db'
                     }}>
                       <span style={{ color: '#374151', fontWeight: 500 }}>
-                        📱 Threads (@{threadsUsername}) ✅
+                        @Threads (@{threadsUsername}) ✅
                       </span>
                       <button
                         onClick={() => {
@@ -1760,7 +1760,7 @@ const PostGenerator = () => {
                         gap: '0.5rem'
                       }}
                     >
-                      <span>📱</span>
+                      <span>@</span>
                       <span>Threadsに接続</span>
                     </button>
                   )}
@@ -1809,7 +1809,7 @@ const PostGenerator = () => {
             <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
               <span>SNS接続: </span>
               {twitterConnected && <span style={{ color: '#1d9bf0' }}>𝕏 (@{twitterUsername}) </span>}
-              {threadsConnected && <span style={{ color: '#000' }}>📱 Threads (@{threadsUsername}) </span>}
+              {threadsConnected && <span style={{ color: '#000' }}>@ (@{threadsUsername}) </span>}
               {!twitterConnected && !threadsConnected && <span>未接続</span>}
             </div>
           </div>
@@ -2070,7 +2070,7 @@ const PostGenerator = () => {
                           fontSize: '0.875rem'
                         }}
                       >
-                        {isPostingToThreads ? '投稿中...' : '📱 Threadsに投稿'}
+                        {isPostingToThreads ? '投稿中...' : '@ Threadsに投稿'}
                       </button>
                     ) : (
                       <button
@@ -2085,7 +2085,7 @@ const PostGenerator = () => {
                           fontSize: '0.875rem'
                         }}
                       >
-                        📱 Threadsを接続
+                        @ Threadsを接続
                       </button>
                     )}
 
@@ -2183,7 +2183,7 @@ const PostGenerator = () => {
             }}>
               <div>⚡ 無制限AI生成</div>
               <div>𝕏 Twitter自動投稿</div>
-              <div>📱 Threads自動投稿</div>
+              <div>@ Threads自動投稿</div>
               <div>🔄 同時投稿機能</div>
             </div>
 
