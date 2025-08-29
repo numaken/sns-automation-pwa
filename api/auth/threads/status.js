@@ -27,16 +27,19 @@ export default async function handler(req, res) {
       // tokenDataを直接パース
       let tokenInfo = null;
       try {
-        if (typeof tokenData === 'string') {
-          tokenInfo = JSON.parse(tokenData);
-        } else {
-          tokenInfo = tokenData;
-        }
+        tokenInfo = JSON.parse(tokenData);
+        console.log('Parsed Threads token info:', tokenInfo);
       } catch (e) {
         console.error('Failed to parse token data:', e);
-        console.log('Raw tokenData:', tokenData);
       }
-
+      return res.status(200).json({
+        connected: true,
+        username: tokenInfo?.username || 'Connected User',
+        threadsId: tokenInfo?.user_id,
+        connectedAt: tokenInfo?.created_at,
+        platform: 'threads'
+      });
+    }
       // tokenInfoから直接usernameを取得
       const username = tokenInfo?.username || 'Connected User';
 
