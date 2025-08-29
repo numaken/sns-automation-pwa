@@ -667,26 +667,23 @@ const PostGenerator = () => {
     console.log('🔍 Checking premium status...');
 
     const userPlan = localStorage.getItem('userPlan');
-    const subscriptionStatus = localStorage.getItem('subscriptionStatus');
+    console.log('📊 Premium check:', { userPlan });
 
-    console.log('📊 Premium check:', { userPlan, subscriptionStatus });
+    if (userPlan === 'premium') {
+      console.log('✅ Premium status confirmed');
+      setUserPlan('premium');
+      setUsage({ remaining: 'unlimited' });
+      localStorage.removeItem('dailyUsage');
+    } else {
+      console.log('📋 Free plan confirmed');
+      setUserPlan('free');
+      setUsage({ remaining: 3, used: 0, limit: 3 });
+    }
 
-    // checkPremiumStatus関数を修正
-    const checkPremiumStatus = () => {
-      const userPlan = localStorage.getItem('userPlan');
-
-      if (userPlan === 'premium') {
-        setUserPlan('premium');
-        setUsage({ remaining: 'unlimited' });
-        localStorage.removeItem('dailyUsage');
-      } else {
-        setUserPlan('free');
-        setUsage({ remaining: 3, used: 0, limit: 3 });
-      }
-
-      checkSnsConnections();
-    };
-
+    // SNS接続確認も実行
+    checkSnsConnections();
+  };
+  
   // 🔧 修正: SNS接続状況確認の改善（無限ループ防止）
   const checkSnsConnections = async () => {
     // 既に確認中の場合はスキップ
