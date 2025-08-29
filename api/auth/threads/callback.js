@@ -161,7 +161,7 @@ export default async function handler(req, res) {
 <body>
     <div class="success">
         <h1>🎉 認証完了！</h1>
-        <div class="username">@${username}</div>
+        <div class="username">@${userData.username}</div>
         <div class="message">として接続されました</div>
         <div class="countdown" id="countdown">10</div>
         <button onclick="window.close()">ウィンドウを閉じる</button>
@@ -180,7 +180,7 @@ export default async function handler(req, res) {
                         window.opener.postMessage({
                             type: 'THREADS_AUTH_SUCCESS',
                             success: true,
-                            username: '${username}'
+                            username: '${userData.username}'
                         }, '*');
                     }
                     window.close();
@@ -192,7 +192,6 @@ export default async function handler(req, res) {
     </script>
 </body>
 </html>`;
-
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     return res.status(200).send(successHtml);
 
