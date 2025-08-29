@@ -99,28 +99,14 @@ export default async function handler(req, res) {
     // ユーザー情報の取得
     console.log('=== User Info Fetch START ===');
 
-    const userResponse = await fetch(`https://graph.threads.net/v1.0/me?fields=id,username,name&access_token=${tokenData.access_token}`);
+    const userResponse = await fetch(`https://graph.threads.net/v1.0/me?fields=id,username,name,account_type&access_token=${tokenData.access_token}`);
     const userData = await userResponse.json();
 
     // デバッグ：実際のレスポンスを確認
-    console.log('=== THREADS API FULL RESPONSE ===');
-    console.log(JSON.stringify(userData, null, 2));
-    console.log('Available fields:', Object.keys(userData));
-    console.log('=================================');
+    console.log('Threads API full response:', JSON.stringify(userData));
 
-
-
-    const username = userData.username || userData.name || `user_${userData.id}`;
-
-    console.log('Threads API response fields:', Object.keys(userData));
-    console.log('Selected username:', username);
-
-    console.log('User data response:', {
-      status: userResponse.status,
-      hasData: !!userData.id,
-      username: userData.username,
-      error: userData.error
-    });
+    // Threads APIは'username'を返さない可能性があるため、IDを使用
+    const username = userData.username || userData.name || `threads_${userData.id}`;
 
     if (!userResponse.ok) {
       console.error('Threads user info failed:', userData);
