@@ -1721,7 +1721,7 @@ const PostGenerator = () => {
                       border: '1px solid #d1d5db'
                     }}>
                       <span style={{ color: '#374151', fontWeight: 500 }}>
-                        @Threads (@{threadsUsername}) ✅
+                        @ @{threadsUsername} ✅
                       </span>
                       <button
                         onClick={() => {
@@ -1809,7 +1809,7 @@ const PostGenerator = () => {
             <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
               <span>SNS接続: </span>
               {twitterConnected && <span style={{ color: '#1d9bf0' }}>𝕏 (@{twitterUsername}) </span>}
-              {threadsConnected && <span style={{ color: '#000' }}>@ (@{threadsUsername}) </span>}
+              {threadsConnected && <span style={{ color: '#1d9bf0' }}>@ (@{threadsUsername}) </span>}
               {!twitterConnected && !threadsConnected && <span>未接続</span>}
             </div>
           </div>
