@@ -683,7 +683,7 @@ const PostGenerator = () => {
     // SNS接続確認も実行
     checkSnsConnections();
   };
-  
+
   // 🔧 修正: SNS接続状況確認の改善（無限ループ防止）
   const checkSnsConnections = async () => {
     // 既に確認中の場合はスキップ
@@ -1058,16 +1058,17 @@ const PostGenerator = () => {
       if (!response.ok) {
         console.error('❌ Twitter post failed:', data);
 
-        // テストモード判定
-        if (data.test_mode || localStorage.getItem('twitter_token')?.includes('test_token')) {
-          console.log('🔧 Test mode: simulating successful post');
-          window.alert('✅ テストモード: Twitter投稿が成功しました！\n\n' + generatedPost.substring(0, 100) + '...');
-          return;
+        // 認証エラーの場合、自動的に切断
+        if (data.error === 'TWITTER_AUTH_EXPIRED') {
+          localStorage.removeItem('twitter_token');
+          localStorage.removeItem('twitter_connected');
+          setTwitterConnected(false);
+          setError('Twitter認証が期限切れです。再接続してください。');
+          throw new Error('TWITTER_AUTH_EXPIRED');
         }
 
         throw new Error(data.error || 'Twitter投稿に失敗しました');
       }
-
       console.log('✅ Twitter post successful:', data);
 
       // 成功メッセージ
@@ -1122,6 +1123,16 @@ const PostGenerator = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
+
+        // 認証エラーの場合、自動的に切断
+        if (errorData.error === 'THREADS_AUTH_EXPIRED') {
+          localStorage.removeItem('threads_token');
+          localStorage.removeItem('threads_connected');
+          setThreadsConnected(false);
+          setError('Threads認証が期限切れです。再接続してください。');
+          throw new Error('THREADS_AUTH_EXPIRED');
+        }
+
         throw new Error(errorData.error || 'Threads投稿に失敗しました');
       }
 
@@ -1173,6 +1184,7 @@ const PostGenerator = () => {
     const results = [];
 
     // 順次実行
+    // Twitter投稿
     if (twitterConnected) {
       try {
         console.log('🐦 Starting Twitter post...');
@@ -1182,6 +1194,13 @@ const PostGenerator = () => {
       } catch (error) {
         console.error('❌ Twitter post failed:', error);
         results.push({ platform: 'Twitter', success: false, error: error.message });
+
+        // 認証エラーの場合、自動的に切断
+        if (error.message.includes('AUTH_EXPIRED')) {
+          localStorage.removeItem('twitter_token');
+          localStorage.removeItem('twitter_connected');
+          setTwitterConnected(false);
+        }
       }
     }
 
