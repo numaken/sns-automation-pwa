@@ -617,7 +617,7 @@ const ConnectionBadge = ({ twitterConnected, threadsConnected, twitterUsername, 
             gap: '0.25rem'
           }}>
             <span>@</span>
-            <span>Threads (@{threadsUsername})</span>  {/* ← ユーザー名を追加 */}
+            <span>(@{threadsUsername})</span>  {/* ← ユーザー名を追加 */}
             <span>✅</span>
           </span>
         )}
