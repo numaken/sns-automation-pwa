@@ -1519,113 +1519,158 @@ const PostGenerator = () => {
 
   // メイン画面
   return (
-    <div
-      className="unified-container modern-container"
-      style={{ minHeight: '100vh', padding: '2rem' }}
-    >
-      <div
-        className="unified-main-container"
-        style={{ maxWidth: '60rem', margin: '0 auto' }}
-      >
-        {/* ヘッダー */}
-        <div
-          className="unified-header"
-          style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            padding: '1.5rem',  // 2rem → 1.5rem に変更
-            borderRadius: '1rem 1rem 0 0',
-            marginBottom: '1.5rem',  // 2rem → 1.5rem に変更
-            boxShadow: '0 10px 30px rgba(102, 126, 234, 0.3)'
-          }}
-        >
+    <div className="unified-container" style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+
+      <div style={{ maxWidth: '60rem', margin: '0 auto' }}>
+
+        {/* シンプルなヘッダー */}
+        <header style={{
+          background: 'white',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          borderBottom: '1px solid #e5e7eb',
+          position: 'sticky',
+          top: 0,
+          zIndex: 50,
+          marginBottom: '2rem'
+        }}>
           <div style={{
+            maxWidth: '60rem',
+            margin: '0 auto',
+            padding: '0.75rem 1.5rem',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            gap: '1.5rem',
-            marginBottom: '1rem'
+            justifyContent: 'space-between'
           }}>
-            {/* ロゴ */}
-            <div style={{
-              width: '60px',
-              height: '60px',
-              background: 'white',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '32px',
-              boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
-            }}>
-              ✈️
-            </div>
-
-            <div>
-              <h1 style={{
-                fontSize: '2.5rem',
-                fontWeight: 'bold',
+            {/* 左側: ロゴとプラン表示 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 color: 'white',
-                margin: 0,
-                letterSpacing: '-0.5px'
+                fontSize: '20px'
               }}>
-                PostPilot Pro
-              </h1>
-              <p style={{
-                fontSize: '0.875rem',
-                color: 'rgba(255,255,255,0.9)',
-                margin: '0.25rem 0 0 0',
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase'
-              }}>
-                AI-Powered Social Media Automation
-              </p>
+                ✈️
+              </div>
+
+              <div>
+                <h1 style={{
+                  fontSize: '1.125rem',
+                  fontWeight: 'bold',
+                  color: '#1f2937',
+                  margin: 0
+                }}>
+                  PostPilot Pro
+                </h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {userPlan === 'premium' ? (
+                    <>
+                      <span style={{
+                        fontSize: '0.75rem',
+                        padding: '2px 8px',
+                        borderRadius: '9999px',
+                        background: 'linear-gradient(to right, #fbbf24, #f59e0b)',
+                        color: 'white',
+                        fontWeight: '500'
+                      }}>
+                        ⭐ プレミアム
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: '#f59e0b' }}>
+                        無制限
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{
+                        fontSize: '0.75rem',
+                        padding: '2px 8px',
+                        borderRadius: '9999px',
+                        background: '#f3f4f6',
+                        color: '#6b7280'
+                      }}>
+                        無料プラン
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                        残り {usage.remaining}/3
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* プレミアムバッジ */}
-            {userPlan === 'premium' && (
-              <div
-                className="unified-premium-badge"
-                style={{
+            {/* 右側: SNS状態と設定 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {twitterConnected && (
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  background: '#000',
+                  color: 'white',
+                  borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.5rem',
-                  background: 'rgba(255,255,255,0.2)',
-                  backdropFilter: 'blur(10px)',
+                  justifyContent: 'center',
+                  fontSize: '14px',
+                  fontWeight: 'bold'
+                }}>
+                  𝕏
+                </div>
+              )}
+              {threadsConnected && (
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  background: 'linear-gradient(135deg, #833ab4, #e1306c)',
                   color: 'white',
-                  padding: '0.5rem 1rem',
-                  borderRadius: '9999px',
-                  fontWeight: 'bold',
-                  border: '2px solid rgba(255,255,255,0.3)'
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '14px',
+                  fontWeight: 'bold'
+                }}>
+                  @
+                </div>
+              )}
+
+              <button
+                onClick={() => setShowSubscriptionManager(true)}
+                style={{
+                  padding: '0.5rem',
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                  fontSize: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'background 0.2s'
                 }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
-                <span>👑</span>
-                PREMIUM
-              </div>
-            )}
+                ⚙️
+              </button>
+            </div>
           </div>
+        </header>
 
-          <p style={{
-            fontSize: '1.125rem',
-            color: 'rgba(255,255,255,0.95)',
-            textAlign: 'center',
-            margin: 0
-          }}>
-            {userPlan === 'premium'
-              ? '無制限AI投稿生成 + SNS自動投稿でビジネスを加速'
-              : 'APIキー設定不要で即座にAI投稿生成を開始'}
-          </p>
-        </div>
-
-        {/* メインコンテンツ */}
-        <div
-          className="unified-card modern-card"
-          style={{
-            background: 'white',
-            borderRadius: '1rem',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            padding: '2rem'
-          }}
-        >
+        {/* メインコンテンツ - 既存のコードをそのまま使用 */}
+        <div style={{
+          background: 'white',
+          borderRadius: '1rem',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+          padding: '2rem',
+          margin: '0 1rem'
+        }}>
+          
           {/* 🚀 新規追加: 接続状態バッジ */}
           <ConnectionBadge
             twitterConnected={twitterConnected}
