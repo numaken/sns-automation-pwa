@@ -161,7 +161,7 @@ export default async function handler(req, res) {
       grant_type: 'authorization_code',
       client_id: process.env.TWITTER_CLIENT_ID,
       code: code,
-      redirect_uri: 'https://sns-automation-pwa.vercel.app/api/auth/twitter/callback',
+      redirect_uri: process.env.TWITTER_CALLBACK_URL || 'https://postpilot.panolabollc.com/api/auth/twitter/callback',
       code_verifier: pkceData.codeVerifier,
     });
 
@@ -169,7 +169,7 @@ export default async function handler(req, res) {
       grant_type: 'authorization_code',
       client_id: process.env.TWITTER_CLIENT_ID?.substring(0, 10) + '...',
       code: code.substring(0, 10) + '...',
-      redirect_uri: 'https://sns-automation-pwa.vercel.app/api/auth/twitter/callback',
+      redirect_uri: process.env.TWITTER_CALLBACK_URL || 'https://postpilot.panolabollc.com/api/auth/twitter/callback',
       code_verifier: pkceData.codeVerifier?.substring(0, 10) + '...'
     });
 
@@ -286,7 +286,7 @@ export default async function handler(req, res) {
         <div class="message">として接続されました</div>
         <div class="fix-info">✅ UserID問題修正済み - 安定動作中</div>
         <button onclick="closeWindow()">ウィンドウを閉じる</button>
-        <button onclick="window.location.href='https://sns-automation-pwa.vercel.app'">メインページに戻る</button>
+        <button onclick="window.location.href='https://postpilot.panolabollc.com'">メインページに戻る</button>
         <div class="auto-close">このウィンドウは10秒後に自動で閉じます</div>
         <script>
             function closeWindow() {
@@ -306,7 +306,7 @@ export default async function handler(req, res) {
                   window.open('', '_self');
                   window.close();
                 } catch (e2) {
-                  window.location.href = 'https://sns-automation-pwa.vercel.app?twitter_auth=success&username=${userData.data.username}&fixed=true';
+                  window.location.href = 'https://postpilot.panolabollc.com?twitter_auth=success&username=${userData.data.username}&fixed=true';
                 }
               }
             }            
