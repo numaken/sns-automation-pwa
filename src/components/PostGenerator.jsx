@@ -2,7 +2,7 @@
 // 🚀 改善: 無料ユーザーでもSNS接続可能・プレミアム移行後即座投稿
 
 import React, { useState, useEffect } from 'react';
-import './styles/custom.css';
+import '../styles/custom.css';
 
 // SubscriptionManagerコンポーネントを直接統合
 const SubscriptionManager = ({ userId, onPlanChange, onClose }) => {
