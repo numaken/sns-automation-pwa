@@ -27,7 +27,6 @@ export default async function handler(req, res) {
       // tokenDataを直接パース
       let tokenInfo = null;
       try {
-        // tokenDataが既にオブジェクトの場合とJSON文字列の場合を処理
         if (typeof tokenData === 'string') {
           tokenInfo = JSON.parse(tokenData);
         } else {
@@ -35,20 +34,22 @@ export default async function handler(req, res) {
         }
       } catch (e) {
         console.error('Failed to parse token data:', e);
-        console.log('Raw tokenData type:', typeof tokenData);
         console.log('Raw tokenData:', tokenData);
       }
 
+      // tokenInfoから直接usernameを取得
+      const username = tokenInfo?.username || 'Connected User';
+
       console.log('Threads connection confirmed:', {
         userId,
-        username: tokenInfo?.username || 'Connected User',
+        username: username,
         threadsId: tokenInfo?.user_id,
         connectedAt: tokenInfo?.created_at
       });
 
       return res.status(200).json({
         connected: true,
-        username: tokenInfo?.username || 'Connected User',
+        username: username,  // ここが重要
         threadsId: tokenInfo?.user_id,
         connectedAt: tokenInfo?.created_at,
         platform: 'threads'
