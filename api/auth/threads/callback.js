@@ -99,8 +99,13 @@ export default async function handler(req, res) {
     // ユーザー情報の取得
     console.log('=== User Info Fetch START ===');
 
-    const userResponse = await fetch(`https://graph.threads.net/v1.0/me?fields=id,username&access_token=${tokenData.access_token}`);
+    const userResponse = await fetch(`https://graph.threads.net/v1.0/me?fields=id,username,name&access_token=${tokenData.access_token}`);
     const userData = await userResponse.json();
+
+    const username = userData.username || userData.name || `user_${userData.id}`;
+
+    console.log('Threads API response fields:', Object.keys(userData));
+    console.log('Selected username:', username);
 
     console.log('User data response:', {
       status: userResponse.status,
