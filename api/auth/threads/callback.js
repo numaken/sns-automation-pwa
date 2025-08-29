@@ -145,168 +145,53 @@ export default async function handler(req, res) {
     console.log('Redirecting to:', redirectUrl);
 
     // 修正された成功ページのHTML
-    const successHtml = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Threads接続完了</title>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-            body { 
-                font-family: system-ui, -apple-system, sans-serif; 
-                margin: 0; 
-                padding: 20px; 
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                min-height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            .container { 
-                max-width: 500px; 
-                background: white; 
-                padding: 40px; 
-                border-radius: 20px; 
-                box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
-                text-align: center;
-                animation: slideIn 0.5s ease-out;
-            }
-            @keyframes slideIn {
-                from { opacity: 0; transform: translateY(30px); }
-                to { opacity: 1; transform: translateY(0); }
-            }
-            .success { color: #16a34a; font-size: 64px; margin-bottom: 20px; animation: bounce 1s ease-in-out; }
-            @keyframes bounce {
-                0%, 20%, 60%, 100% { transform: translateY(0); }
-                40% { transform: translateY(-20px); }
-                80% { transform: translateY(-10px); }
-            }
-            .fix-info { 
-                background: rgba(34, 197, 94, 0.1); 
-                padding: 15px; 
-                border-radius: 10px; 
-                margin: 20px 0; 
-                font-size: 14px; 
-                color: #16a34a;
-                border: 1px solid rgba(34, 197, 94, 0.3);
-            }
-            h1 { color: #1f2937; margin-bottom: 10px; font-size: 28px; }
-            p { color: #6b7280; margin-bottom: 20px; line-height: 1.6; }
-            .username { 
-                background: #f8fafc; 
-                padding: 15px; 
-                border-radius: 10px; 
-                font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace; 
-                color: #1f2937; 
-                font-weight: bold;
-                margin: 20px 0;
-                border: 2px solid #e5e7eb;
-            }
-            .button { 
-                background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
-                color: white; 
-                border: none; 
-                padding: 15px 30px; 
-                border-radius: 10px; 
-                font-size: 16px; 
-                font-weight: 600;
-                cursor: pointer; 
-                margin-top: 20px;
-                transition: all 0.3s ease;
-                box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
-            }
-            .button:hover { 
-                transform: translateY(-2px);
-                box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
-            }
-            .countdown {
-                font-size: 12px;
-                color: #9ca3af;
-                margin-top: 15px;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="success">🧵</div>
-            <h1>Threads接続完了！</h1>
-            <p><strong>@${userData.username}</strong> として接続されました</p>
-            <div class="username">@${userData.username}</div>
-            <div class="fix-info">
-                ✅ 完全修正済み - 安定動作中<br>
-                🔧 State-only search + App return improvement
-            </div>
-            <p>これでThreadsに自動投稿できるようになりました。</p>
-            <button class="button" onclick="returnToApp()">
-                🚀 アプリに戻る
-            </button>
-            <div class="countdown" id="countdown">10秒後に自動でアプリに戻ります</div>
-        </div>
-        <script>
-            const username = '${userData.username}';
-            const userId = '${authData.userId}';
-            const redirectUrl = '${redirectUrl}';
-            
-            function returnToApp() {
+    const successHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <title>Threads認証完了</title>
+    <meta charset="utf-8">
+    <meta http-equiv="refresh" content="10;url=https://postpilot.panolabollc.com">
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #000; color: white; }
+        .success { background: rgba(255,255,255,0.1); padding: 30px; border-radius: 10px; max-width: 400px; margin: 0 auto; }
+        .username { font-size: 24px; font-weight: bold; margin: 20px 0; }
+        .countdown { font-size: 48px; font-weight: bold; color: #10b981; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="success">
+        <h1>🎉 認証完了！</h1>
+        <div class="username">@${username}</div>
+        <div class="message">として接続されました</div>
+        <div class="countdown" id="countdown">10</div>
+        <button onclick="window.close()">ウィンドウを閉じる</button>
+        <div class="auto-close">このウィンドウは10秒後に自動で閉じます</div>
+    </div>
+    <script>
+        let count = 10;
+        const countdown = document.getElementById('countdown');
+        const timer = setInterval(() => {
+            count--;
+            if (countdown) countdown.textContent = count;
+            if (count <= 0) {
+                clearInterval(timer);
                 try {
-                    // 親ウィンドウにメッセージを送信
-                    if (window.opener && !window.opener.closed) {
+                    if (window.opener) {
                         window.opener.postMessage({
                             type: 'THREADS_AUTH_SUCCESS',
-                            username: username,
-                            userId: userId,
-                            fixed: true,
-                            timestamp: new Date().toISOString()
+                            success: true,
+                            username: '${username}'
                         }, '*');
-                        
-                        // 少し待ってからウィンドウを閉じる
-                        setTimeout(() => {
-                            window.close();
-                        }, 500);
-                    } else {
-                        // 親ウィンドウがない場合はリダイレクト
-                        window.location.href = redirectUrl;
                     }
+                    window.close();
                 } catch (e) {
-                    console.log('Window messaging failed, redirecting:', e);
-                    // フォールバック: 直接リダイレクト
-                    window.location.href = redirectUrl;
+                    window.location.href = 'https://postpilot.panolabollc.com';
                 }
             }
-
-            // 親ウィンドウに即座にメッセージを送信
-            if (window.opener && !window.opener.closed) {
-                try {
-                    window.opener.postMessage({
-                        type: 'THREADS_AUTH_SUCCESS',
-                        username: username,
-                        userId: userId,
-                        fixed: true,
-                        timestamp: new Date().toISOString()
-                    }, '*');
-                } catch (e) {
-                    console.log('Immediate parent notification failed:', e);
-                }
-            }
-            
-            // カウントダウン機能
-            let countdown = 10;
-            const countdownElement = document.getElementById('countdown');
-            
-            const timer = setInterval(() => {
-                countdown--;
-                countdownElement.textContent = countdown + '秒後に自動でアプリに戻ります';
-                
-                if (countdown <= 0) {
-                    clearInterval(timer);
-                    returnToApp();
-                }
-            }, 1000);
-        </script>
-    </body>
-    </html>
-    `;
+        }, 1000);
+    </script>
+</body>
+</html>`;
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     return res.status(200).send(successHtml);

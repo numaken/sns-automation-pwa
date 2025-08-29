@@ -617,7 +617,7 @@ const ConnectionBadge = ({ twitterConnected, threadsConnected, twitterUsername, 
             gap: '0.25rem'
           }}>
             <span>📱</span>
-            <span>Threads</span>
+            <span>Threads (@{threadsUsername})</span>  {/* ← ユーザー名を追加 */}
             <span>✅</span>
           </span>
         )}
@@ -1741,7 +1741,7 @@ const PostGenerator = () => {
             <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
               <span>SNS接続: </span>
               {twitterConnected && <span style={{ color: '#1d9bf0' }}>🐦 X (@{twitterUsername}) </span>}
-              {threadsConnected && <span style={{ color: '#000' }}>📱 Threads </span>}
+              {threadsConnected && <span style={{ color: '#000' }}>📱 Threads (@{threadsUsername}) </span>}
               {!twitterConnected && !threadsConnected && <span>未接続</span>}
             </div>
           </div>
