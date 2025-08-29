@@ -271,7 +271,7 @@ export default async function handler(req, res) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Twitter認証完了</title>
+    <title>認証完了</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -330,7 +330,7 @@ export default async function handler(req, res) {
 <body>
     <div class="container">
         <div class="success-icon">✅</div>
-        <h1>認証完了！</h1>
+        <h1>🎉 認証完了！</h1>
         <div class="username">@${username}</div>
         <p class="message">として接続されました</p>
         <button class="button" onclick="window.close()">このウィンドウを閉じる</button>
@@ -342,7 +342,8 @@ export default async function handler(req, res) {
                 type: 'TWITTER_AUTH_SUCCESS',
                 username: '${username}'
             }, '*');
-        }        
+        }
+        
         // 5秒後に自動でウィンドウを閉じる
         setTimeout(() => {
             window.close();
@@ -351,9 +352,10 @@ export default async function handler(req, res) {
 </body>
 </html>
 `;
-    res.setHeader('Location', `https://postpilot.panolabollc.com?auth_success=twitter&username=${userData.data.username}`);
-    return res.status(302).end();
 
+    res.setHeader('Content-Type', 'text/html');
+    return res.status(200).send(html);
+    
   } catch (error) {
     console.error('Twitter OAuth callback error:', error);
     return res.status(500).json({
