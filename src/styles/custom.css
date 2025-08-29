@@ -1,0 +1,303 @@
+/* カスタムプロパティ（CSS変数） */
+:root {
+  --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  --secondary-gradient: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%);
+  --success-gradient: linear-gradient(135deg, #10b981 0%, #14b8a6 100%);
+  --premium-gradient: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --card-shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  --border-radius: 16px;
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* グローバルアニメーション */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* メインコンテナ */
+.modern-container {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #faf5ff 0%, #f3e8ff 50%, #e9d5ff 100%);
+  position: relative;
+  overflow-x: hidden;
+}
+
+.modern-container::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
+  animation: pulse 10s ease-in-out infinite;
+}
+
+/* ヘッダー */
+.modern-header {
+  background: var(--primary-gradient);
+  padding: 3rem 2rem;
+  border-radius: 0 0 2rem 2rem;
+  box-shadow: 0 10px 40px rgba(99, 102, 241, 0.3);
+  position: relative;
+  overflow: hidden;
+  animation: fadeIn 0.6s ease-out;
+}
+
+.modern-header::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transform: rotate(45deg);
+  animation: slideIn 3s ease-in-out infinite;
+}
+
+/* カード */
+.modern-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  padding: 2rem;
+  transition: var(--transition);
+  animation: fadeIn 0.8s ease-out;
+}
+
+.modern-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--card-shadow-hover);
+}
+
+/* ボタン */
+.modern-button {
+  background: var(--primary-gradient);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.modern-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.modern-button:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+.modern-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+}
+
+.modern-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 入力フィールド */
+.modern-input,
+.modern-textarea,
+.modern-select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 1rem;
+  transition: var(--transition);
+  background: white;
+}
+
+.modern-input:focus,
+.modern-textarea:focus,
+.modern-select:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+/* SNS接続カード */
+.sns-connection-card {
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: var(--transition);
+}
+
+.sns-connection-card:hover {
+  transform: translateX(4px);
+}
+
+.sns-connected {
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+  border: 1px solid #86efac;
+}
+
+/* プレミアムバッジ */
+.premium-badge {
+  background: var(--premium-gradient);
+  color: white;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* 生成結果 */
+.generated-post-container {
+  background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+  border: 2px solid #e9d5ff;
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+  position: relative;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.generated-post-container::before {
+  content: '✨';
+  position: absolute;
+  top: -12px;
+  left: 20px;
+  background: white;
+  padding: 0 8px;
+  font-size: 20px;
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+  .modern-header {
+    padding: 2rem 1rem;
+    border-radius: 0 0 1rem 1rem;
+  }
+
+  .modern-card {
+    padding: 1.5rem;
+  }
+
+  .modern-button {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+  }
+}
+
+/* ローディングアニメーション */
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #8b5cf6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* トースト通知 */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: white;
+  padding: 16px 24px;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow-hover);
+  animation: slideInUp 0.3s ease-out;
+  z-index: 1000;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ダークモード対応（オプション） */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --card-bg: rgba(30, 30, 30, 0.95);
+    --text-primary: #f3f4f6;
+    --text-secondary: #9ca3af;
+  }
+
+  .modern-card {
+    background: var(--card-bg);
+    color: var(--text-primary);
+  }
+
+  .modern-input,
+  .modern-textarea,
+  .modern-select {
+    background: rgba(50, 50, 50, 0.95);
+    color: var(--text-primary);
+    border-color: #4b5563;
+  }
+}

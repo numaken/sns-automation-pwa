@@ -2,6 +2,7 @@
 // 🚀 改善: 無料ユーザーでもSNS接続可能・プレミアム移行後即座投稿
 
 import React, { useState, useEffect } from 'react';
+import './styles/custom.css';
 
 // SubscriptionManagerコンポーネントを直接統合
 const SubscriptionManager = ({ userId, onPlanChange, onClose }) => {
@@ -1519,8 +1520,8 @@ const PostGenerator = () => {
   // メイン画面
   return (
     <div
-      className="unified-container"
-      style={{ minHeight: '100vh', backgroundColor: '#f0f4ff', padding: '2rem' }}
+      className="unified-container modern-container"
+      style={{ minHeight: '100vh', padding: '2rem' }}
     >
       <div
         className="unified-main-container"
@@ -1528,7 +1529,7 @@ const PostGenerator = () => {
       >
         {/* ヘッダー */}
         <div
-          className="unified-header"
+          className="unified-header modern-header"
           style={{
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             padding: '2rem',
@@ -1617,7 +1618,7 @@ const PostGenerator = () => {
 
         {/* メインコンテンツ */}
         <div
-          className="unified-card"
+          className="unified-card modern-card"
           style={{
             background: 'white',
             borderRadius: '1rem',
@@ -1821,7 +1822,7 @@ const PostGenerator = () => {
                 投稿のテーマ
               </label>
               <textarea
-                className="unified-textarea"
+                className="modern-textarea"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="例: 新商品の紹介、イベントの告知、日常の出来事など..."
@@ -1844,7 +1845,7 @@ const PostGenerator = () => {
                 投稿のトーン
               </label>
               <select
-                className="unified-select"
+                className="modern-select"
                 value={tone}
                 onChange={(e) => setTone(e.target.value)}
                 style={{
@@ -1865,6 +1866,7 @@ const PostGenerator = () => {
             </div>
 
             <button
+              className="modern-button"
               onClick={generatePost}
               disabled={isLoading || !prompt.trim()}
               style={{
