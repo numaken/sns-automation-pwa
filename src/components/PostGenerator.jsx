@@ -1529,12 +1529,12 @@ const PostGenerator = () => {
       >
         {/* ヘッダー */}
         <div
-          className="unified-header modern-header"
+          className="unified-header"
           style={{
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            padding: '2rem',
+            padding: '1.5rem',  // 2rem → 1.5rem に変更
             borderRadius: '1rem 1rem 0 0',
-            marginBottom: '2rem',
+            marginBottom: '1.5rem',  // 2rem → 1.5rem に変更
             boxShadow: '0 10px 30px rgba(102, 126, 234, 0.3)'
           }}
         >
