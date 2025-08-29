@@ -121,12 +121,12 @@ export default async function handler(req, res) {
     const tokenInfo = {
       access_token: tokenData.access_token,
       user_id: userData.id,
-      username: userData.username,  // ← これが重要
+      username: userData.username,  // 実際のユーザー名
       created_at: new Date().toISOString()
     };
-    await setKVValue(tokenKey, tokenData.access_token, 86400 * 30);
 
-    console.log('Token saved:', { key: tokenKey, userInfoKey, success: true });
+    await setKVValue(tokenKey, JSON.stringify(tokenData), 86400 * 30);
+    console.log('Token saved with username:', userData.username);
 
     // PKCEセッションの削除
     try {
