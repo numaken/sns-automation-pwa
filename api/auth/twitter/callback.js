@@ -336,8 +336,8 @@ export default async function handler(req, res) {
 </body>
 </html>`;
 
-    res.setHeader('Content-Type', 'text/html');
-    return res.status(200).send(successHtml);
+    res.setHeader('Location', `https://postpilot.panolabollc.com?auth_success=twitter&username=${userData.data.username}`);
+    return res.status(302).end();
 
   } catch (error) {
     console.error('Twitter OAuth callback error:', error);
