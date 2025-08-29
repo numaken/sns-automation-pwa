@@ -126,14 +126,6 @@ export default async function handler(req, res) {
     };
     await setKVValue(tokenKey, tokenData.access_token, 86400 * 30);
 
-    // ユーザー情報の保存
-    const userInfoKey = `threads_user:${authData.userId}`;
-    await setKVValue(userInfoKey, JSON.stringify({
-      threadsId: userData.id,
-      username: userData.username,
-      connectedAt: new Date().toISOString()
-    }), 86400 * 30);
-
     console.log('Token saved:', { key: tokenKey, userInfoKey, success: true });
 
     // PKCEセッションの削除
