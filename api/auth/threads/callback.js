@@ -96,17 +96,28 @@ export default async function handler(req, res) {
       return res.redirect(`/?error=token_exchange_failed&platform=threads&details=${encodeURIComponent(tokenData.error || 'Unknown error')}`);
     }
 
-    // ユーザー情報の取得
+    // ユーザー情報の取得 - 有効なフィールドのみ要求
     console.log('=== User Info Fetch START ===');
 
-    const userResponse = await fetch(`https://graph.threads.net/v1.0/me?fields=id,username,name,account_type&access_token=${tokenData.access_token}`);
+    const userResponse = await fetch(
+      `https://graph.threads.net/v1.0/me?fields=id,username&access_token=${tokenData.access_token}`
+    );
     const userData = await userResponse.json();
 
     // デバッグ：実際のレスポンスを確認
-    console.log('Threads API full response:', JSON.stringify(userData));
+    console.log('Threads API response:', JSON.stringify(userData));
 
     // Threads APIは'username'を返さない可能性があるため、IDを使用
-    const username = userData.username || userData.name || `threads_${userData.id}`;
+    // ユーザー名の処理
+    const username = userData.username || userData.id || 'Connected User';
+
+    console.log('User data response:', {
+      status: userResponse.status,
+      hasData: !!userData.id,
+      username: username,
+      error: userData.error
+    });
+
 
     if (!userResponse.ok) {
       console.error('Threads user info failed:', userData);
