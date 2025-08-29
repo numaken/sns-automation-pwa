@@ -263,79 +263,93 @@ export default async function handler(req, res) {
 
 
     // 成功レスポンス（HTML）
-    const successHtml = `
+    const html = `
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Twitter認証完了</title>
-    <meta charset="utf-8">
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #1da1f2; color: white; }
-        .success { background: rgba(255,255,255,0.1); padding: 30px; border-radius: 10px; max-width: 400px; margin: 0 auto; }
-        .username { font-size: 24px; font-weight: bold; margin: 20px 0; }
-        .message { margin: 20px 0; }
-        .fix-info { background: rgba(0,255,0,0.1); padding: 15px; border-radius: 5px; margin: 15px 0; font-size: 14px; }
-        button { background: white; color: #1da1f2; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px; }
-        .auto-close { font-size: 12px; opacity: 0.8; margin-top: 20px; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            text-align: center;
+            max-width: 400px;
+        }
+        .success-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #1f2937;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        .username {
+            color: #1d9bf0;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .message {
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
     </style>
 </head>
 <body>
-    <div class="success">
-        <h1>🎉 認証完了！</h1>
-        <div class="username">@${userData.data.username}</div>
-        <div class="message">として接続されました</div>
-        <div class="fix-info">✅ UserID問題修正済み - 安定動作中</div>
-        <button onclick="closeWindow()">ウィンドウを閉じる</button>
-        <button onclick="window.location.href='https://postpilot.panolabollc.com'">メインページに戻る</button>
-        <div class="auto-close">このウィンドウは10秒後に自動で閉じます</div>
-        <script>
-            function closeWindow() {
-              try {
-                if (window.opener && !window.opener.closed) {
-                  window.opener.postMessage({
-                    type: 'twitter_auth_complete',
-                    success: true,
-                    username: '${userData.data.username}',
-                    fixed: true
-                  }, '*');
-                }
-                window.close();
-              } catch (e) {
-                try {
-                  window.opener = null;
-                  window.open('', '_self');
-                  window.close();
-                } catch (e2) {
-                  window.location.href = 'https://postpilot.panolabollc.com?twitter_auth=success&username=${userData.data.username}&fixed=true';
-                }
-              }
-            }            
-            
-            // 親ウィンドウに成功を通知
-            if (window.opener) {
-                try {
-                    window.opener.postMessage({
-                        type: 'twitter_auth_success',
-                        user: {
-                            id: '${userData.data.id}',
-                            username: '${userData.data.username}'
-                        },
-                        fixed: true
-                    }, '*');
-                } catch (e) {
-                    console.log('Parent window notification failed:', e);
-                }
-            }
-            
-            // 10秒後に自動で閉じる
-            setTimeout(() => {
-                closeWindow();
-            }, 10000);
-        </script>
+    <div class="container">
+        <div class="success-icon">✅</div>
+        <h1>認証完了！</h1>
+        <div class="username">@${username}</div>
+        <p class="message">として接続されました</p>
+        <button class="button" onclick="window.close()">このウィンドウを閉じる</button>
     </div>
+    <script>
+        // 親ウィンドウに成功通知
+        if (window.opener) {
+            window.opener.postMessage({
+                type: 'TWITTER_AUTH_SUCCESS',
+                username: '${username}'
+            }, '*');
+        }
+        
+        // 5秒後に自動でウィンドウを閉じる
+        setTimeout(() => {
+            window.close();
+        }, 5000);
+    </script>
 </body>
-</html>`;
-
+</html>
+`;
     res.setHeader('Location', `https://postpilot.panolabollc.com?auth_success=twitter&username=${userData.data.username}`);
     return res.status(302).end();
 
