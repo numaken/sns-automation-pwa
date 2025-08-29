@@ -1761,7 +1761,7 @@ const PostGenerator = () => {
                       }}
                     >
                       <span>@</span>
-                      <span>Threadsに接続</span>
+                      <span>Threads に接続</span>
                     </button>
                   )}
                 </div>
