@@ -264,7 +264,7 @@ export default async function handler(req, res) {
     console.log('=== Twitter OAuth Callback SUCCESS (FIXED) ===');
 
 
-    // 成功レスポンス（HTML）
+    // 成功レスポンス（ThreadsのHTMLと完全に同一）
     const html = `
 <!DOCTYPE html>
 <html>
@@ -290,52 +290,55 @@ export default async function handler(req, res) {
             text-align: center;
             max-width: 400px;
         }
-        .success-icon {
+        .icon {
             font-size: 64px;
             margin-bottom: 20px;
         }
         h1 {
             color: #1f2937;
             margin-bottom: 10px;
-            font-size: 24px;
         }
         .username {
             color: #1d9bf0;
             font-size: 20px;
             font-weight: bold;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
         .message {
             color: #6b7280;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
-        .button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-        }
-        .button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        .countdown {
+            color: #9ca3af;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="success-icon">✅</div>
+        <div class="icon">✅</div>
         <h1>🎉 認証完了！</h1>
-        <div class="username">@${username}</div>
-        <p class="message">として接続されました</p>
-        <button class="button" onclick="window.close()">このウィンドウを閉じる</button>
+        <div class="username">
+            <strong>@${username}</strong>
+        </div>
+        <div class="message">として接続されました</div>
+        <div class="countdown">このウィンドウは <span id="countdown">5</span> 秒後に自動的に閉じます</div>
     </div>
     <script>
+        // カウントダウン
+        let count = 5;
+        const countdownEl = document.getElementById('countdown');
+        const timer = setInterval(() => {
+            count--;
+            countdownEl.textContent = count;
+            if (count <= 0) {
+                clearInterval(timer);
+                window.close();
+                // フォールバック
+                window.location.href = '/';
+            }
+        }, 1000);
+
         // 親ウィンドウに成功通知
         if (window.opener) {
             window.opener.postMessage({
@@ -343,11 +346,6 @@ export default async function handler(req, res) {
                 username: '${username}'
             }, '*');
         }
-        
-        // 5秒後に自動でウィンドウを閉じる
-        setTimeout(() => {
-            window.close();
-        }, 5000);
     </script>
 </body>
 </html>
@@ -355,7 +353,7 @@ export default async function handler(req, res) {
 
     res.setHeader('Content-Type', 'text/html');
     return res.status(200).send(html);
-    
+        
   } catch (error) {
     console.error('Twitter OAuth callback error:', error);
     return res.status(500).json({
