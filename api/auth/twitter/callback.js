@@ -209,8 +209,9 @@ export default async function handler(req, res) {
       },
     });
 
-    const userData = await getUserData(accessToken, accessSecret);
-    const username = userData.screen_name;  // ← これが必要
+    const userData = await userResponse.json();
+    const username = userData.data?.username || 'Twitter User';
+
     console.log('User data response:', {
       status: userResponse.status,
       hasData: !!userData.data,
@@ -337,12 +338,11 @@ export default async function handler(req, res) {
     <script>
         // 親ウィンドウに成功通知
         if (window.opener) {
-            window.
+            window.opener.postMessage({
                 type: 'TWITTER_AUTH_SUCCESS',
                 username: '${username}'
             }, '*');
-        }
-        
+        }        
         // 5秒後に自動でウィンドウを閉じる
         setTimeout(() => {
             window.close();
