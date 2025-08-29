@@ -17,36 +17,27 @@ export default async function handler(req, res) {
   try {
     console.log('Checking Twitter connection for userId:', userId);
 
-    // KVストレージからTwitterトークンを確認
-    const tokenKey = `twitter_token:${userId}`;
-    const tokenData = await getKVValue(tokenKey);
-
     console.log('Twitter token check:', { key: tokenKey, hasToken: !!tokenData });
 
     if (tokenData) {
-      // トークンが存在する場合、詳細情報も取得
-      const userInfoKey = `twitter_user:${userId}`;
-      const userInfo = await getKVValue(userInfoKey);
-
-      let userData = null;
-      if (userInfo) {
-        try {
-          userData = JSON.parse(userInfo);
-        } catch (e) {
-          console.log('Failed to parse user info, using default');
-        }
+      // tokenDataを直接パース（callback.jsではtokenとusernameを一緒に保存）
+      let tokenInfo = null;
+      try {
+        tokenInfo = JSON.parse(tokenData);
+      } catch (e) {
+        console.log('Failed to parse token data, treating as raw token');
       }
 
       console.log('Twitter connection confirmed:', {
         userId,
-        username: userData?.username || 'Connected User',
-        connectedAt: userData?.connectedAt
+        username: tokenInfo?.username || 'Connected User',
+        connectedAt: tokenInfo?.created_at
       });
 
       return res.status(200).json({
         connected: true,
-        username: userData?.username || 'Connected User',
-        connectedAt: userData?.connectedAt,
+        username: tokenInfo?.username || 'Connected User',
+        connectedAt: tokenInfo?.created_at,
         platform: 'twitter'
       });
     }
