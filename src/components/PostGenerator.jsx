@@ -1514,10 +1514,56 @@ const PostGenerator = () => {
         {/* ヘッダー */}
         <div
           className="unified-header"
-          style={{ textAlign: 'center', marginBottom: '2rem' }}
+          style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            padding: '2rem',
+            borderRadius: '1rem 1rem 0 0',
+            marginBottom: '2rem',
+            boxShadow: '0 10px 30px rgba(102, 126, 234, 0.3)'
+          }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '1rem' }}>
-            <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#1f2937' }}>AI SNS自動化ツール</h1>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '1.5rem',
+            marginBottom: '1rem'
+          }}>
+            {/* ロゴ */}
+            <div style={{
+              width: '60px',
+              height: '60px',
+              background: 'white',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '32px',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+            }}>
+              ✈️
+            </div>
+
+            <div>
+              <h1 style={{
+                fontSize: '2.5rem',
+                fontWeight: 'bold',
+                color: 'white',
+                margin: 0,
+                letterSpacing: '-0.5px'
+              }}>
+                PostPilot Pro
+              </h1>
+              <p style={{
+                fontSize: '0.875rem',
+                color: 'rgba(255,255,255,0.9)',
+                margin: '0.25rem 0 0 0',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase'
+              }}>
+                AI-Powered Social Media Automation
+              </p>
+            </div>
 
             {/* プレミアムバッジ */}
             {userPlan === 'premium' && (
@@ -1527,23 +1573,30 @@ const PostGenerator = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem',
-                  background: 'linear-gradient(to right, #fbbf24, #f97316)',
+                  background: 'rgba(255,255,255,0.2)',
+                  backdropFilter: 'blur(10px)',
                   color: 'white',
                   padding: '0.5rem 1rem',
                   borderRadius: '9999px',
-                  fontWeight: 'bold'
+                  fontWeight: 'bold',
+                  border: '2px solid rgba(255,255,255,0.3)'
                 }}
               >
                 <span>👑</span>
-                PREMIUM MEMBER
+                PREMIUM
               </div>
             )}
           </div>
 
-          <p style={{ fontSize: '1.25rem', color: '#6b7280' }}>
+          <p style={{
+            fontSize: '1.125rem',
+            color: 'rgba(255,255,255,0.95)',
+            textAlign: 'center',
+            margin: 0
+          }}>
             {userPlan === 'premium'
-              ? '無制限AI投稿生成 + SNS自動投稿'
-              : 'APIキー設定不要で即座にAI投稿生成'}
+              ? '無制限AI投稿生成 + SNS自動投稿でビジネスを加速'
+              : 'APIキー設定不要で即座にAI投稿生成を開始'}
           </p>
         </div>
 
@@ -2179,25 +2232,28 @@ const PostGenerator = () => {
             onClick={() => setShowSubscriptionManager(true)}
             style={{
               background: userPlan === 'premium'
-                ? 'linear-gradient(to right, #6b7280, #4b5563)'
-                : 'linear-gradient(to right, #f97316, #ea580c)',
+                ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
               color: 'white',
               padding: '0.75rem 2rem',
               borderRadius: '0.5rem',
               border: 'none',
               cursor: 'pointer',
               fontSize: '1rem',
-              fontWeight: '500',
+              fontWeight: '600',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '0.5rem',
               margin: '0 auto',
-              transition: 'all 0.2s',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+              transition: 'all 0.3s',
+              boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)',
+              transform: 'translateY(0)'
             }}
-            title={userPlan === 'premium' ? 'プレミアムプラン管理・契約情報' : 'プラン詳細確認・アップグレード'}
+            onMouseEnter={(e) => e.target.style.transform = 'translateY(-2px)'}
+            onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
           >
+
             {userPlan === 'premium' ? (
               <>
                 <span>⚙️</span>
