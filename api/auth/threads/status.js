@@ -32,14 +32,7 @@ export default async function handler(req, res) {
       } catch (e) {
         console.error('Failed to parse token data:', e);
       }
-      return res.status(200).json({
-        connected: true,
-        username: tokenInfo?.username || 'Connected User',
-        threadsId: tokenInfo?.user_id,
-        connectedAt: tokenInfo?.created_at,
-        platform: 'threads'
-      });
-    }
+
       // tokenInfoから直接usernameを取得
       const username = tokenInfo?.username || 'Connected User';
 
@@ -52,12 +45,14 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         connected: true,
-        username: username,  // ここが重要
+        username: username,
         threadsId: tokenInfo?.user_id,
         connectedAt: tokenInfo?.created_at,
         platform: 'threads'
       });
     }
+
+    // tokenDataがない場合
     console.log('Threads not connected for userId:', userId);
     return res.status(200).json({
       connected: false,
