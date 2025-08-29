@@ -27,9 +27,16 @@ export default async function handler(req, res) {
       // tokenDataを直接パース
       let tokenInfo = null;
       try {
-        tokenInfo = JSON.parse(tokenData);
+        // tokenDataが既にオブジェクトの場合とJSON文字列の場合を処理
+        if (typeof tokenData === 'string') {
+          tokenInfo = JSON.parse(tokenData);
+        } else {
+          tokenInfo = tokenData;
+        }
       } catch (e) {
-        console.log('Failed to parse token data, treating as raw token');
+        console.error('Failed to parse token data:', e);
+        console.log('Raw tokenData type:', typeof tokenData);
+        console.log('Raw tokenData:', tokenData);
       }
 
       console.log('Threads connection confirmed:', {

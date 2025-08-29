@@ -17,15 +17,26 @@ export default async function handler(req, res) {
   try {
     console.log('Checking Twitter connection for userId:', userId);
 
+    // KVストレージからTwitterトークンを確認（これが抜けていた！）
+    const tokenKey = `twitter_token:${userId}`;
+    const tokenData = await getKVValue(tokenKey);
+
     console.log('Twitter token check:', { key: tokenKey, hasToken: !!tokenData });
 
     if (tokenData) {
-      // tokenDataを直接パース（callback.jsではtokenとusernameを一緒に保存）
+      // tokenDataを直接パース
       let tokenInfo = null;
       try {
-        tokenInfo = JSON.parse(tokenData);
+        // tokenDataが既にオブジェクトの場合とJSON文字列の場合を処理
+        if (typeof tokenData === 'string') {
+          tokenInfo = JSON.parse(tokenData);
+        } else {
+          tokenInfo = tokenData;
+        }
       } catch (e) {
-        console.log('Failed to parse token data, treating as raw token');
+        console.error('Failed to parse token data:', e);
+        console.log('Raw tokenData type:', typeof tokenData);
+        console.log('Raw tokenData:', tokenData);
       }
 
       console.log('Twitter connection confirmed:', {
@@ -37,7 +48,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         connected: true,
         username: tokenInfo?.username || 'Connected User',
-        connectedAt: tokenInfo?.created_at,
+        connectedAt: tokenInfo?.created_at || tokenInfo?.connectedAt,
         platform: 'twitter'
       });
     }
@@ -58,7 +69,7 @@ export default async function handler(req, res) {
   }
 }
 
-// KVストレージヘルパー関数
+// KVストレージヘルパー関数（最後に追加）
 async function getKVValue(key) {
   try {
     console.log(`KV GET request for key: ${key}`);
