@@ -1523,15 +1523,13 @@ const PostGenerator = () => {
 
       <div style={{ maxWidth: '60rem', margin: '0 auto' }}>
 
-        {/* シンプルなヘッダー */}
+        {/* ブランド強化ヘッダー */}
         <header style={{
-          background: 'white',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          borderBottom: '1px solid #e5e7eb',
+          background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+          boxShadow: '0 2px 10px rgba(102, 126, 234, 0.2)',
           position: 'sticky',
           top: 0,
-          zIndex: 50,
-          marginBottom: '2rem'
+          zIndex: 50
         }}>
           <div style={{
             maxWidth: '60rem',
@@ -1541,120 +1539,133 @@ const PostGenerator = () => {
             alignItems: 'center',
             justifyContent: 'space-between'
           }}>
-            {/* 左側: ロゴとプラン表示 */}
+            {/* 左側: ブランドロゴ */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{
-                width: '36px',
-                height: '36px',
-                background: 'linear-gradient(135deg, #667eea, #764ba2)',
-                borderRadius: '8px',
+                width: '42px',
+                height: '42px',
+                background: 'white',
+                borderRadius: '10px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'white',
-                fontSize: '20px'
+                fontSize: '24px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
               }}>
                 ✈️
               </div>
 
               <div>
                 <h1 style={{
-                  fontSize: '1.125rem',
+                  fontSize: '1.25rem',
                   fontWeight: 'bold',
-                  color: '#1f2937',
-                  margin: 0
+                  color: 'white',
+                  margin: 0,
+                  letterSpacing: '-0.02em'
                 }}>
                   PostPilot Pro
                 </h1>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {userPlan === 'premium' ? (
-                    <>
-                      <span style={{
-                        fontSize: '0.75rem',
-                        padding: '2px 8px',
-                        borderRadius: '9999px',
-                        background: 'linear-gradient(to right, #fbbf24, #f59e0b)',
-                        color: 'white',
-                        fontWeight: '500'
-                      }}>
-                        ⭐ プレミアム
-                      </span>
-                      <span style={{ fontSize: '0.75rem', color: '#f59e0b' }}>
-                        無制限
-                      </span>
-                    </>
+                    <span style={{
+                      fontSize: '0.7rem',
+                      padding: '2px 8px',
+                      borderRadius: '9999px',
+                      background: 'rgba(251, 191, 36, 0.9)',
+                      color: 'white',
+                      fontWeight: '600',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      Premium • Unlimited
+                    </span>
                   ) : (
-                    <>
-                      <span style={{
-                        fontSize: '0.75rem',
-                        padding: '2px 8px',
-                        borderRadius: '9999px',
-                        background: '#f3f4f6',
-                        color: '#6b7280'
-                      }}>
-                        無料プラン
-                      </span>
-                      <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                        残り {usage.remaining}/3
-                      </span>
-                    </>
+                    <span style={{
+                      fontSize: '0.7rem',
+                      padding: '2px 8px',
+                      borderRadius: '9999px',
+                      background: 'rgba(255, 255, 255, 0.2)',
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      fontWeight: '500'
+                    }}>
+                      Free • {usage.remaining}/3 remaining
+                    </span>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* 右側: SNS状態と設定 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {twitterConnected && (
+            {/* 右側: 接続状態と設定 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              {/* SNS接続インジケーター */}
+              {(twitterConnected || threadsConnected) && (
                 <div style={{
-                  width: '32px',
-                  height: '32px',
-                  background: '#000',
-                  color: 'white',
-                  borderRadius: '50%',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '14px',
-                  fontWeight: 'bold'
+                  gap: '0.25rem',
+                  padding: '0.5rem',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  borderRadius: '8px'
                 }}>
-                  𝕏
-                </div>
-              )}
-              {threadsConnected && (
-                <div style={{
-                  width: '32px',
-                  height: '32px',
-                  background: 'linear-gradient(135deg, #833ab4, #e1306c)',
-                  color: 'white',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '14px',
-                  fontWeight: 'bold'
-                }}>
-                  @
+                  {twitterConnected && (
+                    <div style={{
+                      width: '28px',
+                      height: '28px',
+                      background: 'white',
+                      color: '#000',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '14px',
+                      fontWeight: 'bold'
+                    }}>
+                      𝕏
+                    </div>
+                  )}
+                  {threadsConnected && (
+                    <div style={{
+                      width: '28px',
+                      height: '28px',
+                      background: 'white',
+                      color: '#000',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '16px',
+                      fontWeight: 'bold'
+                    }}>
+                      @
+                    </div>
+                  )}
                 </div>
               )}
 
+              {/* 設定ボタン */}
               <button
                 onClick={() => setShowSubscriptionManager(true)}
                 style={{
-                  padding: '0.5rem',
-                  background: 'transparent',
+                  width: '36px',
+                  height: '36px',
+                  background: 'rgba(255, 255, 255, 0.15)',
                   border: 'none',
-                  borderRadius: '0.5rem',
+                  borderRadius: '8px',
                   cursor: 'pointer',
-                  color: '#6b7280',
-                  fontSize: '20px',
+                  color: 'white',
+                  fontSize: '18px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  transition: 'background 0.2s'
+                  transition: 'all 0.2s'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
               >
                 ⚙️
               </button>
