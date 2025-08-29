@@ -127,17 +127,19 @@ export default async function handler(req, res) {
     // トークンの保存（30日間）
     console.log('=== Token Storage START ===');
 
+    // トークンの保存
     const tokenKey = `threads_token:${authData.userId}`;
     const tokenInfo = {
       access_token: tokenData.access_token,
       user_id: userData.id,
-      username: userData.username,  // 実際のユーザー名
+      username: userData.username,  // ← これが'numaken_jp'のはず
       created_at: new Date().toISOString()
     };
 
-    await setKVValue(tokenKey, JSON.stringify(tokenData), 86400 * 30);
-    console.log('Token saved with username:', userData.username);
-
+    // JSON文字列として保存
+    await setKVValue(tokenKey, JSON.stringify(tokenInfo), 86400 * 30);
+    console.log('Token saved:', { key: tokenKey, data: tokenInfo });
+    
     // PKCEセッションの削除
     try {
       await deleteKVValue(sessionKey);
