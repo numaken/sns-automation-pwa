@@ -118,6 +118,12 @@ export default async function handler(req, res) {
     console.log('=== Token Storage START ===');
 
     const tokenKey = `threads_token:${authData.userId}`;
+    const tokenInfo = {
+      access_token: tokenData.access_token,
+      user_id: userData.id,
+      username: userData.username,  // ← これが重要
+      created_at: new Date().toISOString()
+    };
     await setKVValue(tokenKey, tokenData.access_token, 86400 * 30);
 
     // ユーザー情報の保存
