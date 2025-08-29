@@ -102,6 +102,14 @@ export default async function handler(req, res) {
     const userResponse = await fetch(`https://graph.threads.net/v1.0/me?fields=id,username,name&access_token=${tokenData.access_token}`);
     const userData = await userResponse.json();
 
+    // デバッグ：実際のレスポンスを確認
+    console.log('=== THREADS API FULL RESPONSE ===');
+    console.log(JSON.stringify(userData, null, 2));
+    console.log('Available fields:', Object.keys(userData));
+    console.log('=================================');
+
+
+
     const username = userData.username || userData.name || `user_${userData.id}`;
 
     console.log('Threads API response fields:', Object.keys(userData));
