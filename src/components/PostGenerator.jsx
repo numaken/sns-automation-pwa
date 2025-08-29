@@ -1721,7 +1721,7 @@ const PostGenerator = () => {
                       border: '1px solid #d1d5db'
                     }}>
                       <span style={{ color: '#374151', fontWeight: 500 }}>
-                        📱 Threads ✅
+                        📱 Threads (@{threadsUsername}) ✅
                       </span>
                       <button
                         onClick={() => {
