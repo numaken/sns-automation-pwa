@@ -238,7 +238,7 @@ const SubscriptionManager = ({ userId, onPlanChange, onClose }) => {
                 </h5>
                 <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                   <div style={{ marginBottom: '0.5rem' }}>⚡ 無制限AI投稿生成</div>
-                  <div style={{ marginBottom: '0.5rem' }}>𝕏 X (旧Twitter) 自動投稿</div>
+                  <div style={{ marginBottom: '0.5rem' }}>𝕏 (旧Twitter) 自動投稿</div>
                   <div style={{ marginBottom: '0.5rem' }}>📱 Threads自動投稿</div>
                   <div style={{ marginBottom: '0.5rem' }}>🔄 同時投稿機能</div>
                   <div style={{ marginBottom: '0.5rem' }}>👑 広告なし</div>
@@ -600,7 +600,7 @@ const ConnectionBadge = ({ twitterConnected, threadsConnected, twitterUsername, 
             gap: '0.25rem'
           }}>
             <span>𝕏</span>
-            <span>X (@{twitterUsername})</span>
+            <span>(@{twitterUsername})</span>
             <span>✅</span>
           </span>
         )}
@@ -1703,7 +1703,7 @@ const PostGenerator = () => {
                       }}
                     >
                       <span>𝕏</span>
-                      <span>X (旧Twitter) に接続</span>
+                      <span>(旧Twitter) に接続</span>
                     </button>
                   )}
                 </div>
@@ -1808,7 +1808,7 @@ const PostGenerator = () => {
             {/* SNS接続状況（全ユーザー） */}
             <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
               <span>SNS接続: </span>
-              {twitterConnected && <span style={{ color: '#1d9bf0' }}>𝕏 X (@{twitterUsername}) </span>}
+              {twitterConnected && <span style={{ color: '#1d9bf0' }}>𝕏 (@{twitterUsername}) </span>}
               {threadsConnected && <span style={{ color: '#000' }}>📱 Threads (@{threadsUsername}) </span>}
               {!twitterConnected && !threadsConnected && <span>未接続</span>}
             </div>
@@ -2036,7 +2036,7 @@ const PostGenerator = () => {
                           fontSize: '0.875rem'
                         }}
                       >
-                        {isPostingToTwitter ? '投稿中...' : `𝕏 X (@${twitterUsername}) に投稿`}
+                        {isPostingToTwitter ? '投稿中...' : `𝕏 (@${twitterUsername}) に投稿`}
                       </button>
                     ) : (
                       <button
@@ -2051,7 +2051,7 @@ const PostGenerator = () => {
                           fontSize: '0.875rem'
                         }}
                       >
-                        𝕏 X (旧Twitter) を接続
+                        𝕏 (旧Twitter) を接続
                       </button>
                     )}
 
