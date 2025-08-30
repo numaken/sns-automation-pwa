@@ -108,18 +108,29 @@ function App() {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Sparkles className="h-6 w-6 text-blue-600" />
+            <div style={{
+              width: '32px',
+              height: '32px',
+              background: 'linear-gradient(135deg, #667eea, #764ba2)',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px'
+            }}>
+              ✈️
+            </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900">SNS自動化</h1>
+              <h1 className="text-lg font-bold text-gray-900">PostPilot Pro</h1>
               <div className="flex items-center space-x-2">
                 <span className={`text-xs px-2 py-1 rounded-full ${currentPlan === 'premium'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-green-100 text-green-800'
+                    ? 'bg-yellow-100 text-yellow-800'
+                    : 'bg-gray-100 text-gray-600'
                   }`}>
-                  {currentPlan === 'premium' ? '⭐ プレミアム' : '🆓 無料プラン'}
+                  {currentPlan === 'premium' ? '⭐ プレミアム' : '無料プラン'}
                 </span>
                 {currentPlan === 'free' && usageStats && (
-                  <span className="text-xs text-blue-600">
+                  <span className="text-xs text-gray-600">
                     残り {usageStats.remaining}/3回
                   </span>
                 )}
@@ -139,7 +150,7 @@ function App() {
           </button>
         </div>
       </header>
-
+      
       <main className="max-w-md mx-auto p-4 pb-20">
         {activeTab === 'generate' ? (
           <PostGenerator
@@ -160,25 +171,26 @@ function App() {
           <button
             onClick={() => setActiveTab('generate')}
             className={`flex-1 py-3 px-4 flex flex-col items-center space-y-1 transition-colors ${activeTab === 'generate'
-              ? 'text-blue-600 bg-blue-50'
-              : 'text-gray-600 hover:text-blue-600'
+                ? 'text-blue-600 bg-blue-50'
+                : 'text-gray-600 hover:text-blue-600'
               }`}
           >
-            <Send className="h-5 w-5" />
-            <span className="text-xs font-medium">投稿生成</span>
+            <span style={{ fontSize: '20px' }}>✈️</span>
+            <span className="text-xs font-medium">AI生成</span>
           </button>
           <button
             onClick={() => setActiveTab('settings')}
             className={`flex-1 py-3 px-4 flex flex-col items-center space-y-1 transition-colors ${activeTab === 'settings'
-              ? 'text-blue-600 bg-blue-50'
-              : 'text-gray-600 hover:text-blue-600'
+                ? 'text-blue-600 bg-blue-50'
+                : 'text-gray-600 hover:text-blue-600'
               }`}
           >
-            <Settings className="h-5 w-5" />
+            <span style={{ fontSize: '20px' }}>⚙️</span>
             <span className="text-xs font-medium">設定</span>
           </button>
         </div>
       </nav>
+
     </div>
   );
 }
