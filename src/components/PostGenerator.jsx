@@ -1149,17 +1149,22 @@ const PostGenerator = React.forwardRef((props, ref) => {
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.log('📥 Threads error response:', errorData);
 
         // 認証エラーの場合、自動的に切断
-        if (errorData.error === 'THREADS_AUTH_EXPIRED') {
+        if (errorData.error === 'THREADS_AUTH_EXPIRED' || errorData.error === 'THREADS_NOT_CONNECTED') {
           localStorage.removeItem('threads_token');
           localStorage.removeItem('threads_connected');
           setThreadsConnected(false);
-          setError('Threads認証が期限切れです。再接続してください。');
+          setError(`Threads認証エラー: ${errorData.message || 'Threads認証が期限切れです。再接続してください。'}`);
           throw new Error('THREADS_AUTH_EXPIRED');
         }
 
-        throw new Error(errorData.error || 'Threads投稿に失敗しました');
+        // エラーの詳細を表示
+        setError(`Threads投稿エラー: ${errorData.message || errorData.error || 'エラーが発生しました'}`);
+        console.error('Threads API error details:', errorData);
+        
+        throw new Error(errorData.error || 'THREADS_POST_FAILED');
       }
 
       const data = await response.json();
