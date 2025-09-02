@@ -643,12 +643,59 @@ body {
   color: #991b1b;
 }
 
-/* Responsive Design */
+/* レスポンシブ2列レイアウト */
+.responsive-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+/* PC画面での2列レイアウト */
+@media (min-width: 768px) {
+  .responsive-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    padding: 2rem;
+  }
+}
+
+/* カラムスタイル */
+.input-column, .result-column {
+  width: 100%;
+}
+
+/* モバイルでヘッダー分のマージン調整 */
+@media (max-width: 767px) {
+  .input-column {
+    margin-bottom: 2rem;
+    padding-top: 90px !important; /* モバイルでは少し小さく */
+  }
+  .result-column {
+    padding-top: 0 !important; /* モバイルでは結果エリアは上部マージンなし */
+  }
+}
+
+/* タブレット画面 */
+@media (min-width: 640px) and (max-width: 767px) {
+  .responsive-container {
+    max-width: 640px;
+    padding: 1.5rem;
+  }
+}
+
+/* モバイル画面 */
 @media (max-width: 640px) {
+  .responsive-container {
+    max-width: 100%;
+    padding: 1rem;
+  }
+
   .options-grid {
-      grid-template-columns: 1fr;
-      /* モバイルでは1列に */
-    }
+    grid-template-columns: 1fr;
+    /* モバイルでは1列に */
+  }
 
   .action-buttons {
     flex-direction: column;

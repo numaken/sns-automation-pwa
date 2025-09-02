@@ -632,7 +632,7 @@ const ConnectionBadge = ({ twitterConnected, threadsConnected, twitterUsername, 
 };
 
 // メインのPostGeneratorコンポーネント
-const PostGenerator = () => {
+const PostGenerator = React.forwardRef((props, ref) => {
   // 基本状態管理
   const [prompt, setPrompt] = useState('');
   const [tone, setTone] = useState('カジュアル');
@@ -1349,7 +1349,7 @@ const PostGenerator = () => {
     }
   };
 
-  // グローバル関数の設定
+  // グローバル関数の設定とrefの公開
   useEffect(() => {
     window.upgradeToPremium = handleUpgrade;
     window.debugSNSApp = {
@@ -1371,6 +1371,11 @@ const PostGenerator = () => {
     };
     console.log('🔧 Debug functions available: window.debugSNSApp');
   }, [userPlan, usage, twitterConnected, threadsConnected]);
+
+  // refの公開
+  React.useImperativeHandle(ref, () => ({
+    showSettingsModal: () => setShowSubscriptionManager(true)
+  }));
 
   // 🚀 改善: SNS投稿ボタンの表示判定（プレミアムのみ）
   const shouldShowSNSButtons = () => {
@@ -1519,26 +1524,26 @@ const PostGenerator = () => {
 
   // メイン画面
   return (
-    <div className="unified-container" style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-
-      <div style={{ maxWidth: '60rem', margin: '0 auto' }}>
-
-        {/* ブランド強化ヘッダー */}
-        <header style={{
-          background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
-          boxShadow: '0 2px 10px rgba(102, 126, 234, 0.2)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 50
+    <div>
+      {/* 固定ヘッダー */}
+      <header style={{
+        background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+        boxShadow: '0 2px 10px rgba(102, 126, 234, 0.2)',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        width: '100%',
+        zIndex: 1000
+      }}>
+        <div style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: '0.75rem 1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
         }}>
-          <div style={{
-            maxWidth: '60rem',
-            margin: '0 auto',
-            padding: '0.75rem 1.5rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
             {/* 左側: ブランドロゴ */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{
@@ -1671,15 +1676,19 @@ const PostGenerator = () => {
               </button>
             </div>
           </div>
-        </header>
+      </header>
 
-        {/* メインコンテンツ - 既存のコードをそのまま使用 */}
+      {/* 2列レイアウトコンテナ */}
+      <div className="responsive-container" style={{ paddingTop: '100px' }}>
+        {/* 左側カラム: 入力フォーム */}
+        <div className="input-column">
+        {/* 入力フォームエリア */}
         <div style={{
           background: 'white',
           borderRadius: '1rem',
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
           padding: '2rem',
-          margin: '0 1rem'
+          margin: '0'
         }}>
           
           {/* 🚀 新規追加: 接続状態バッジ */}
@@ -2017,192 +2026,6 @@ const PostGenerator = () => {
             </div>
           )}
 
-          {/* 生成結果 */}
-          {generatedPost && (
-            <div style={{ marginTop: '2rem' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#1f2937', marginBottom: '1rem' }}>
-                生成された投稿
-              </h3>
-
-              <div style={{
-                background: '#f9fafb',
-                padding: '1.5rem',
-                borderRadius: '0.5rem',
-                border: '1px solid #e5e7eb'
-              }}>
-                <p style={{ color: '#1f2937', lineHeight: '1.6', whiteSpace: 'pre-wrap', margin: 0 }}>
-                  {generatedPost}
-                </p>
-              </div>
-
-              {/* 品質・統計表示 */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginTop: '1rem',
-                fontSize: '0.875rem',
-                color: '#6b7280'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  {quality && <span>品質スコア: {quality}点</span>}
-                  {generationTime && (
-                    <span>生成時間: {(generationTime / 1000).toFixed(1)}秒</span>
-                  )}
-                </div>
-                <span>文字数: {generatedPost.length}文字</span>
-              </div>
-
-              {/* アクションボタン */}
-              <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                {/* コピーボタン */}
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(generatedPost);
-                    const originalText = generatedPost;
-                    setGeneratedPost('📋 コピーしました！');
-                    setTimeout(() => setGeneratedPost(originalText), 1000);
-                  }}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: '#10b981',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem'
-                  }}
-                >
-                  📋 クリップボードにコピー
-                </button>
-
-                {/* 🚀 改善: プレミアム限定SNS投稿ボタン */}
-                {shouldShowSNSButtons() && (
-                  <>
-                    {/* X (旧Twitter) 投稿 */}
-                    {twitterConnected ? (
-                      <button
-                        onClick={postToTwitter}
-                        disabled={isPostingToTwitter}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: isPostingToTwitter ? '#9ca3af' : '#1d9bf0',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '0.5rem',
-                          cursor: isPostingToTwitter ? 'not-allowed' : 'pointer',
-                          fontSize: '0.875rem'
-                        }}
-                      >
-                        {isPostingToTwitter ? '投稿中...' : `𝕏 (@${twitterUsername}) に投稿`}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={connectTwitter}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: '#1d9bf0',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '0.5rem',
-                          cursor: 'pointer',
-                          fontSize: '0.875rem'
-                        }}
-                      >
-                        𝕏 (旧Twitter) を接続
-                      </button>
-                    )}
-
-                    {/* Threads投稿 */}
-                    {threadsConnected ? (
-                      <button
-                        onClick={postToThreads}
-                        disabled={isPostingToThreads}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: isPostingToThreads ? '#9ca3af' : '#000',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '0.5rem',
-                          cursor: isPostingToThreads ? 'not-allowed' : 'pointer',
-                          fontSize: '0.875rem'
-                        }}
-                      >
-                        {isPostingToThreads ? '投稿中...' : '@ Threadsに投稿'}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={connectThreads}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: '#000',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '0.5rem',
-                          cursor: 'pointer',
-                          fontSize: '0.875rem'
-                        }}
-                      >
-                        @ Threadsを接続
-                      </button>
-                    )}
-
-                    {/* 同時投稿ボタン */}
-                    {(twitterConnected || threadsConnected) && (
-                      <button
-                        onClick={postToAllPlatforms}
-                        disabled={isPostingToTwitter || isPostingToThreads}
-                        style={{
-                          padding: '0.5rem 1rem',
-                          background: (isPostingToTwitter || isPostingToThreads)
-                            ? '#9ca3af'
-                            : 'linear-gradient(to right, #7c3aed, #ec4899)',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '0.5rem',
-                          cursor: (isPostingToTwitter || isPostingToThreads) ? 'not-allowed' : 'pointer',
-                          fontSize: '0.875rem',
-                          fontWeight: 'bold'
-                        }}
-                      >
-                        {(isPostingToTwitter || isPostingToThreads)
-                          ? '投稿中...'
-                          : '🔄 同時投稿'
-                        }
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* 🚀 改善: 無料プランのSNS投稿プレビュー */}
-              {userPlan !== 'premium' && (
-                <div style={{
-                  marginTop: '1rem',
-                  padding: '1rem',
-                  background: 'linear-gradient(to right, #fef3c7, #fed7aa)',
-                  borderRadius: '0.5rem',
-                  border: '1px solid #fbbf24'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <span style={{ marginRight: '0.5rem', fontSize: '1.25rem' }}>💎</span>
-                    <span style={{ fontWeight: 600, color: '#92400e' }}>
-                      {(twitterConnected || threadsConnected)
-                        ? 'SNS接続済み！プレミアムで即座投稿開始'
-                        : 'プレミアムプランでSNS自動投稿'
-                      }
-                    </span>
-                  </div>
-                  <p style={{ color: '#92400e', fontSize: '0.875rem', margin: 0 }}>
-                    {(twitterConnected || threadsConnected)
-                      ? 'SNS接続準備完了済み。プレミアム移行後、この投稿をすぐに自動投稿できます！'
-                      : 'この投稿をTwitterやThreadsに自動投稿＋同時投稿できます！'
-                    }
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* 🚀 改善: プレミアム促進（無料プランのみ） */}
@@ -2361,6 +2184,195 @@ const PostGenerator = () => {
             onClose={() => setShowSubscriptionManager(false)}
           />
         )}
+
+        </div>
+
+        {/* 右側カラム: 生成結果 */}
+        <div className="result-column">
+        {generatedPost ? (
+          <div style={{
+            background: 'white',
+            borderRadius: '1rem',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+            padding: '2rem',
+            margin: '0'
+          }}>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#1f2937', marginBottom: '1rem' }}>
+              生成された投稿
+            </h3>
+
+            <div style={{
+              background: '#f9fafb',
+              padding: '1.5rem',
+              borderRadius: '0.5rem',
+              border: '1px solid #e5e7eb'
+            }}>
+              <p style={{ color: '#1f2937', lineHeight: '1.6', whiteSpace: 'pre-wrap', margin: 0 }}>
+                {generatedPost}
+              </p>
+            </div>
+
+            {/* 品質・統計表示 */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginTop: '1rem',
+              fontSize: '0.875rem',
+              color: '#6b7280'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                {quality && <span>品質スコア: {quality}点</span>}
+                {generationTime && (
+                  <span>生成時間: {(generationTime / 1000).toFixed(1)}秒</span>
+                )}
+              </div>
+              <span>文字数: {generatedPost.length}文字</span>
+            </div>
+
+            {/* アクションボタン */}
+            <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              {/* コピーボタン */}
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(generatedPost);
+                  const originalText = generatedPost;
+                  setGeneratedPost('📋 コピーしました！');
+                  setTimeout(() => setGeneratedPost(originalText), 1000);
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem'
+                }}
+              >
+                📋 クリップボードにコピー
+              </button>
+
+              {/* SNS投稿ボタン */}
+              {shouldShowSNSButtons() && (
+                <>
+                  {twitterConnected ? (
+                    <button
+                      onClick={postToTwitter}
+                      disabled={isPostingToTwitter}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: isPostingToTwitter ? '#9ca3af' : '#1d9bf0',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        cursor: isPostingToTwitter ? 'not-allowed' : 'pointer',
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      {isPostingToTwitter ? '投稿中...' : `𝕏 (@${twitterUsername}) に投稿`}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={connectTwitter}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: '#1d9bf0',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        cursor: 'pointer',
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      𝕏 (旧Twitter) を接続
+                    </button>
+                  )}
+
+                  {threadsConnected ? (
+                    <button
+                      onClick={postToThreads}
+                      disabled={isPostingToThreads}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: isPostingToThreads ? '#9ca3af' : '#000',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        cursor: isPostingToThreads ? 'not-allowed' : 'pointer',
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      {isPostingToThreads ? '投稿中...' : '@ Threadsに投稿'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={connectThreads}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: '#000',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        cursor: 'pointer',
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      @ Threadsを接続
+                    </button>
+                  )}
+
+                  {(twitterConnected || threadsConnected) && (
+                    <button
+                      onClick={postToAllPlatforms}
+                      disabled={isPostingToTwitter || isPostingToThreads}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: (isPostingToTwitter || isPostingToThreads)
+                          ? '#9ca3af'
+                          : 'linear-gradient(to right, #7c3aed, #ec4899)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        cursor: (isPostingToTwitter || isPostingToThreads) ? 'not-allowed' : 'pointer',
+                        fontSize: '0.875rem',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      {(isPostingToTwitter || isPostingToThreads)
+                        ? '投稿中...'
+                        : '🔄 同時投稿'
+                      }
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            background: 'white',
+            borderRadius: '1rem',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+            padding: '2rem',
+            margin: '0',
+            textAlign: 'center',
+            minHeight: '300px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'column'
+          }}>
+            <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: 0.3 }}>📝</div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#9ca3af', marginBottom: '0.5rem' }}>
+              生成結果がここに表示されます
+            </h3>
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+              左側でテーマを入力してAI生成ボタンを押してください
+            </p>
+          </div>
+        )}
+        </div>
       </div>
 
       <style jsx>{`
@@ -2371,6 +2383,6 @@ const PostGenerator = () => {
       `}</style>
     </div>
   );
-};
+});
 
 export default PostGenerator;
