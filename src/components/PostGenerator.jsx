@@ -477,7 +477,7 @@ const WelcomeModal = ({ onClose, onTwitterConnect, onThreadsConnect }) => {
           {step === 2 && (
             <div>
               <p style={{ color: '#6b7280', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-                どちらか1つでも接続すれば投稿準備完了です。
+                SNSアカウントを接続して、投稿機能を有効にしましょう。
                 両方接続すると同時投稿も可能になります！
               </p>
 
@@ -575,60 +575,7 @@ const ConnectionBadge = ({ twitterConnected, threadsConnected, twitterUsername, 
     );
   }
 
-  return (
-    <div style={{
-      background: '#ecfdf5',
-      border: '1px solid #86efac',
-      borderRadius: '0.5rem',
-      padding: '1rem',
-      marginBottom: '1.5rem'
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <span style={{ marginRight: '0.5rem', fontSize: '1.25rem' }}>🚀</span>
-        <span style={{ fontWeight: 600, color: '#166534' }}>投稿準備完了！</span>
-      </div>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
-        {twitterConnected && (
-          <span style={{
-            background: '#dbeafe',
-            color: '#1e40af',
-            padding: '0.25rem 0.75rem',
-            borderRadius: '9999px',
-            fontSize: '0.875rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.25rem'
-          }}>
-            <span>𝕏</span>
-            <span>(@{twitterUsername})</span>
-            <span>✅</span>
-          </span>
-        )}
-
-        {threadsConnected && (
-          <span style={{
-            background: '#f3f4f6',
-            color: '#374151',
-            padding: '0.25rem 0.75rem',
-            borderRadius: '9999px',
-            fontSize: '0.875rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.25rem'
-          }}>
-            <span>@</span>
-            <span>(@{threadsUsername})</span>  {/* ← ユーザー名を追加 */}
-            <span>✅</span>
-          </span>
-        )}
-      </div>
-
-      <p style={{ color: '#166534', fontSize: '0.875rem', margin: 0 }}>
-        プレミアム移行後、投稿生成→即座投稿のスムーズな体験をお楽しみいただけます
-      </p>
-    </div>
-  );
+  return null;
 };
 
 // メインのPostGeneratorコンポーネント
@@ -1793,14 +1740,20 @@ const PostGenerator = React.forwardRef((props, ref) => {
                           setTwitterUsername('');
                         }}
                         style={{
-                          background: 'none',
-                          border: 'none',
+                          background: '#fee2e2',
+                          border: '1px solid #fecaca',
                           color: '#dc2626',
                           cursor: 'pointer',
-                          fontSize: '0.875rem'
+                          fontSize: '0.75rem',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '0.375rem',
+                          fontWeight: '500',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem'
                         }}
                       >
-                        切断
+                        🔌 切断
                       </button>
                     </div>
                   ) : (
@@ -1851,14 +1804,20 @@ const PostGenerator = React.forwardRef((props, ref) => {
                           setThreadsUsername('');
                         }}
                         style={{
-                          background: 'none',
-                          border: 'none',
+                          background: '#fee2e2',
+                          border: '1px solid #fecaca',
                           color: '#dc2626',
                           cursor: 'pointer',
-                          fontSize: '0.875rem'
+                          fontSize: '0.75rem',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '0.375rem',
+                          fontWeight: '500',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem'
                         }}
                       >
-                        切断
+                        🔌 切断
                       </button>
                     </div>
                   ) : (
@@ -2244,23 +2203,55 @@ const PostGenerator = React.forwardRef((props, ref) => {
         <div className="result-column">
         {generatedPost ? (
           <div style={{
-            background: 'white',
-            borderRadius: '1rem',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
-            padding: '2rem',
-            margin: '0'
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '1.5rem',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
+            padding: '2.5rem',
+            margin: '0',
+            border: '3px solid #6366f1'
           }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', color: '#1f2937', marginBottom: '1rem' }}>
-              生成された投稿
-            </h3>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              marginBottom: '1.5rem',
+              gap: '0.75rem'
+            }}>
+              <div style={{ 
+                fontSize: '2rem',
+                background: 'rgba(255,255,255,0.2)',
+                borderRadius: '50%',
+                padding: '0.5rem',
+                backdropFilter: 'blur(10px)'
+              }}>
+                ✨
+              </div>
+              <h3 style={{ 
+                fontSize: '1.5rem', 
+                fontWeight: '700', 
+                color: 'white', 
+                margin: 0,
+                textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+              }}>
+                生成された投稿
+              </h3>
+            </div>
 
             <div style={{
-              background: '#f9fafb',
-              padding: '1.5rem',
-              borderRadius: '0.5rem',
-              border: '1px solid #e5e7eb'
+              background: 'rgba(255, 255, 255, 0.95)',
+              padding: '2rem',
+              borderRadius: '1rem',
+              border: '2px solid rgba(255,255,255,0.3)',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
             }}>
-              <p style={{ color: '#1f2937', lineHeight: '1.6', whiteSpace: 'pre-wrap', margin: 0 }}>
+              <p style={{ 
+                color: '#1f2937', 
+                lineHeight: '1.7', 
+                whiteSpace: 'pre-wrap', 
+                margin: 0,
+                fontSize: '1.1rem',
+                fontWeight: '500'
+              }}>
                 {generatedPost}
               </p>
             </div>
@@ -2270,17 +2261,21 @@ const PostGenerator = React.forwardRef((props, ref) => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              marginTop: '1rem',
+              marginTop: '1.5rem',
+              padding: '1rem',
+              background: 'rgba(255,255,255,0.7)',
+              borderRadius: '0.75rem',
               fontSize: '0.875rem',
-              color: '#6b7280'
+              color: '#374151',
+              fontWeight: '500'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                {quality && <span>品質スコア: {quality}点</span>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                {quality && <span>📊 品質: {quality}点</span>}
                 {generationTime && (
-                  <span>生成時間: {(generationTime / 1000).toFixed(1)}秒</span>
+                  <span>⚡ 生成: {(generationTime / 1000).toFixed(1)}秒</span>
                 )}
               </div>
-              <span>文字数: {generatedPost.length}文字</span>
+              <span>📝 {generatedPost.length}文字</span>
             </div>
 
             {/* アクションボタン */}
