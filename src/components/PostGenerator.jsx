@@ -667,8 +667,22 @@ const PostGenerator = React.forwardRef((props, ref) => {
   const checkPremiumStatus = () => {
     console.log('🔍 Checking premium status...');
 
+    const userId = getCurrentUserId();
+    
+    // スーパーアカウントチェック
+    if (isSuperAccount(userId)) {
+      console.log('🌟 Super account detected:', userId);
+      setUserPlan('premium');
+      setUsage({ remaining: 'unlimited' });
+      localStorage.setItem('userPlan', 'premium');
+      localStorage.removeItem('dailyUsage');
+      // SNS接続確認も実行
+      checkSnsConnections();
+      return;
+    }
+
     const userPlan = localStorage.getItem('userPlan');
-    console.log('📊 Premium check:', { userPlan });
+    console.log('📊 Premium check:', { userPlan, userId });
 
     if (userPlan === 'premium') {
       console.log('✅ Premium status confirmed');
@@ -811,6 +825,17 @@ const PostGenerator = React.forwardRef((props, ref) => {
       localStorage.setItem('userId', userId);
     }
     return userId;
+  };
+  
+  // 🔑 スーパーアカウント機能 - 特定のユーザーIDは常にプレミアム
+  const SUPER_ACCOUNTS = [
+    'numaken_super',  // テスト用スーパーアカウント
+    'test_premium',   // テスト用プレミアムアカウント
+    'admin_user'      // 管理者アカウント
+  ];
+  
+  const isSuperAccount = (userId) => {
+    return SUPER_ACCOUNTS.includes(userId);
   };
 
   // 🚀 新規追加: 初回訪問判定
@@ -1360,6 +1385,8 @@ const PostGenerator = React.forwardRef((props, ref) => {
         threadsConnected,
         twitterUsername,
         threadsUsername,
+        userId: localStorage.getItem('userId'),
+        isSuperAccount: isSuperAccount(localStorage.getItem('userId')),
         localStorage: Object.fromEntries(
           Object.keys(localStorage).map(key => [key, localStorage.getItem(key)])
         )
@@ -1368,6 +1395,27 @@ const PostGenerator = React.forwardRef((props, ref) => {
       checkStatus: checkPremiumStatus,
       checkSns: checkSnsConnections,
       manualTwitter: manualTwitterSetup,
+      // スーパーアカウント切り替え機能
+      setSuperAccount: (accountName) => {
+        if (!accountName) {
+          console.log('Available super accounts:', SUPER_ACCOUNTS);
+          return;
+        }
+        if (!SUPER_ACCOUNTS.includes(accountName)) {
+          console.log('Invalid super account. Available:', SUPER_ACCOUNTS);
+          return;
+        }
+        localStorage.setItem('userId', accountName);
+        console.log('🌟 Switched to super account:', accountName);
+        checkPremiumStatus();
+        window.location.reload();
+      },
+      resetAccount: () => {
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userPlan');
+        console.log('Account reset. Refreshing...');
+        window.location.reload();
+      }
     };
     console.log('🔧 Debug functions available: window.debugSNSApp');
   }, [userPlan, usage, twitterConnected, threadsConnected]);

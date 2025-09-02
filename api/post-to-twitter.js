@@ -183,10 +183,23 @@ export default async function handler(req, res) {
   }
 }
 
+// スーパーアカウント定義
+const SUPER_ACCOUNTS = [
+  'numaken_super',
+  'test_premium',
+  'admin_user'
+];
+
 // プレミアムプラン確認（KVベース）
 async function getUserPlanFromKV(userId) {
   try {
     console.log('Checking user plan for:', userId);
+    
+    // スーパーアカウントチェック
+    if (SUPER_ACCOUNTS.includes(userId)) {
+      console.log('🌟 Super account detected:', userId);
+      return 'premium';
+    }
 
     const planKeys = [
       `user_plan:${userId}`,
