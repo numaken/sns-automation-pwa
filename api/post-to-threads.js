@@ -322,7 +322,27 @@ async function getThreadsTokenFromKV(userId) {
         if (result.result) {
           console.log('✅ Threads token found with key:', key);
 
-          // Threadsユーザー情報も取得
+          // トークン情報を解析
+          let tokenInfo;
+          try {
+            // JSON形式で保存されている場合を試行
+            tokenInfo = JSON.parse(result.result);
+            console.log('Parsed token info:', { 
+              hasAccessToken: !!tokenInfo.access_token,
+              hasUserId: !!tokenInfo.user_id,
+              username: tokenInfo.username 
+            });
+          } catch (e) {
+            // 文字列として保存されている場合
+            console.log('Token stored as string, using as-is');
+            tokenInfo = {
+              access_token: result.result,
+              user_id: null,
+              username: null
+            };
+          }
+
+          // Threadsユーザー情報も取得（従来の方法）
           const userInfoKey = key.replace('threads_token:', 'threads_user:');
           let userInfo = null;
 
@@ -341,25 +361,37 @@ async function getThreadsTokenFromKV(userId) {
               if (userInfoResult.result) {
                 try {
                   userInfo = JSON.parse(userInfoResult.result);
-                  console.log('Threads user info found:', { 
+                  console.log('Legacy user info found:', { 
                     hasThreadsId: !!userInfo?.threadsId, 
                     username: userInfo?.username 
                   });
                 } catch (e) {
-                  console.log('Failed to parse Threads user info:', e.message);
+                  console.log('Failed to parse legacy user info:', e.message);
                 }
               }
             }
           } catch (userInfoError) {
-            console.error('Error fetching Threads user info:', userInfoError.message);
+            console.error('Error fetching legacy user info:', userInfoError.message);
           }
 
-          return {
+          // Final token result with comprehensive debugging
+          const finalToken = {
             key,
-            access_token: result.result,
-            threads_user_id: userInfo?.threadsId,
-            username: userInfo?.username
+            access_token: tokenInfo.access_token || tokenInfo,
+            threads_user_id: tokenInfo.user_id || userInfo?.threadsId,
+            username: tokenInfo.username || userInfo?.username
           };
+
+          console.log('Final token result:', {
+            key: finalToken.key,
+            hasAccessToken: !!finalToken.access_token,
+            hasThreadsUserId: !!finalToken.threads_user_id,
+            username: finalToken.username,
+            rawTokenInfo: tokenInfo,
+            legacyUserInfo: userInfo
+          });
+
+          return finalToken;
         }
       } catch (keyError) {
         console.error(`Error checking key ${key}:`, keyError.message);
