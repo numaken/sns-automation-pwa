@@ -276,15 +276,27 @@ async function getThreadsTokenFromKV(userId) {
       return null;
     }
 
-    const tokenKeys = [
-      `threads_token:${userId}`,
-      `threads_token:numaken_threads`,
-      `threads_token:test_user`,
-      `threads_token:oauth_user`,
-      'threads_token:final-oauth-test',
-      'threads_auth_token',
-      'threadsToken'
-    ];
+    // スーパーアカウントの場合、より多くのキーパターンを試行
+    const tokenKeys = SUPER_ACCOUNTS.includes(userId) 
+      ? [
+          `threads_token:${userId}`,
+          'threads_token:numaken_super', // スーパーアカウント専用キー
+          `threads_token:numaken_threads`,
+          `threads_token:test_user`,
+          `threads_token:oauth_user`,
+          'threads_token:final-oauth-test',
+          'threads_auth_token',
+          'threadsToken'
+        ]
+      : [
+          `threads_token:${userId}`,
+          `threads_token:numaken_threads`,
+          `threads_token:test_user`,
+          `threads_token:oauth_user`,
+          'threads_token:final-oauth-test',
+          'threads_auth_token',
+          'threadsToken'
+        ];
 
     for (const key of tokenKeys) {
       console.log(`Checking KV key: ${key}`);

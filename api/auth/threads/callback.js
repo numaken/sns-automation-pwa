@@ -152,17 +152,20 @@ export default async function handler(req, res) {
 
     console.log('=== Threads OAuth Callback SUCCESS (COMPLETE FIX) ===');
 
-    // 修正: 成功時のメインアプリリダイレクト
+    // 修正: 成功時のメインアプリリダイレクト - 動的ドメイン設定
+    const host = req.headers.host;
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const baseUrl = `${protocol}://${host}`;
     const redirectUrl = `/?auth_success=threads&platform=threads&username=${encodeURIComponent(userData.username)}&fixed=true`;
-    console.log('Redirecting to:', redirectUrl);
+    console.log('Redirecting to:', baseUrl + redirectUrl);
 
-    // 修正された成功ページのHTML
+    // 修正された成功ページのHTML - 動的ドメイン
     const successHtml = `<!DOCTYPE html>
 <html>
 <head>
     <title>Threads認証完了</title>
     <meta charset="utf-8">
-    <meta http-equiv="refresh" content="10;url=https://postpilot.panolabollc.com">
+    <meta http-equiv="refresh" content="3;url=${baseUrl}${redirectUrl}">
     <style>
         body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #000; color: white; }
         .success { background: rgba(255,255,255,0.1); padding: 30px; border-radius: 10px; max-width: 400px; margin: 0 auto; }
@@ -197,7 +200,7 @@ export default async function handler(req, res) {
                     }
                     window.close();
                 } catch (e) {
-                    window.location.href = 'https://postpilot.panolabollc.com';
+                    window.location.href = '${baseUrl}${redirectUrl}';
                 }
             }
         }, 1000);

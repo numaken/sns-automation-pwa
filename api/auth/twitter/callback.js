@@ -161,7 +161,9 @@ export default async function handler(req, res) {
       grant_type: 'authorization_code',
       client_id: process.env.TWITTER_CLIENT_ID,
       code: code,
-      redirect_uri: process.env.TWITTER_CALLBACK_URL || 'https://postpilot.panolabollc.com/api/auth/twitter/callback',
+      redirect_uri: req.headers.host === 'sns-automation-atamgtdom-numakens-projects.vercel.app' 
+        ? 'https://sns-automation-atamgtdom-numakens-projects.vercel.app/api/auth/twitter/callback'
+        : 'https://postpilot.panolabollc.com/api/auth/twitter/callback',
       code_verifier: pkceData.codeVerifier,
     });
 
@@ -169,7 +171,9 @@ export default async function handler(req, res) {
       grant_type: 'authorization_code',
       client_id: process.env.TWITTER_CLIENT_ID?.substring(0, 10) + '...',
       code: code.substring(0, 10) + '...',
-      redirect_uri: process.env.TWITTER_CALLBACK_URL || 'https://postpilot.panolabollc.com/api/auth/twitter/callback',
+      redirect_uri: req.headers.host === 'sns-automation-atamgtdom-numakens-projects.vercel.app' 
+        ? 'https://sns-automation-atamgtdom-numakens-projects.vercel.app/api/auth/twitter/callback'
+        : 'https://postpilot.panolabollc.com/api/auth/twitter/callback',
       code_verifier: pkceData.codeVerifier?.substring(0, 10) + '...'
     });
 
