@@ -178,12 +178,23 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('❌ Unexpected error in Threads post:', error);
+    console.error('Stack trace:', error.stack);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      userId,
+      contentLength: content?.length
+    });
+    
     return res.status(500).json({
       error: 'INTERNAL_ERROR',
       message: 'サーバー内部エラーが発生しました',
       details: error.message,
       platform: 'threads',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      errorType: error.name,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }
@@ -193,6 +204,11 @@ async function getUserPlanFromKV(userId) {
   try {
     console.log('Checking user plan for:', userId);
 
+    if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+      console.log('KV not configured, defaulting to premium');
+      return 'premium';
+    }
+
     const planKeys = [
       `user_plan:${userId}`,
       `userPlan:${userId}`,
@@ -201,19 +217,29 @@ async function getUserPlanFromKV(userId) {
     ];
 
     for (const key of planKeys) {
-      const response = await fetch(`${process.env.KV_REST_API_URL}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(['GET', key]),
-      });
+      try {
+        const response = await fetch(`${process.env.KV_REST_API_URL}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(['GET', key]),
+        });
 
-      const result = await response.json();
-      if (result.result) {
-        console.log(`Plan found with key ${key}:`, result.result);
-        return result.result;
+        if (!response.ok) {
+          console.log(`KV request failed for key ${key}:`, response.status);
+          continue;
+        }
+
+        const result = await response.json();
+        if (result.result) {
+          console.log(`Plan found with key ${key}:`, result.result);
+          return result.result;
+        }
+      } catch (keyError) {
+        console.error(`Error checking key ${key}:`, keyError.message);
+        continue;
       }
     }
 
@@ -232,6 +258,11 @@ async function getThreadsTokenFromKV(userId) {
   try {
     console.log('Searching Threads token for userId:', userId);
 
+    if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+      console.log('KV not configured, cannot fetch Threads token');
+      return null;
+    }
+
     const tokenKeys = [
       `threads_token:${userId}`,
       `threads_token:numaken_threads`,
@@ -245,50 +276,69 @@ async function getThreadsTokenFromKV(userId) {
     for (const key of tokenKeys) {
       console.log(`Checking KV key: ${key}`);
 
-      const response = await fetch(`${process.env.KV_REST_API_URL}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(['GET', key]),
-      });
-
-      const result = await response.json();
-      console.log(`KV response for ${key}:`, { status: response.status, hasResult: !!result.result });
-
-      if (result.result) {
-        console.log('✅ Threads token found with key:', key);
-
-        // Threadsユーザー情報も取得
-        const userInfoKey = key.replace('threads_token:', 'threads_user:');
-        const userInfoResponse = await fetch(`${process.env.KV_REST_API_URL}`, {
+      try {
+        const response = await fetch(`${process.env.KV_REST_API_URL}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(['GET', userInfoKey]),
+          body: JSON.stringify(['GET', key]),
         });
 
-        let userInfo = null;
-        if (userInfoResponse.ok) {
-          const userInfoResult = await userInfoResponse.json();
-          if (userInfoResult.result) {
-            try {
-              userInfo = JSON.parse(userInfoResult.result);
-            } catch (e) {
-              console.log('Failed to parse Threads user info');
-            }
-          }
+        if (!response.ok) {
+          console.log(`KV request failed for key ${key}:`, response.status);
+          continue;
         }
 
-        return {
-          key,
-          access_token: result.result,
-          threads_user_id: userInfo?.threadsId,
-          username: userInfo?.username
-        };
+        const result = await response.json();
+        console.log(`KV response for ${key}:`, { status: response.status, hasResult: !!result.result });
+
+        if (result.result) {
+          console.log('✅ Threads token found with key:', key);
+
+          // Threadsユーザー情報も取得
+          const userInfoKey = key.replace('threads_token:', 'threads_user:');
+          let userInfo = null;
+
+          try {
+            const userInfoResponse = await fetch(`${process.env.KV_REST_API_URL}`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(['GET', userInfoKey]),
+            });
+
+            if (userInfoResponse.ok) {
+              const userInfoResult = await userInfoResponse.json();
+              if (userInfoResult.result) {
+                try {
+                  userInfo = JSON.parse(userInfoResult.result);
+                  console.log('Threads user info found:', { 
+                    hasThreadsId: !!userInfo?.threadsId, 
+                    username: userInfo?.username 
+                  });
+                } catch (e) {
+                  console.log('Failed to parse Threads user info:', e.message);
+                }
+              }
+            }
+          } catch (userInfoError) {
+            console.error('Error fetching Threads user info:', userInfoError.message);
+          }
+
+          return {
+            key,
+            access_token: result.result,
+            threads_user_id: userInfo?.threadsId,
+            username: userInfo?.username
+          };
+        }
+      } catch (keyError) {
+        console.error(`Error checking key ${key}:`, keyError.message);
+        continue;
       }
     }
 
@@ -297,6 +347,7 @@ async function getThreadsTokenFromKV(userId) {
 
   } catch (error) {
     console.error('Failed to get Threads token from KV:', error);
+    console.error('Error stack:', error.stack);
     return null;
   }
 }
