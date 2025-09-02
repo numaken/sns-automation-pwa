@@ -95,12 +95,27 @@ export default async function handler(req, res) {
     // Threads OAuth認証URL
     const threadsClientId = process.env.THREADS_APP_ID;
     
-    // 動的にリダイレクトURIを設定
-    const host = req.headers.host;
-    const protocol = req.headers['x-forwarded-proto'] || 'https';
-    const redirectUri = `${protocol}://${host}/api/auth/threads/callback`;
+    // リダイレクトURIの設定（環境変数優先、なければ動的生成）
+    let redirectUri;
+    if (process.env.THREADS_REDIRECT_URI) {
+      redirectUri = process.env.THREADS_REDIRECT_URI;
+      console.log('Using environment redirect URI:', redirectUri);
+    } else {
+      // 動的にリダイレクトURIを設定
+      const host = req.headers.host;
+      const protocol = req.headers['x-forwarded-proto'] || 'https';
+      redirectUri = `${protocol}://${host}/api/auth/threads/callback`;
+      console.log('Dynamic redirect URI:', redirectUri);
+    }
     
-    console.log('Dynamic redirect URI:', redirectUri);
+    // 特定のVercel環境用の設定
+    if (req.headers.host === 'sns-automation-atamgtdom-numakens-projects.vercel.app') {
+      redirectUri = 'https://sns-automation-atamgtdom-numakens-projects.vercel.app/api/auth/threads/callback';
+      console.log('Using registered Vercel redirect URI:', redirectUri);
+    } else if (req.headers.host && req.headers.host.includes('vercel.app')) {
+      redirectUri = 'https://postpilot.panolabollc.com/api/auth/threads/callback';
+      console.log('Using production redirect URI for other Vercel deployments:', redirectUri);
+    }
 
     const authParams = new URLSearchParams({
       client_id: threadsClientId,

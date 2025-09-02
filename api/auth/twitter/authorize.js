@@ -135,12 +135,16 @@ export default async function handler(req, res) {
       codeChallenge: codeChallenge.substring(0, 10) + '...'
     });
 
-    // 動的にリダイレクトURIを設定
-    const host = req.headers.host;
-    const protocol = req.headers['x-forwarded-proto'] || 'https';
-    const redirectUri = `${protocol}://${host}/api/auth/twitter/callback`;
-    
-    console.log('Dynamic redirect URI:', redirectUri);
+    // リダイレクトURIの設定
+    let redirectUri;
+    if (req.headers.host === 'sns-automation-atamgtdom-numakens-projects.vercel.app') {
+      redirectUri = 'https://sns-automation-atamgtdom-numakens-projects.vercel.app/api/auth/twitter/callback';
+      console.log('Using registered Vercel redirect URI:', redirectUri);
+    } else {
+      // その他の環境は本番ドメインを使用
+      redirectUri = 'https://postpilot.panolabollc.com/api/auth/twitter/callback';
+      console.log('Using production redirect URI:', redirectUri);
+    }
 
     // PKCEデータの準備
     const pkceData = {

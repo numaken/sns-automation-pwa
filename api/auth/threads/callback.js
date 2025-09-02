@@ -77,7 +77,9 @@ export default async function handler(req, res) {
         client_id: process.env.THREADS_APP_ID,
         client_secret: process.env.THREADS_APP_SECRET,
         grant_type: 'authorization_code',
-        redirect_uri: `https://postpilot.panolabollc.com/api/auth/threads/callback`,
+        redirect_uri: req.headers.host === 'sns-automation-atamgtdom-numakens-projects.vercel.app' 
+          ? 'https://sns-automation-atamgtdom-numakens-projects.vercel.app/api/auth/threads/callback'
+          : 'https://postpilot.panolabollc.com/api/auth/threads/callback',
         code: code,
         code_verifier: authData.codeVerifier
       })
