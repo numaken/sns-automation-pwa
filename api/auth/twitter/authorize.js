@@ -135,11 +135,18 @@ export default async function handler(req, res) {
       codeChallenge: codeChallenge.substring(0, 10) + '...'
     });
 
+    // 動的にリダイレクトURIを設定
+    const host = req.headers.host;
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const redirectUri = `${protocol}://${host}/api/auth/twitter/callback`;
+    
+    console.log('Dynamic redirect URI:', redirectUri);
+
     // PKCEデータの準備
     const pkceData = {
       codeVerifier,
       userId,
-      redirect_uri: process.env.TWITTER_CALLBACK_URL || 'https://postpilot.panolabollc.com/api/auth/twitter/callback',
+      redirect_uri: redirectUri,
       timestamp: Date.now()
     };
 
@@ -179,7 +186,7 @@ export default async function handler(req, res) {
     const params = new URLSearchParams({
       response_type: 'code',
       client_id: process.env.TWITTER_CLIENT_ID,
-      redirect_uri: process.env.TWITTER_CALLBACK_URL || 'https://postpilot.panolabollc.com/api/auth/twitter/callback',
+      redirect_uri: redirectUri,
       scope: 'tweet.read tweet.write users.read offline.access',
       state: state,
       code_challenge: codeChallenge,
@@ -191,7 +198,7 @@ export default async function handler(req, res) {
     console.log('OAuth URL generated (FIXED):', {
       state,
       clientId: process.env.TWITTER_CLIENT_ID?.substring(0, 10) + '...',
-      redirect_uri: process.env.TWITTER_CALLBACK_URL || 'https://postpilot.panolabollc.com/api/auth/twitter/callback',
+      redirect_uri: redirectUri,
       kvKeyPattern: 'state-only'
     });
 

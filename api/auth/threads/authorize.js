@@ -94,7 +94,13 @@ export default async function handler(req, res) {
 
     // Threads OAuth認証URL
     const threadsClientId = process.env.THREADS_APP_ID;
-    const redirectUri = `https://postpilot.panolabollc.com/api/auth/threads/callback`;
+    
+    // 動的にリダイレクトURIを設定
+    const host = req.headers.host;
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const redirectUri = `${protocol}://${host}/api/auth/threads/callback`;
+    
+    console.log('Dynamic redirect URI:', redirectUri);
 
     const authParams = new URLSearchParams({
       client_id: threadsClientId,
